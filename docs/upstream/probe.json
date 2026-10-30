@@ -1,0 +1,72 @@
+{
+  "time": 1793267327948,
+  "upstream": {
+    "url": "http://127.0.0.1:4312",
+    "version": "2.2.1",
+    "pid": 6276
+  },
+  "spec": {
+    "ok": true,
+    "path": "/openapi.json",
+    "version": "0.0.1"
+  },
+  "endpoints": {
+    "info": {
+      "ok": true,
+      "status": 200,
+      "latencyMs": 7
+    },
+    "session.list": {
+      "ok": true,
+      "status": 200,
+      "latencyMs": 8
+    },
+    "permission.list": {
+      "ok": true,
+      "status": 200,
+      "latencyMs": 8
+    },
+    "vcs.status": {
+      "ok": true,
+      "status": 200,
+      "latencyMs": 306
+    },
+    "pty.list": {
+      "ok": true,
+      "status": 200,
+      "latencyMs": 8
+    },
+    "model.list": {
+      "ok": true,
+      "status": 200,
+      "latencyMs": 22
+    },
+    "agent.list": {
+      "ok": true,
+      "status": 200,
+      "latencyMs": 11
+    }
+  },
+  "events": {
+    "ok": true,
+    "path": "/api/event",
+    "heartbeat": true,
+    "envelope": {
+      "id": "evt_1870fe55b001ewIATj4tdNcH69",
+      "type": "server.connected",
+      "data": "",
+      "seq": ""
+    }
+  },
+  "capabilities": {
+    "streaming": true,
+    "tools": true,
+    "permissions": true,
+    "sessionDiff": true,
+    "pty": true,
+    "vcs": true,
+    "snapshots": true,
+    "lint": true
+  },
+  "hints": []
+}

@@ -1,0 +1,48 @@
+data: {"id":"evt_186ea4405001u613RUPWnBHeZo","type":"server.connected","data":{}}
+
+: heartbeat
+
+data: {"id":"evt_186ea4545001yu0oUkADUhNfJN","created":1793264862533,"type":"session.created","location":{"directory":"C:\\Users\\mp"},"data":{"sessionID":"ses_e7915babcffekhTZ2suNBTAqFI","slug":"eager-falcon","version":"2.2.1","projectID":"51ea5f7b3f947a794d2c2c2c1bd026aced0fa734","location":{"directory":"C:\\Users\\mp"},"subpath":"","title":"probe-events"},"durable":{"aggregateID":"ses_e7915babcffekhTZ2suNBTAqFI","seq":0,"version":1}}
+
+data: {"id":"evt_186ea4553001qhBiqG4S9UhIjU","created":1793264862547,"type":"project.updated","location":{"directory":"C:\\Users\\mp"},"data":{"id":"51ea5f7b3f947a794d2c2c2c1bd026aced0fa734","canonical":"C:\\Users\\mp","time":{"created":1793260965258,"updated":1793260965258,"active":1793264862546},"sandboxes":[]}}
+
+data: {"id":"evt_186ea4604001kXA04qu5uXE5aZ","created":1793264862724,"type":"mcp.status.changed","location":{"directory":"C:\\Users\\mp"},"data":{"server":"codegraph"}}
+
+data: {"id":"evt_186ea4606001kI7Qu8X037owtF","created":1793264862726,"type":"integration.updated","location":{"directory":"C:\\Users\\mp"},"data":{}}
+
+data: {"id":"evt_186ea460a001VtNVPyqNdkIbtE","created":1793264862730,"type":"provider.updated","location":{"directory":"C:\\Users\\mp"},"data":{}}
+
+data: {"id":"evt_186ea4612001ghHKK3D5bQHTLq","created":1793264862738,"type":"model.updated","location":{"directory":"C:\\Users\\mp"},"data":{}}
+
+data: {"id":"evt_186ea4614001vrorzDfTCp1stc","created":1793264862740,"type":"agent.updated","location":{"directory":"C:\\Users\\mp"},"data":{}}
+
+data: {"id":"evt_186ea4614002uHwrm2ms2Xqx6z","created":1793264862740,"type":"command.updated","location":{"directory":"C:\\Users\\mp"},"data":{}}
+
+data: {"id":"evt_186ea4614003W2Sm9VnOxbeed4","created":1793264862740,"type":"skill.updated","location":{"directory":"C:\\Users\\mp"},"data":{}}
+
+data: {"id":"evt_186ea4617001fFojvfhVEmVBev","created":1793264862743,"type":"websearch.updated","location":{"directory":"C:\\Users\\mp"},"data":{}}
+
+data: {"id":"evt_186ea4627001ShpbL2NJEWS5AR","created":1793264862759,"type":"reference.updated","location":{"directory":"C:\\Users\\mp"},"data":{}}
+
+data: {"id":"evt_186ea46280016fm2KU7c7hxAPV","created":1793264862760,"type":"plugin.updated","location":{"directory":"C:\\Users\\mp"},"data":{}}
+
+data: {"id":"evt_186ea46290012Yuo119i69SLf1","created":1793264862761,"type":"session.inbox.enqueued","location":{"directory":"C:\\Users\\mp"},"data":{"inboxID":"msg_186ea45740017gaLGbT4gtpIUW","sessionID":"ses_e7915babcffekhTZ2suNBTAqFI","item":{"type":"user","payload":{"text":"Use the read tool to read package.json in C:/Users/mp/desktop/conservative then reply with the exact name field only. Be terse."},"delivery":"steer"}},"durable":{"aggregateID":"ses_e7915babcffekhTZ2suNBTAqFI","seq":1,"version":1}}
+
+data: {"id":"evt_186ea4630001XRUaqZjQAthApD","created":1793264862768,"type":"session.execution.started","data":{"sessionID":"ses_e7915babcffekhTZ2suNBTAqFI"},"durable":{"aggregateID":"ses_e7915babcffekhTZ2suNBTAqFI","seq":2,"version":1}}
+
+data: {"id":"evt_186ea4636001j8iltUVBrxts7J","created":1793264862774,"metadata":{"instructions":{"initial":true}},"type":"session.instructions.updated","location":{"directory":"C:\\Users\\mp"},"data":{"sessionID":"ses_e7915babcffekhTZ2suNBTAqFI","delta":{"core/codemode":"1f1291478accf8b3e4d96a40c150bf844d60557dede4aae56c47ea0043bbdce2","core/skill-guidance":"8394362d28c82fa4d13c7a9f5568c05680f6687e07db8f426a0e3c92f3027dc9","core/instructions":"3332ba8aeb996ce980212f395e5901c996a70c3cf255a77b4b6913d29474b7c8","core/date":"f7913ba03d70df1ee3d8d6d6002d0990295442ad1ca37d8569918612fd09eaf1","core/environment":"084e435bf58e1f036fc4e07001f89c9e5a6c5169dac627b31c3d7a2fc4994a64"}},"durable":{"aggregateID":"ses_e7915babcffekhTZ2suNBTAqFI","seq":3,"version":2}}
+
+data: {"id":"evt_186ea4638001M4lw7iW579vnp6","created":1793264862776,"type":"session.inbox.delivered","location":{"directory":"C:\\Users\\mp"},"data":{"sessionID":"ses_e7915babcffekhTZ2suNBTAqFI","inboxID":"msg_186ea45740017gaLGbT4gtpIUW"},"durable":{"aggregateID":"ses_e7915babcffekhTZ2suNBTAqFI","seq":4,"version":1}}
+
+data: {"id":"evt_186ea476e001H1CjXFYDLy5Upw","created":1793264863086,"type":"session.step.started","location":{"directory":"C:\\Users\\mp"},"data":{"sessionID":"ses_e7915babcffekhTZ2suNBTAqFI","agent":"build","model":{"id":"iceman-contributor-free","providerID":"opencode-go"},"assistantMessageID":"msg_186ea463e001misEFgZv6EfasL","started":1793264862787},"durable":{"aggregateID":"ses_e7915babcffekhTZ2suNBTAqFI","seq":5,"version":1}}
+
+data: {"id":"evt_186ea4770001RB8uvzstTEyueA","created":1793264863088,"type":"session.step.failed","location":{"directory":"C:\\Users\\mp"},"data":{"sessionID":"ses_e7915babcffekhTZ2suNBTAqFI","assistantMessageID":"msg_186ea463e001misEFgZv6EfasL","error":{"type":"provider.invalid-request","message":"Upstream request failed: This Go model trains on request data. Allow paid endpoints that train on request data in your workspace's Privacy settings to use it.","status":400,"response":{"body":"{\"error\":{\"type\":\"server_error\",\"message\":\"Upstream request failed: This Go model trains on request data. Allow paid endpoints that train on request data in your workspace's Privacy settings to use it.\"}}"}}},"durable":{"aggregateID":"ses_e7915babcffekhTZ2suNBTAqFI","seq":6,"version":1}}
+
+data: {"id":"evt_186ea47720015sujFkoikwvVfY","created":1793264863090,"type":"session.execution.failed","data":{"sessionID":"ses_e7915babcffekhTZ2suNBTAqFI","error":{"type":"provider.invalid-request","message":"Upstream request failed: This Go model trains on request data. Allow paid endpoints that train on request data in your workspace's Privacy settings to use it.","status":400,"response":{"body":"{\"error\":{\"type\":\"server_error\",\"message\":\"Upstream request failed: This Go model trains on request data. Allow paid endpoints that train on request data in your workspace's Privacy settings to use it.\"}}"}}},"durable":{"aggregateID":"ses_e7915babcffekhTZ2suNBTAqFI","seq":7,"version":1}}
+
+data: {"id":"evt_186ea47b90025r311aD6PypN1b","created":1793264863161,"type":"mcp.resources.changed","location":{"directory":"C:\\Users\\mp"},"data":{"server":"codegraph"}}
+
+data: {"id":"evt_186ea47b9003o1WZ5srjUv4L23","created":1793264863161,"type":"mcp.status.changed","location":{"directory":"C:\\Users\\mp"},"data":{"server":"codegraph"}}
+
+: heartbeat
+

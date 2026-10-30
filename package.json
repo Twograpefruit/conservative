@@ -1,0 +1,35 @@
+{
+  "name": "opencode-gui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Lightweight peer GUI + BFF for opencode v2",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:server": "npm run dev -w @ocg/server",
+    "dev:gui": "npm run dev -w @ocg/gui",
+    "build": "npm run build -w @ocg/gui && npm run build -w @ocg/server",
+    "start": "node apps/server/dist/index.js",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "probe": "node scripts/probe.mjs",
+    "codegen": "node scripts/codegen.mjs",
+    "bootstrap": "powershell -ExecutionPolicy Bypass -File scripts/bootstrap.ps1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "openapi-typescript": "^7.4.4",
+    "tsx": "^4.19.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

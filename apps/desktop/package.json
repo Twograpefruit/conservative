@@ -1,0 +1,10 @@
+{
+  "name": "@ocg/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tauri (WebView2) shell scaffold for opencode-gui",
+  "scripts": {
+    "tauri": "tauri",
+    "build": "echo \"desktop shell scaffold: install Rust + tauri-cli, see README.md\""
+  }
+}
