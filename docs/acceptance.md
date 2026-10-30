@@ -177,7 +177,7 @@ v2 的 API 前缀是 **`/api`**，不是 v1 文档中的 `/global/*`。
 | RISK-01 | v2 路径为 `/api/*`，`/doc` 返回 SPA               | 按 v1 文档接会全 404          | 以 `/openapi.json` 为准，BFF 固化契约             |
 | RISK-02 | 事件是 `session.text/tool.*`，非 `message.part.*` | v1 reducer 直接失效           | reducer 覆盖 v2 + v1 兜底，单测锁行为             |
 | RISK-03 | PTY connect-token 需 `x-opencode-ticket: 1`       | 缺头返回 403                  | BFF 统一注入；票据一次性消费                      |
-| RISK-04 | BFF 常驻 RSS 约 67–69MB                            | 超出 50MB 预算                | 记录为偏差；后续按需裁剪依赖/日志/缓冲            |
+| RISK-04 | BFF 常驻 RSS 约 79MB                            | 超出 50MB 预算                | 记录为偏差；后续按需裁剪依赖/日志/缓冲            |
 | RISK-05 | 会话属于 location，跨项目会话不能互发            | 列表混杂/发送失败             | GUI 按 workspace 目录过滤；创建时显式带 location  |
 | RISK-06 | npm 11 默认阻止 install scripts，node-pty 无二进制 | 本地 PTY 不可用              | 终端走上游 ConPTY 桥；保留 `createPty` 扩展点      |
 | RISK-07 | `LongPathsEnabled=0`                              | 超长路径可能失败              | Host 层路径规范化；建议开启系统长路径             |

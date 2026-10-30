@@ -174,7 +174,7 @@ real assertions currently report **BLOCKED**; `--self-test` validates the detect
 
 ## Known limitations
 
-- **BFF RSS ~67-69 MB**, above the 50 MB budget (Node/Fastify baseline). Recorded as a deviation in
+- **BFF RSS ~79 MB**, above the 50 MB budget (Node/Fastify baseline). Recorded as a deviation in
   `docs/acceptance.md`; the GUI bundle itself is ~1.2 MB JS (~380 KB gzip).
 - **Terminal uses the upstream ConPTY**, not a local `node-pty` instance. npm 11 blocks install
   scripts and this machine has no VS Build Tools; `RuntimeHost.createPty` remains the extension
@@ -183,9 +183,11 @@ real assertions currently report **BLOCKED**; `--self-test` validates the detect
   location; new sessions are created with an explicit `location` for the active workspace.
 - **M4 is a scaffold.** Tray, installer, shell-owned lifecycle and WebView memory instrumentation
   are not implemented. `apps/desktop/README.md` lists the remaining work.
-- **M6 is SQLite/Redis-first.** PostgreSQL/MySQL profiles are rejected with `driver_not_available`
-  until their drivers are added. The result grid is limited by `rowLimit` (default 500) rather
-  than a full virtualized 10k-row grid; export currently buffers the result before writing.
+- **M6 is SQLite/Redis-first.** SQLite uses Node's built-in `node:sqlite` (Node 22.5+/24); on
+  Node 20 the DB feature is unavailable. PostgreSQL/MySQL profiles are rejected with
+  `driver_not_available` until their drivers are added. The result grid is limited by `rowLimit`
+  (default 500) rather than a full virtualized 10k-row grid; export currently buffers the result
+  before writing.
 - **Redis command console is read-only.** `KEYS`, `FLUSHALL`, `CONFIG`, `SHUTDOWN`, `EVAL`, etc.
   are hard-blocked; key navigation always uses `SCAN` cursors.
 - No login/multi-user/remote/TLS by design; the BFF binds `127.0.0.1` only.
