@@ -4,6 +4,7 @@ import type { ConnectionKind } from '@ocg/protocol';
 import { HttpError, requireString } from '../lib/http.js';
 import type { SqliteProfile } from '../lib/sqlite.js';
 import type { RedisProfile } from '../lib/redis.js';
+import type { MysqlProfile } from '../lib/mysql.js';
 
 function profileOf(ctx: AppContext, id: unknown) {
   if (typeof id !== 'string' || !id) throw new HttpError(400, 'profileId is required', 'invalid_field');
@@ -68,36 +69,61 @@ export async function registerDataRoutes(app: FastifyInstance, ctx: AppContext):
       const secret = await ctx.connections.getSecret(profile);
       return ctx.redis.test(profile as RedisProfile, secret);
     }
-    throw new HttpError(501, `${profile.kind} 驱动尚未启用（SQLite/Redis 优先）`, 'driver_not_available');
+    if (profile.kind === 'mysql') {
+      const secret = await ctx.connections.getSecret(profile);
+      return ctx.mysql.test(profile as MysqlProfile, secret);
+    }
+    throw new HttpError(501, `${profile.kind} 驱动尚未启用（SQLite/Redis/MySQL）`, 'driver_not_available');
   });
 
   app.post('/api/db/query', async (req) => {
     const body = req.body as { profileId?: string; sql?: string; params?: unknown[] };
     const profile = profileOf(ctx, body.profileId);
     const sql = requireString(body.sql, 'sql');
-    if (profile.kind !== 'sqlite') {
-      throw new HttpError(501, `${profile.kind} 驱动尚未启用；当前 M6 首发 SQLite`, 'driver_not_available');
+    if (profile.kind === 'sqlite') {
+      return ctx.sqlite.query(profile as SqliteProfile, sql, Array.isArray(body.params) ? body.params : []);
     }
-    return ctx.sqlite.query(profile as SqliteProfile, sql, Array.isArray(body.params) ? body.params : []);
+    if (profile.kind === 'mysql') {
+      const secret = await ctx.connections.getSecret(profile);
+      return ctx.mysql.query(profile as MysqlProfile, secret, sql, Array.isArray(body.params) ? body.params : []);
+    }
+    throw new HttpError(501, `${profile.kind} 驱动尚未启用；当前支持 SQLite/MySQL`, 'driver_not_available');
   });
 
   app.get('/api/db/metadata', async (req) => {
     const query = req.query as { profileId?: string };
     const profile = profileOf(ctx, query.profileId);
-    if (profile.kind !== 'sqlite') throw new HttpError(501, 'metadata 目前仅支持 SQLite', 'driver_not_available');
-    return ctx.sqlite.metadata(profile as SqliteProfile);
+    if (profile.kind === 'sqlite') return ctx.sqlite.metadata(profile as SqliteProfile);
+    if (profile.kind === 'mysql') {
+      const secret = await ctx.connections.getSecret(profile);
+      return ctx.mysql.metadata(profile as MysqlProfile, secret);
+    }
+    throw new HttpError(501, 'metadata 目前支持 SQLite/MySQL', 'driver_not_available');
   });
 
   app.post('/api/db/export', async (req, reply) => {
     const body = req.body as { profileId?: string; sql?: string; params?: unknown[]; format?: 'csv' | 'json' };
     const profile = profileOf(ctx, body.profileId);
     const sql = requireString(body.sql, 'sql');
-    if (profile.kind !== 'sqlite') throw new HttpError(501, 'export 目前仅支持 SQLite', 'driver_not_available');
-    const { columns, rows } = await ctx.sqlite.exportRows(
-      profile as SqliteProfile,
-      sql,
-      Array.isArray(body.params) ? body.params : [],
-    );
+    let columns: string[];
+    let rows: unknown[][];
+    if (profile.kind === 'sqlite') {
+      ({ columns, rows } = await ctx.sqlite.exportRows(
+        profile as SqliteProfile,
+        sql,
+        Array.isArray(body.params) ? body.params : [],
+      ));
+    } else if (profile.kind === 'mysql') {
+      const secret = await ctx.connections.getSecret(profile);
+      ({ columns, rows } = await ctx.mysql.exportRows(
+        profile as MysqlProfile,
+        secret,
+        sql,
+        Array.isArray(body.params) ? body.params : [],
+      ));
+    } else {
+      throw new HttpError(501, 'export 目前支持 SQLite/MySQL', 'driver_not_available');
+    }
     const format = body.format === 'json' ? 'json' : 'csv';
     const base = `${profile.label.replace(/[^\w.-]+/g, '_')}-export.${format}`;
     reply.header('content-disposition', `attachment; filename="${base}"`);

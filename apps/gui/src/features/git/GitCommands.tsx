@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { api, qs } from '../../api/client.js';
 import { useApp } from '../../store/appStore.js';
+import { useNotify } from '../notify/notificationStore.js';
 
 interface CatalogEntry {
   id: string;
@@ -78,6 +79,15 @@ export function GitCommands({ workspaceID, onChanged }: { workspaceID: string | 
       setConfirm('');
       await load();
       onChanged();
+      useNotify.getState().push({
+        source: 'git',
+        level: res.exitCode === 0 ? 'info' : 'error',
+        title: `${entry.title} ${res.exitCode === 0 ? '完成' : `失败（exit ${res.exitCode}）`}`,
+        body: res.hints[0]?.message ?? `${res.durationMs}ms`,
+        dedupKey: `git:${entry.id}`,
+        view: 'git',
+        workspaceID: workspaceID ?? undefined,
+      });
       notify(res.exitCode === 0 ? '命令执行完成' : `命令失败（exit ${res.exitCode}）`, res.exitCode === 0 ? 'info' : 'error');
     } catch (err) {
       notify(err instanceof Error ? err.message : 'Git 命令执行失败', 'error');

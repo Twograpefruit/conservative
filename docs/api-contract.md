@@ -214,7 +214,7 @@
 | M5 编辑器增强 | 已实现（核心） | 语言注册表 + 动态 import；Markdown 源码/分屏/预览（DOMPurify、任务回写、图片经 `/api/fs/raw`）；SQL 方言高亮 + 格式化预览/应用/撤销；选区格式化为 PARTIAL |
 | M6 数据源 | 已实现（SQLite/Redis） | SQLite `node:sqlite` worker + Redis `ioredis`；DPAPI 凭据、只读 SQL 守卫、SCAN 键浏览、只读命令台、订阅、导出；PostgreSQL/MySQL 未启用 |
 | M7 交互系统 | 已实现（核心） | 命令注册表 + Ctrl+Shift+P 面板、键位覆盖/冲突检测、暗/亮/跟随系统主题、Git 命令目录 + argv 预览 + 危险确认 + 快照 + 错误提示 + 历史；保留键提示待补 |
-| M8 通知 | 未开始 / BLOCKED | 无原生/应用内通知中心 |
+| M8 通知 | 已实现（核心） | 应用内通知中心 + toast；失焦走 Web Notification（权限）；3s 去重聚合；来源/会话静音、免打扰、隐私模式、深链跳转；Tauri 原生与标题闪烁待补 |
 
 ### 12.1 CI 断言骨架
 
@@ -309,7 +309,7 @@
 | M6-014 | 危险命令 | 只读白名单；KEYS/FLUSHALL/CONFIG/SHUTDOWN/EVAL 等 403 | GET 成功；KEYS/FLUSHALL 均 403 |
 | M6-015 | 订阅 | BFF SSE + ioredis 订阅连接 | Playwright 订阅频道，外部 PUBLISH 后前端收到消息 |
 | M6-016 | 凭据不外泄 | DPAPI；API 不返回 secret；日志/响应扫描 | CI 断言 PASS：日志/响应/connections.json 无明文 |
-| M6-017 | PostgreSQL/MySQL | 档案可创建但驱动未启用 | BLOCKED（501 driver_not_available） |
+| M6-017 | PostgreSQL/MySQL | MySQL 已启用（mysql2，information_schema 元数据、超时、只读守卫、导出）；PostgreSQL 档案仍返回 501 | MySQL 实测 8.0.44：321 张表、`select version()`、schema.table 查询、写入 403 |
 
 ### 15.1 关键接口
 
@@ -323,6 +323,9 @@
 - 只读 SQL 守卫在 BFF；多语句/非法 PRAGMA 在 SQL 层拒绝。
 - Redis 网络层不发送 `KEYS`；命令台仅白名单。
 - SQLite 查询在 worker 中执行，可超时终止；行数上限防止一次性拉全表。
+- MySQL 使用 `mysql2`，每次查询独立连接并在超时后销毁；只读档案在 BFF 层拒绝非 SELECT。
+- `config/local.json`（gitignored）提供本地 Redis URL / MySQL 账号默认值；启动时创建或更新
+  `Local Redis`、`Local MySQL` 只读档案，密码只进入 DPAPI（`OCG_LOCAL_CONFIG` 可覆盖路径）。
 
 
 ---
@@ -360,3 +363,28 @@
 - 主题已恢复原版暗色，Neumorphism 代码与 `docs/neumorphism.md` 已删除。
 - 亮色主题是平面浅色 token，不是 Neumorphism。
 - 危险命令快照依赖 M3 影子仓库；若快照失败则拒绝执行。
+
+---
+
+## 17. M8 消息通知（已实现 / 核心）
+
+| 编号 | 能力 | 实现 | 验证 |
+| ---- | ---- | ---- | ---- |
+| M8-001 | 三通道 | 应用内通知中心 + toast；窗口失焦时使用 Web Notification API（无权限自动降级） | Playwright：查询完成产生 1 条通知并显示角标 |
+| M8-002 | 聚焦策略 | `document.hasFocus()` + `visibilityState`；聚焦仅 toast | 代码分支；失焦走原生 |
+| M8-003 | 审批必达 | `permission.asked` → warn 通知，含会话标题与操作摘要 | 事件处理已接入 |
+| M8-004 | 去重聚合 | 同 `dedupKey` 3s 内合并，计数 ×N | Playwright 连续两次查询 → 单条 ×2 |
+| M8-005 | 静音范围 | 来源静音 + 会话右键“静音该会话通知”；workspace 级未做 UI | PARTIAL |
+| M8-006 | 免打扰 | `quietHours` 支持跨午夜；静默期只入中心 | 纯函数逻辑 |
+| M8-007 | 深链 | 点击通知：session → chat，git → git，data → data | Playwright 点击后仍定位数据视图 |
+| M8-008 | 隐私 | 开启后正文不落库/不显示，原生提示“内容已隐藏” | 代码逻辑 |
+| M8-009 | 通知中心 | 顶栏铃铛、未读角标、全部已读、清空；localStorage 持久化，上限 200 | Playwright：角标 → 已读归零 |
+| M8-010 | 声音/闪烁 | 原生 `silent` 按级别；标题闪烁未实现 | PARTIAL |
+
+### 17.1 前端模块
+
+- `features/notify/notificationStore.ts`：通知状态、设置、去重、免打扰、原生通知。
+- `features/notify/NotificationCenter.tsx`：顶栏铃铛 + 通知面板。
+- 设置页新增“通知”卡片：启用、系统通知权限、隐私模式、免打扰时段、来源静音。
+
+> 说明：M4 的 Tauri 原生通知尚未打包，当前以浏览器通知作为原生通道；禁用权限时自动降级为应用内通知。

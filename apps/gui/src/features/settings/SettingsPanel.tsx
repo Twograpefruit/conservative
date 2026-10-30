@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import type { ProbeResult, WorkspaceInfo } from '@ocg/protocol';
 import { api } from '../../api/client.js';
 import { useApp } from '../../store/appStore.js';
+import { useNotify, type NotificationSource } from '../notify/notificationStore.js';
 import { COMMANDS, bindingConflicts, getBindings, resetBindings, setBinding } from '../../commands/registry.js';
 
 export function SettingsPanel() {
@@ -15,9 +16,14 @@ export function SettingsPanel() {
   const setWorkspace = useApp((s) => s.setWorkspace);
   const uiScale = useApp((s) => s.uiScale);
   const setUiScale = useApp((s) => s.setUiScale);
+  const textScale = useApp((s) => s.textScale);
+  const setTextScale = useApp((s) => s.setTextScale);
   const themeMode = useApp((s) => s.themeMode);
   const setThemeMode = useApp((s) => s.setThemeMode);
   const notify = useApp((s) => s.notify);
+  const notifySettings = useNotify((s) => s.settings);
+  const setNotifySettings = useNotify((s) => s.setSettings);
+  const requestNative = useNotify((s) => s.requestNative);
   const [logs, setLogs] = useState<string[]>([]);
   const [newPath, setNewPath] = useState('');
   const [lintEnabled, setLintEnabled] = useState(true);
@@ -81,6 +87,87 @@ export function SettingsPanel() {
   return (
     <div className="settings-layout">
       <div className="settings-grid">
+        <section className="settings-card">
+          <h3>通知</h3>
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={notifySettings.enabled}
+              onChange={(e) => setNotifySettings({ enabled: e.target.checked })}
+            />
+            启用通知（关闭后不再产生新通知）
+          </label>
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={notifySettings.native}
+              onChange={(e) => {
+                if (e.target.checked) void requestNative();
+                else setNotifySettings({ native: false });
+              }}
+            />
+            Windows / 浏览器系统通知（窗口失焦时）
+          </label>
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={notifySettings.privacy}
+              onChange={(e) => setNotifySettings({ privacy: e.target.checked })}
+            />
+            隐私模式：通知正文隐藏，仅显示“有一条新通知”
+          </label>
+          <div className="checkbox-row">
+            <input
+              id="quiet-hours"
+              type="checkbox"
+              checked={notifySettings.quietHours.enabled}
+              onChange={(e) =>
+                setNotifySettings({
+                  quietHours: { ...notifySettings.quietHours, enabled: e.target.checked },
+                })
+              }
+            />
+            <label htmlFor="quiet-hours">免打扰时段</label>
+            <input
+              className="input notify-time"
+              type="time"
+              value={notifySettings.quietHours.start}
+              onChange={(e) =>
+                setNotifySettings({ quietHours: { ...notifySettings.quietHours, start: e.target.value } })
+              }
+            />
+            <span className="muted small">至</span>
+            <input
+              className="input notify-time"
+              type="time"
+              value={notifySettings.quietHours.end}
+              onChange={(e) =>
+                setNotifySettings({ quietHours: { ...notifySettings.quietHours, end: e.target.value } })
+              }
+            />
+          </div>
+          <div className="row wrap">
+            <span className="muted small">静音来源</span>
+            {(['chat', 'git', 'data', 'terminal', 'system'] as NotificationSource[]).map((source) => (
+              <label className="checkbox-row" key={source}>
+                <input
+                  type="checkbox"
+                  checked={notifySettings.muteSources.includes(source)}
+                  onChange={(e) =>
+                    setNotifySettings({
+                      muteSources: e.target.checked
+                        ? [...notifySettings.muteSources, source]
+                        : notifySettings.muteSources.filter((s) => s !== source),
+                    })
+                  }
+                />
+                {source}
+              </label>
+            ))}
+          </div>
+          <div className="muted small">窗口聚焦时只弹应用内 toast；失焦时按权限走系统通知；3 秒内同源事件聚合。</div>
+        </section>
+
         <section className="settings-card">
           <h3>快捷键</h3>
           <div className="keybinding-list">
@@ -214,10 +301,11 @@ export function SettingsPanel() {
         </section>
 
         <section className="settings-card">
-          <h3>界面字号与主题</h3>
+          <h3>界面大小与文字大小</h3>
           <div className="font-scale-row">
+            <span className="muted small">界面</span>
             <button className="btn btn-small" onClick={() => setUiScale(uiScale - 0.05)} disabled={uiScale <= 0.8}>
-              A-
+              UI-
             </button>
             <input
               type="range"
@@ -228,9 +316,27 @@ export function SettingsPanel() {
               onChange={(e) => setUiScale(Number(e.target.value))}
             />
             <button className="btn btn-small" onClick={() => setUiScale(uiScale + 0.05)} disabled={uiScale >= 1.3}>
-              A+
+              UI+
             </button>
             <span className="badge">{Math.round(uiScale * 100)}%</span>
+          </div>
+          <div className="font-scale-row">
+            <span className="muted small">文字</span>
+            <button className="btn btn-small" onClick={() => setTextScale(textScale - 0.05)} disabled={textScale <= 0.85}>
+              A-
+            </button>
+            <input
+              type="range"
+              min={0.85}
+              max={1.25}
+              step={0.05}
+              value={textScale}
+              onChange={(e) => setTextScale(Number(e.target.value))}
+            />
+            <button className="btn btn-small" onClick={() => setTextScale(textScale + 0.05)} disabled={textScale >= 1.25}>
+              A+
+            </button>
+            <span className="badge">{Math.round(textScale * 100)}%</span>
           </div>
           <div className="row">
             <span className="muted small">主题</span>
@@ -246,7 +352,7 @@ export function SettingsPanel() {
               </button>
             </div>
           </div>
-          <div className="muted small">只影响界面与语法配色，不改变文件内容；偏好保存在本机浏览器。</div>
+          <div className="muted small">界面大小改变整体布局；文字大小只调整正文/编辑器字号。偏好保存在本机浏览器。</div>
         </section>
 
         <section className="settings-card">

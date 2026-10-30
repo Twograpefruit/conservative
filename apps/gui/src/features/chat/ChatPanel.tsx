@@ -6,6 +6,8 @@ import { api, qs } from '../../api/client.js';
 import { Markdown } from '../../components/Markdown.js';
 import { ToolCard } from '../../components/ToolCard.js';
 import { PermissionCard } from '../../components/PermissionCard.js';
+import { ContextMenu, type MenuPosition } from '../../components/ContextMenu.js';
+import { useNotify } from '../notify/notificationStore.js';
 import { renderParts } from '../../lib/parts.js';
 
 function timeAgo(ts?: number): string {
@@ -63,6 +65,7 @@ function SessionItem({
   onDelete,
   onRename,
   onArchive,
+  onContextMenu,
 }: {
   session: SessionInfo;
   active: boolean;
@@ -72,9 +75,16 @@ function SessionItem({
   onDelete: () => void;
   onRename: () => void;
   onArchive: () => void;
+  onContextMenu: (e: React.MouseEvent) => void;
 }) {
   return (
-    <div className={`session-item ${active ? 'active' : ''}`} onClick={onClick} onDoubleClick={onRename} title={session.title}>
+    <div
+      className={`session-item ${active ? 'active' : ''}`}
+      onClick={onClick}
+      onDoubleClick={onRename}
+      onContextMenu={onContextMenu}
+      title={session.title}
+    >
       <span className={`dot ${statusDot(session.status)}`} />
       <div className="session-item-main">
         <div className="session-item-title">{session.title || '未命名会话'}</div>
@@ -418,6 +428,7 @@ export function ChatPanel() {
   const [chatSearchOpen, setChatSearchOpen] = useState(false);
   const [jumpIndex, setJumpIndex] = useState(0);
   const [flashID, setFlashID] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<MenuPosition | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const anchors = useRef(new Map<string, HTMLDivElement>());
@@ -523,6 +534,44 @@ export function ChatPanel() {
           ? '错误'
           : '空闲';
 
+  const sessionMenu = (e: React.MouseEvent, s: SessionInfo, archived = false) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const muted = useNotify.getState().settings.muteSessions.includes(s.id);
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      items: [
+        { label: archived ? '取消归档' : '归档会话', onClick: () => void archiveSession(s.id, !archived) },
+        {
+          label: '重命名…',
+          onClick: () => {
+            const title = window.prompt('新的会话标题', s.title ?? '');
+            if (title) void rename(s.id, title);
+          },
+        },
+        {
+          label: muted ? '取消静音通知' : '静音该会话通知',
+          onClick: () => {
+            const settings = useNotify.getState().settings;
+            useNotify.getState().setSettings({
+              muteSessions: muted
+                ? settings.muteSessions.filter((id) => id !== s.id)
+                : [...settings.muteSessions, s.id],
+            });
+          },
+        },
+        {
+          label: '删除会话',
+          danger: true,
+          onClick: () => {
+            if (window.confirm(`删除会话“${s.title ?? s.id}”？`)) void del(s.id);
+          },
+        },
+      ],
+    });
+  };
+
   return (
     <div className="chat-layout">
       <aside className="session-pane">
@@ -562,6 +611,7 @@ export function ChatPanel() {
                 if (title) void rename(s.id, title);
               }}
               onArchive={() => void archiveSession(s.id, true)}
+              onContextMenu={(e) => sessionMenu(e, s)}
             />
           ))}
           {showArchived ? (
@@ -586,6 +636,7 @@ export function ChatPanel() {
                       if (title) void rename(s.id, title);
                     }}
                     onArchive={() => void archiveSession(s.id, false)}
+                    onContextMenu={(e) => sessionMenu(e, s, true)}
                   />
                 ))}
             </>
@@ -747,6 +798,7 @@ export function ChatPanel() {
           </div>
         )}
       </section>
+      <ContextMenu menu={contextMenu} onClose={() => setContextMenu(null)} />
     </div>
   );
 }

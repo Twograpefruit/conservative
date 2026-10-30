@@ -21,11 +21,13 @@ interface AppState {
   pendingSql: { sql: string; nonce: number } | null;
   toast: { id: number; message: string; kind: 'info' | 'error' } | null;
   uiScale: number;
+  textScale: number;
   themeMode: ThemeMode;
   resolvedTheme: 'dark' | 'light';
   setView: (view: View) => void;
   setWorkspace: (id: string) => void;
   setUiScale: (scale: number) => void;
+  setTextScale: (scale: number) => void;
   setThemeMode: (mode: ThemeMode) => void;
   loadWorkspaces: () => Promise<void>;
   loadHealth: () => Promise<void>;
@@ -42,6 +44,8 @@ const savedView = (localStorage.getItem('ocg.view') as View) || 'chat';
 const savedWorkspace = localStorage.getItem('ocg.workspace');
 const savedScale = Number(localStorage.getItem('ocg.uiScale') ?? '1');
 const initialScale = Number.isFinite(savedScale) ? Math.min(1.3, Math.max(0.8, savedScale)) : 1;
+const savedTextScale = Number(localStorage.getItem('ocg.textScale') ?? '1');
+const initialTextScale = Number.isFinite(savedTextScale) ? Math.min(1.25, Math.max(0.85, savedTextScale)) : 1;
 const savedTheme = (localStorage.getItem('ocg.theme') as ThemeMode) || 'dark';
 const systemDark = typeof window !== 'undefined' ? window.matchMedia('(prefers-color-scheme: dark)').matches : true;
 const resolve = (mode: ThemeMode): 'dark' | 'light' =>
@@ -57,6 +61,7 @@ export const useApp = create<AppState>((set, get) => ({
   pendingSql: null,
   toast: null,
   uiScale: initialScale,
+  textScale: initialTextScale,
   themeMode: savedTheme,
   resolvedTheme: resolve(savedTheme),
 
@@ -74,6 +79,12 @@ export const useApp = create<AppState>((set, get) => ({
     const clamped = Math.min(1.3, Math.max(0.8, Math.round(scale * 100) / 100));
     localStorage.setItem('ocg.uiScale', String(clamped));
     set({ uiScale: clamped });
+  },
+
+  setTextScale: (scale) => {
+    const clamped = Math.min(1.25, Math.max(0.85, Math.round(scale * 100) / 100));
+    localStorage.setItem('ocg.textScale', String(clamped));
+    set({ textScale: clamped });
   },
 
   setThemeMode: (mode) => {

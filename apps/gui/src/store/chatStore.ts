@@ -17,6 +17,7 @@ import {
 } from '@ocg/protocol';
 import { api, qs } from '../api/client.js';
 import { useApp } from './appStore.js';
+import { useNotify } from '../features/notify/notificationStore.js';
 
 interface ChatStore {
   state: ChatState;
@@ -77,6 +78,47 @@ function flushEvents(): void {
       if (sid && sid === useChat.getState().activeSessionID) reconcileSession = sid;
     }
     if (type === 'bff.files.changed') filesChangedPending = true;
+    if (type === 'permission.asked') {
+      const data = event.data as { request?: { id?: string; sessionID?: string; title?: string }; sessionID?: string } | null;
+      const sid = data?.request?.sessionID ?? data?.sessionID;
+      const session = sid ? useChat.getState().state.sessions[sid] : undefined;
+      useNotify.getState().push({
+        source: 'chat',
+        level: 'warn',
+        title: `等待授权${session?.title ? `：${session.title}` : ''}`,
+        body: data?.request?.title ?? '有新的权限请求需要处理',
+        dedupKey: `permission:${sid ?? 'unknown'}`,
+        sessionID: sid,
+        view: 'chat',
+      });
+    }
+    if (type === 'session.execution.failed') {
+      const sid = (event.data as { sessionID?: string; error?: unknown } | null)?.sessionID;
+      const session = sid ? useChat.getState().state.sessions[sid] : undefined;
+      const error = (event.data as { error?: unknown } | null)?.error;
+      useNotify.getState().push({
+        source: 'chat',
+        level: 'error',
+        title: `会话执行失败${session?.title ? `：${session.title}` : ''}`,
+        body: typeof error === 'string' ? error : error ? JSON.stringify(error).slice(0, 160) : undefined,
+        dedupKey: `chat-failed:${sid ?? 'unknown'}`,
+        sessionID: sid,
+        view: 'chat',
+      });
+    }
+    if (type === 'session.execution.succeeded') {
+      const sid = (event.data as { sessionID?: string } | null)?.sessionID;
+      const session = sid ? useChat.getState().state.sessions[sid] : undefined;
+      useNotify.getState().push({
+        source: 'chat',
+        level: 'info',
+        title: `会话已完成${session?.title ? `：${session.title}` : ''}`,
+        body: '模型回复已就绪',
+        dedupKey: `chat-done:${sid ?? 'unknown'}`,
+        sessionID: sid,
+        view: 'chat',
+      });
+    }
   }
   if (refresh) void store.refreshSessions(false);
   if (reconcileSession) {

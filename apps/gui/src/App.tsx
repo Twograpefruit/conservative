@@ -10,6 +10,8 @@ import { DataPanel } from './features/data/DataPanel.js';
 import { SettingsPanel } from './features/settings/SettingsPanel.js';
 import { CommandPalette } from './components/CommandPalette.js';
 import { COMMANDS, comboFromEvent, getBindings, runCommand } from './commands/registry.js';
+import { NotificationCenter } from './features/notify/NotificationCenter.js';
+import type { AppNotification } from './features/notify/notificationStore.js';
 
 const NAV: Array<{ id: View; label: string; icon: string }> = [
   { id: 'chat', label: '对话', icon: '◍' },
@@ -31,6 +33,8 @@ export function App() {
   const toast = useApp((s) => s.toast);
   const uiScale = useApp((s) => s.uiScale);
   const setUiScale = useApp((s) => s.setUiScale);
+  const textScale = useApp((s) => s.textScale);
+  const setTextScale = useApp((s) => s.setTextScale);
   const themeMode = useApp((s) => s.themeMode);
   const resolvedTheme = useApp((s) => s.resolvedTheme);
   const setThemeMode = useApp((s) => s.setThemeMode);
@@ -70,8 +74,9 @@ export function App() {
 
   useEffect(() => {
     document.documentElement.style.setProperty('--ui-scale', String(uiScale));
+    document.documentElement.style.setProperty('--font-scale', String(textScale));
     document.documentElement.dataset.theme = resolvedTheme;
-  }, [uiScale, resolvedTheme]);
+  }, [uiScale, textScale, resolvedTheme]);
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
@@ -94,6 +99,21 @@ export function App() {
       window.removeEventListener('ocg:palette-open', onPalette);
       window.removeEventListener('ocg:chat-search', onChatSearch);
     };
+  }, [setView]);
+
+  useEffect(() => {
+    const onNotify = (event: Event) => {
+      const detail = (event as CustomEvent<AppNotification>).detail;
+      if (!detail) return;
+      if (detail.sessionID) {
+        void useChat.getState().selectSession(detail.sessionID);
+        setView('chat');
+        return;
+      }
+      if (detail.view) setView(detail.view);
+    };
+    window.addEventListener('ocg:notify-open', onNotify);
+    return () => window.removeEventListener('ocg:notify-open', onNotify);
   }, [setView]);
 
   useEffect(() => {
@@ -151,13 +171,22 @@ export function App() {
           ))}
         </nav>
         <div className="top-status">
-          <div className="font-controls" title={`界面字号 ${Math.round(uiScale * 100)}%`}>
-            <button className="icon-btn" onClick={() => setUiScale(uiScale - 0.05)} disabled={uiScale <= 0.8}>
+          <div className="font-controls" title={`文字大小 ${Math.round(textScale * 100)}%`}>
+            <button className="icon-btn" onClick={() => setTextScale(textScale - 0.05)} disabled={textScale <= 0.85}>
               A-
+            </button>
+            <span>{Math.round(textScale * 100)}%</span>
+            <button className="icon-btn" onClick={() => setTextScale(textScale + 0.05)} disabled={textScale >= 1.25}>
+              A+
+            </button>
+          </div>
+          <div className="font-controls" title={`界面大小 ${Math.round(uiScale * 100)}%`}>
+            <button className="icon-btn" onClick={() => setUiScale(uiScale - 0.05)} disabled={uiScale <= 0.8}>
+              UI-
             </button>
             <span>{Math.round(uiScale * 100)}%</span>
             <button className="icon-btn" onClick={() => setUiScale(uiScale + 0.05)} disabled={uiScale >= 1.3}>
-              A+
+              UI+
             </button>
           </div>
           <button
@@ -168,6 +197,7 @@ export function App() {
             {themeMode === 'system' ? '◐' : resolvedTheme === 'dark' ? '☾' : '☀'}
           </button>
           {permissionCount > 0 ? <span className="badge badge-warn">{permissionCount} 待授权</span> : null}
+          <NotificationCenter />
           <span className={`conn ${connected ? 'ok' : 'bad'}`} title={lastError ?? ''}>
             <span className={`dot ${connected ? 'dot-idle' : 'dot-error'}`} />
             {connected ? 'SSE' : '离线'}

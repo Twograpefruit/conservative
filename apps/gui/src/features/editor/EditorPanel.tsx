@@ -1,6 +1,7 @@
 import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import type { FileDiff } from '@ocg/diff';
 import { FileTree } from '../../components/FileTree.js';
+import { ContextMenu, type MenuPosition } from '../../components/ContextMenu.js';
 import { DiffView } from '../diff/DiffView.js';
 import { useApp } from '../../store/appStore.js';
 import { useEditor } from '../../store/editorStore.js';
@@ -52,6 +53,7 @@ export function EditorPanel() {
   const [lastFormatUndo, setLastFormatUndo] = useState<{ id: string; path: string } | null>(null);
   const [formatError, setFormatError] = useState<string | null>(null);
   const [formatBusy, setFormatBusy] = useState(false);
+  const [contextMenu, setContextMenu] = useState<MenuPosition | null>(null);
   const prevWorkspace = useRef<string | null>(workspaceID);
   const scrollFrame = useRef<number | null>(null);
 
@@ -279,6 +281,46 @@ export function EditorPanel() {
   const dirty = tab ? tab.content !== tab.original : false;
   const lines = useMemo(() => (tab ? tab.content.split('\n').length : 0), [tab?.content]);
 
+  const tabMenu = (e: React.MouseEvent, path: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const target = tabs.find((t) => t.path === path);
+    if (!target) return;
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      items: [
+        { label: '关闭', onClick: () => close(path) },
+        {
+          label: '关闭其他标签',
+          disabled: tabs.length <= 1,
+          onClick: () => useEditor.setState({ tabs: [target], active: target.path }),
+        },
+        { label: '关闭全部', onClick: () => closeAll() },
+        {
+          label: '复制相对路径',
+          onClick: () => {
+            void navigator.clipboard?.writeText(path);
+            notify('已复制路径');
+          },
+        },
+        {
+          label: '重新加载',
+          onClick: () => void reload(path),
+        },
+        {
+          label: dirty ? '放弃改动并关闭' : '关闭（无改动）',
+          danger: dirty,
+          disabled: !dirty,
+          onClick: () => {
+            update(path, target.original);
+            close(path);
+          },
+        },
+      ],
+    });
+  };
+
   return (
     <div className="editor-layout">
       <aside className="editor-side">
@@ -291,6 +333,7 @@ export function EditorPanel() {
               key={t.path}
               className={`tab ${t.path === active ? 'active' : ''}`}
               onClick={() => setActive(t.path)}
+              onContextMenu={(e) => tabMenu(e, t.path)}
               title={t.path}
             >
               <span className="tab-name">
@@ -526,6 +569,7 @@ export function EditorPanel() {
           </div>
         </div>
       ) : null}
+      <ContextMenu menu={contextMenu} onClose={() => setContextMenu(null)} />
     </div>
   );
 }

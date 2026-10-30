@@ -14,6 +14,7 @@
     "dev:gui": "npm run dev -w @ocg/gui",
     "build": "npm run build -w @ocg/gui && npm run build -w @ocg/server",
     "start": "node apps/server/dist/index.js",
+    "gui": "node scripts/gui.mjs",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "vitest run",
     "test:watch": "vitest",

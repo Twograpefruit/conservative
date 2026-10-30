@@ -167,3 +167,20 @@ html[data-theme='light'] .git-hints {
   border-color: #fcd34d;
   color: #92400e;
 }
+html[data-theme='light'] .context-menu {
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.22);
+}
+html[data-theme='light'] .notify-panel {
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.22);
+}
+html[data-theme='light'] .notify-item.unread {
+  background: #e8f0ff;
+}
+html[data-theme='light'] .notify-icon.level-warn {
+  background: #fef3c7;
+  color: #92400e;
+}
+html[data-theme='light'] .notify-icon.level-error {
+  background: #fee2e2;
+  color: #b42318;
+}

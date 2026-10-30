@@ -11,6 +11,7 @@ import type { ConnectionStore } from './lib/connections.js';
 import type { CredentialStore } from './lib/credentials.js';
 import type { SqliteService } from './lib/sqlite.js';
 import type { RedisService } from './lib/redis.js';
+import type { MysqlService } from './lib/mysql.js';
 import type { GitCommandService } from './lib/gitCatalog.js';
 import type { PtyService } from './lib/pty.js';
 import type { SearchContext } from './lib/search.js';
@@ -31,6 +32,7 @@ export interface AppContext {
   credentials: CredentialStore;
   sqlite: SqliteService;
   redis: RedisService;
+  mysql: MysqlService;
   gitCommands: GitCommandService;
   pty: PtyService;
   search: SearchContext;

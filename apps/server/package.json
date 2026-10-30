@@ -14,19 +14,20 @@
     "@fastify/static": "^8.0.0",
     "@fastify/websocket": "^11.0.0",
     "@ocg/config": "*",
+    "@ocg/db": "*",
     "@ocg/diff": "*",
     "@ocg/host": "*",
     "@ocg/protocol": "*",
+    "@ocg/redis": "*",
     "@vscode/ripgrep": "^1.15.0",
     "diff": "^9.0.0",
     "fastify": "^5.2.0",
     "iconv-lite": "^0.6.3",
     "ioredis": "^6.0.0",
+    "mysql2": "^3.24.6",
     "sql-formatter": "^15.9.0",
     "ws": "^8.18.0",
-    "zod": "^3.24.0",
-    "@ocg/db": "*",
-    "@ocg/redis": "*"
+    "zod": "^3.24.0"
   },
   "devDependencies": {
     "@types/diff": "^7.0.2",

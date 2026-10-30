@@ -14,6 +14,8 @@ import { CredentialStore } from './lib/credentials.js';
 import { ConnectionStore } from './lib/connections.js';
 import { SqliteService } from './lib/sqlite.js';
 import { RedisService } from './lib/redis.js';
+import { MysqlService } from './lib/mysql.js';
+import { loadLocalConfig, seedLocalConnections } from './lib/localConfig.js';
 import { GitCommandService } from './lib/gitCatalog.js';
 import { PtyService } from './lib/pty.js';
 import { resolveRg, type SearchContext } from './lib/search.js';
@@ -94,8 +96,15 @@ async function main(): Promise<void> {
   const connections = new ConnectionStore(credentials);
   const sqlite = new SqliteService();
   const redis = new RedisService();
+  const mysql = new MysqlService();
   const gitCommands = new GitCommandService(host);
   const pty = new PtyService(upstream, host);
+
+  try {
+    await seedLocalConnections(connections, loadLocalConfig());
+  } catch (err) {
+    console.warn('[bff] failed to seed local connection profiles:', err instanceof Error ? err.message : err);
+  }
 
   const ctx: AppContext = {
     version: VERSION,
@@ -113,6 +122,7 @@ async function main(): Promise<void> {
     credentials,
     sqlite,
     redis,
+    mysql,
     gitCommands,
     pty,
     search,

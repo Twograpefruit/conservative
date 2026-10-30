@@ -5,6 +5,7 @@ import { SearchAddon } from '@xterm/addon-search';
 import '@xterm/xterm/css/xterm.css';
 import { api } from '../../api/client.js';
 import { useApp } from '../../store/appStore.js';
+import { useNotify } from '../notify/notificationStore.js';
 
 interface Tab {
   id: string;
@@ -17,6 +18,7 @@ export function TerminalPanel() {
   const workspaceID = useApp((s) => s.workspaceID);
   const notify = useApp((s) => s.notify);
   const resolvedTheme = useApp((s) => s.resolvedTheme);
+  const textScale = useApp((s) => s.textScale);
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [active, setActive] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -132,8 +134,19 @@ export function TerminalPanel() {
             tab={tab}
             visible={active === tab.id}
             theme={resolvedTheme}
+            textScale={textScale}
             onAddon={(addon) => addons.current.set(tab.id, addon)}
-            onExit={() => notify(`${tab.title} 已退出`, 'error')}
+            onExit={() => {
+              useNotify.getState().push({
+                source: 'terminal',
+                level: 'warn',
+                title: `${tab.title} 已退出`,
+                body: '终端进程结束',
+                dedupKey: `terminal:${tab.id}`,
+                view: 'terminal',
+              });
+              notify(`${tab.title} 已退出`, 'error');
+            }}
           />
         ))}
       </div>
@@ -145,12 +158,14 @@ function TerminalTab({
   tab,
   visible,
   theme,
+  textScale,
   onAddon,
   onExit,
 }: {
   tab: Tab;
   visible: boolean;
   theme: 'dark' | 'light';
+  textScale: number;
   onAddon: (addon: SearchAddon) => void;
   onExit: () => void;
 }) {
@@ -162,7 +177,7 @@ function TerminalTab({
     if (!host.current) return;
     const term = new Terminal({
       scrollback: 5000,
-      fontSize: 12,
+      fontSize: Math.max(9, Math.round(12 * textScale)),
       fontFamily: "'Cascadia Code', Consolas, monospace",
       theme: theme === 'light'
         ? { background: '#f6f7fb', foreground: '#1f2937', cursor: '#2563eb', selectionBackground: '#bfdbfe' }
@@ -247,7 +262,8 @@ function TerminalTab({
       theme === 'light'
         ? { background: '#f6f7fb', foreground: '#1f2937', cursor: '#2563eb', selectionBackground: '#bfdbfe' }
         : { background: '#111318', foreground: '#d7dae0', cursor: '#7aa2f7' };
-  }, [theme]);
+    termRef.current.options.fontSize = Math.max(9, Math.round(12 * textScale));
+  }, [theme, textScale]);
 
   useEffect(() => {
     if (visible) {

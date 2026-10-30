@@ -9,6 +9,7 @@ import type {
 } from '@ocg/protocol';
 import { api, qs } from '../../api/client.js';
 import { useApp } from '../../store/appStore.js';
+import { useNotify } from '../notify/notificationStore.js';
 
 interface FormState {
   id?: string;
@@ -46,7 +47,7 @@ function toForm(p: ConnectionProfile): FormState {
     label: p.label,
     file: p.file ?? '',
     host: p.host ?? '127.0.0.1',
-    port: String(p.port ?? (p.kind === 'redis' ? 6379 : 5432)),
+    port: String(p.port ?? (p.kind === 'redis' ? 6379 : p.kind === 'mysql' ? 3306 : 5432)),
     database: p.database ?? '',
     user: p.user ?? '',
     secret: '',
@@ -129,7 +130,7 @@ export function DataPanel() {
     setTable(null);
     setMessages([]);
     subRef.current?.close();
-    if (selected.kind === 'sqlite') {
+    if (selected.kind === 'sqlite' || selected.kind === 'mysql') {
       void api<DbMetadata>(`/api/db/metadata${qs({ profileId: selected.id })}`)
         .then(setMetadata)
         .catch((err) => setError(err instanceof Error ? err.message : String(err)));
@@ -186,7 +187,7 @@ export function DataPanel() {
         body: JSON.stringify({ id: selected.id }),
         headers: { 'content-type': 'application/json' },
       });
-      notify(`连接成功${res.version ? ` · SQLite ${res.version}` : res.info ? ` · ${res.info}` : ''}`);
+      notify(`连接成功${res.info ? ` · ${res.info}` : res.version ? ` · ${res.version}` : ''}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : '连接测试失败');
     } finally {
@@ -207,7 +208,7 @@ export function DataPanel() {
   };
 
   const runQuery = async (override?: string) => {
-    if (!selected || selected.kind !== 'sqlite') return;
+    if (!selected || (selected.kind !== 'sqlite' && selected.kind !== 'mysql')) return;
     const query = (override ?? sql).trim();
     if (!query) return;
     let params: unknown[] = [];
@@ -228,12 +229,30 @@ export function DataPanel() {
         headers: { 'content-type': 'application/json' },
       });
       setResult(res);
+      useNotify.getState().push({
+        source: 'data',
+        level: 'info',
+        title: `${selected.label} 查询完成`,
+        body: `${res.kind === 'read' ? `${res.rowCount} 行` : `changes ${res.changes ?? 0}`} · ${res.durationMs}ms`,
+        dedupKey: `data:${selected.id}:query`,
+        view: 'data',
+        profileId: selected.id,
+      });
       if (res.kind === 'write') {
         notify(`执行成功，changes=${res.changes ?? 0}，耗时 ${res.durationMs}ms`);
         void api<DbMetadata>(`/api/db/metadata${qs({ profileId: selected.id })}`).then(setMetadata).catch(() => undefined);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '查询失败');
+      useNotify.getState().push({
+        source: 'data',
+        level: 'error',
+        title: `${selected.label} 查询失败`,
+        body: err instanceof Error ? err.message : '查询失败',
+        dedupKey: `data:${selected.id}:error`,
+        view: 'data',
+        profileId: selected.id,
+      });
     } finally {
       setBusy(false);
     }
@@ -241,7 +260,11 @@ export function DataPanel() {
 
   const openTable = (name: string) => {
     setTable(name);
-    const q = `SELECT * FROM "${name.replace(/"/g, '""')}" LIMIT 100`;
+    const quoted =
+      selected?.kind === 'mysql'
+        ? name.split('.').map((part) => `\`${part.replace(/`/g, '``')}\``).join('.')
+        : `"${name.replace(/"/g, '""')}"`;
+    const q = `SELECT * FROM ${quoted} LIMIT 100`;
     setSql(q);
     void runQuery(q);
   };
@@ -347,13 +370,13 @@ export function DataPanel() {
     if (!selected) {
       setSql(pendingSql.sql);
       consumeSql();
-      notify('请先选择或新建一个 SQLite 连接', 'error');
+      notify('请先选择或新建一个数据库连接', 'error');
       return;
     }
-    if (selected.kind !== 'sqlite') {
+    if (selected.kind !== 'sqlite' && selected.kind !== 'mysql') {
       setSql(pendingSql.sql);
       consumeSql();
-      notify('当前连接不是 SQLite，无法执行该查询', 'error');
+      notify('当前连接不是 SQL 数据库，无法执行该查询', 'error');
       return;
     }
     setSql(pendingSql.sql);
@@ -403,7 +426,7 @@ export function DataPanel() {
         {!selected ? (
           <div className="empty-state">
             <h2>数据源</h2>
-            <p>新建 SQLite 或 Redis 连接；默认为只读，写操作需要显式关闭只读。</p>
+            <p>新建 SQLite / MySQL / Redis 连接；默认为只读，写操作需要显式关闭只读。</p>
             <button className="btn btn-primary" onClick={() => setForm(emptyForm())}>
               新建连接
             </button>
@@ -436,7 +459,7 @@ export function DataPanel() {
 
             {error ? <div className="banner banner-error">{error}</div> : null}
 
-            {selected.kind === 'sqlite' ? (
+            {selected.kind === 'sqlite' || selected.kind === 'mysql' ? (
               <div className="db-layout">
                 <aside className="db-schema">
                   <div className="pane-title">表 / 视图</div>
@@ -646,8 +669,8 @@ export function DataPanel() {
                 >
                   <option value="sqlite">SQLite</option>
                   <option value="redis">Redis</option>
+                  <option value="mysql">MySQL</option>
                   <option value="postgres">PostgreSQL（未启用）</option>
-                  <option value="mysql">MySQL（未启用）</option>
                 </select>
               </label>
               <label>

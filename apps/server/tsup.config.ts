@@ -9,5 +9,5 @@ export default defineConfig({
   sourcemap: false,
   splitting: false,
   noExternal: [/^@ocg\//],
-  external: ['node-pty', 'node:sqlite', 'sqlite', 'ioredis'],
+  external: ['node-pty', 'node:sqlite', 'sqlite', 'ioredis', 'mysql2'],
 });

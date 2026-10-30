@@ -29,17 +29,23 @@ opencode serve v2 (127.0.0.1 only, password held by BFF)
 | M3.5 | One-time PTY tickets, ConPTY bridge, tabs, resize, find, scrollback | Done (upstream PTY fallback) |
 | M4 | Tauri/WebView2 packaging, tray, memory soak | Scaffold only |
 | M5 | Language registry with lazy loading, Markdown source/preview, SQL dialect highlighting + format preview/apply/undo | Done (core; selection format partial) |
-| M6 | SQLite + Redis connections, DPAPI credentials, read-only SQL guard, query/export, SCAN key browser, read-only command console, pub/sub | Done (SQLite/Redis; PostgreSQL/MySQL not enabled) |
+| M6 | SQLite + MySQL + Redis connections, DPAPI credentials, read-only SQL guard, query/export, SCAN key browser, read-only command console, pub/sub | Done (SQLite/MySQL/Redis; PostgreSQL not enabled) |
 | M7 | Command registry + palette, keybinding overrides/conflict detection, dark/light/system themes, Git command catalog with argv preview, safety confirm, output/hints/history | Done (core; reserved-key warnings pending) |
+| M8 | In-app notification center, focused/blurred routing, native Notification API, 3s dedupe, quiet hours, privacy mode, mute by source/session, deep links | Done (core; Tauri native + workspace mute partial) |
 
 ### UI & conversation additions (2026-10-30)
 
 - **Original dark theme**: restored the pre-Neumorphism dark palette; CodeMirror uses One Dark,
   xterm uses the dark terminal theme.
-- **Text size**: top-bar `A- / A+` and Settings slider, 80%–130%, persisted locally; zoom is
-  layout-compensated so the app still fills the viewport without scrollbars.
-- **Session archive**: archive/unarchive from the session list, optional archived section,
-  backed by opencode's `PATCH /api/session/{id} {archived}`.
+- **Text size**: top-bar `A- / A+` and Settings slider, 85%–125%, persisted locally; only text
+  (chat, editor, terminal, tables) scales.
+- **UI size**: separate top-bar `UI- / UI+` and Settings slider, 80%–130%; scales the whole layout
+  and stays layout-compensated so the app fills the viewport without scrollbars.
+- **Right-click menus**: file tree (open/rename/delete), session list (archive/rename/delete) and
+  editor tabs (close/close others/close all/copy path/reload).
+- **Session archive**: archive/unarchive from the always-visible archive icon or the session
+  context menu, plus an optional archived section, backed by opencode's
+  `PATCH /api/session/{id} {archived}`.
 - **In-conversation navigation**: `↑`/`↓` (also `Alt+↑/↓`) jump between messages, `⇣` returns to
   the latest, and `Ctrl+F` opens in-conversation keyword search with snippets and jump targets.
 - **Continuous `@` mentions**: typing `@` (at start or after whitespace, repeatedly) opens a
@@ -50,9 +56,10 @@ opencode serve v2 (127.0.0.1 only, password held by BFF)
   sql/yaml/xml/html/css/md/nginx/toml/ini/shell/docker), Markdown source/split/preview with
   DOMPurify + task-list writeback, and SQL dialect highlighting plus `sql-formatter` preview →
   apply → undo (full file) and selection formatting.
-- **M6 data**: SQLite (built-in `node:sqlite`, worker-isolated with timeout/row-limit) and Redis
-  (ioredis, SCAN-only key browser, read-only command whitelist, pub/sub). Passwords go to Windows
-  DPAPI; `connections.json` contains only an `authRef`. Read-only profiles reject writes and
+- **M6 data**: SQLite (built-in `node:sqlite`, worker-isolated with timeout/row-limit), MySQL
+  (`mysql2`, information_schema metadata, session timeouts, read-only guard) and Redis (ioredis,
+  SCAN-only key browser, read-only command whitelist, pub/sub). Passwords go to Windows DPAPI;
+  `connections.json` contains only an `authRef`. Read-only profiles reject writes and
   multi-statement SQL. Ctrl+Enter in a `.sql` file sends the selection/file to the Data panel.
 - **CI assertions**: `M6-011` (no `KEYS`) and `M6-016` (no credential leakage) now run against
   the real endpoints; both pass locally.
@@ -60,6 +67,11 @@ opencode serve v2 (127.0.0.1 only, password held by BFF)
   conflict detection, dark/light/system themes (CodeMirror One Dark ↔ light), and a Git command
   catalog with argv preview, danger confirmation + pre-command shadow snapshot, redacted
   stdout/stderr, actionable error hints and persistent history.
+- **M8 notifications**: notification center in the top bar (unread badge, mark all read, clear),
+  source-aware app toasts, native `Notification` when the window is blurred (permission-based),
+  3-second dedupe/aggregation, source and per-session mute, quiet hours, privacy mode, and
+  click-through deep links to the session/view. Chat completion/failure/permission, Git command
+  results, DB queries and terminal exits are wired in.
 
 See [`docs/api-contract.md`](docs/api-contract.md) for the acceptance checklist and
 [`docs/acceptance.md`](docs/acceptance.md) for the probed opencode 2.2.1 contract.
@@ -81,6 +93,9 @@ npm run dev
 npm run build
 npm start
 #     open http://127.0.0.1:4311 (or the port printed in the console)
+
+# 3c) open the running GUI in your default browser
+npm run gui
 ```
 
 `npm start` prints the actual BFF port. If the preferred port (`4310`) is busy the BFF picks the
@@ -100,6 +115,24 @@ node scripts/memtest.mjs --seconds 30
 ## Configuration
 
 Settings live in `%APPDATA%\opencode-gui\settings.json`; workspaces in `workspaces.json`.
+
+### Local Redis / MySQL defaults
+
+`config/local.example.json` is committed and documents the shape. Copy it to
+`config/local.json` (gitignored) and put real credentials there:
+
+```json
+{
+  "redis": { "url": "redis://localhost:6379/0" },
+  "mysql": { "host": "127.0.0.1", "port": 3306, "user": "root", "password": "root", "database": "" }
+}
+```
+
+On startup the BFF seeds/updates two read-only profiles, **Local Redis** and **Local MySQL**, from
+this file. Host/port/database are stored in `connections.json`; passwords are moved into Windows
+DPAPI immediately and never written to `connections.json` or git. Override the file location with
+`OCG_LOCAL_CONFIG`.
+
 Environment overrides:
 
 | Variable | Purpose |
@@ -185,11 +218,11 @@ real assertions currently report **BLOCKED**; `--self-test` validates the detect
   location; new sessions are created with an explicit `location` for the active workspace.
 - **M4 is a scaffold.** Tray, installer, shell-owned lifecycle and WebView memory instrumentation
   are not implemented. `apps/desktop/README.md` lists the remaining work.
-- **M6 is SQLite/Redis-first.** SQLite uses Node's built-in `node:sqlite` (Node 22.5+/24); on
-  Node 20 the DB feature is unavailable. PostgreSQL/MySQL profiles are rejected with
-  `driver_not_available` until their drivers are added. The result grid is limited by `rowLimit`
-  (default 500) rather than a full virtualized 10k-row grid; export currently buffers the result
-  before writing.
+- **M6 is SQLite/MySQL/Redis.** SQLite uses Node's built-in `node:sqlite` (Node 22.5+/24); on
+  Node 20 the SQLite feature is unavailable. PostgreSQL profiles are rejected with
+  `driver_not_available` until its driver is added. The result grid is limited by `rowLimit`
+  (default 500, max 10k) rather than a full virtualized 10k-row grid; export currently buffers
+  the result before writing.
 - **Redis command console is read-only.** `KEYS`, `FLUSHALL`, `CONFIG`, `SHUTDOWN`, `EVAL`, etc.
   are hard-blocked; key navigation always uses `SCAN` cursors.
 - **M7 reserved-key warnings** are not implemented yet; binding `Ctrl+W/F5` etc. may still be
