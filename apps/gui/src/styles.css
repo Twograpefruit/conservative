@@ -2136,3 +2136,206 @@ select {
     display: none;
   }
 }
+
+/* ------------------------- editor language / md / sql ------------------------- */
+.editor-language {
+  background: var(--bg);
+  border: none;
+  border-radius: 9px;
+  padding: 4px 7px;
+  font-size: 10.5px;
+  color: var(--fg-dim);
+  box-shadow: var(--shadow-in-sm);
+  outline: none;
+  max-width: 126px;
+}
+.editor-md-mode {
+  padding: 2px;
+}
+.editor-md-mode button {
+  padding: 3px 7px;
+  font-size: 10.5px;
+}
+.editor-area.editor-split {
+  display: flex;
+  gap: 10px;
+  padding: 8px;
+}
+.editor-area.editor-split .editor-pane,
+.editor-area.editor-split .preview-pane {
+  flex: 1 1 50%;
+  min-width: 0;
+  box-shadow: var(--shadow-in-sm);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.editor-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+.editor-split .editor-pane {
+  height: auto;
+}
+.preview-pane {
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.markdown-preview {
+  height: 100%;
+  overflow: auto;
+  padding: 18px 22px 40px;
+  color: var(--fg);
+  font-size: 13px;
+  line-height: 1.7;
+  background: var(--bg);
+}
+.markdown-preview h1,
+.markdown-preview h2,
+.markdown-preview h3,
+.markdown-preview h4 {
+  color: #2b2b2b;
+  margin: 1.3em 0 0.6em;
+  line-height: 1.35;
+}
+.markdown-preview h1 {
+  font-size: 1.65em;
+}
+.markdown-preview h2 {
+  font-size: 1.35em;
+}
+.markdown-preview h3 {
+  font-size: 1.12em;
+}
+.markdown-preview p {
+  margin: 0.55em 0;
+}
+.markdown-preview a {
+  color: var(--accent);
+}
+.markdown-preview code {
+  background: var(--bg-soft);
+  border-radius: 5px;
+  padding: 1px 5px;
+  font-family: var(--mono);
+  font-size: 0.92em;
+  box-shadow: var(--shadow-in-sm);
+}
+.markdown-preview pre.hljs {
+  background: var(--bg-soft);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  overflow: auto;
+  box-shadow: var(--shadow-in);
+  margin: 0.8em 0;
+}
+.markdown-preview pre.hljs code {
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.markdown-preview blockquote {
+  margin: 0.8em 0;
+  padding: 6px 14px;
+  color: var(--fg-dim);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-in-sm);
+}
+.markdown-preview table {
+  border-collapse: collapse;
+  margin: 0.9em 0;
+  width: 100%;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  box-shadow: var(--shadow-out-xs);
+}
+.markdown-preview th,
+.markdown-preview td {
+  padding: 6px 10px;
+  text-align: left;
+  border-bottom: 1px solid #cfd6e0;
+}
+.markdown-preview th {
+  background: var(--bg-soft);
+}
+.markdown-preview img {
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-out-sm);
+}
+.markdown-preview ul,
+.markdown-preview ol {
+  padding-left: 1.5em;
+}
+.markdown-preview li.task-list-item {
+  list-style: none;
+  margin-left: -1.2em;
+}
+.markdown-preview input.task-list-item-checkbox {
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  vertical-align: middle;
+  cursor: pointer;
+}
+.markdown-preview .hljs-keyword,
+.markdown-preview .hljs-selector-tag {
+  color: #6d5dfc;
+}
+.markdown-preview .hljs-string,
+.markdown-preview .hljs-attr {
+  color: #2f8f6b;
+}
+.markdown-preview .hljs-number,
+.markdown-preview .hljs-literal {
+  color: #b06a1f;
+}
+.markdown-preview .hljs-comment {
+  color: #8b93a7;
+  font-style: italic;
+}
+.markdown-preview .hljs-title,
+.markdown-preview .hljs-function {
+  color: #4b5bbf;
+}
+
+/* SQL formatting preview */
+.format-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(184, 188, 194, 0.45);
+  backdrop-filter: blur(2px);
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+.format-dialog {
+  width: min(1100px, 92vw);
+  height: min(760px, 86vh);
+  background: var(--bg);
+  border-radius: var(--radius);
+  box-shadow: 12px 12px 24px #b8bcc2, -12px -12px 24px #ffffff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.format-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  box-shadow: 0 3px 6px #b8bcc2, 0 -2px 4px #ffffff;
+}
+.format-head strong {
+  font-size: 13px;
+}
+.format-body {
+  flex: 1;
+  overflow: auto;
+}

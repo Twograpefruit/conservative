@@ -22,12 +22,39 @@ export async function registerFsRoutes(app: FastifyInstance, ctx: AppContext): P
     return { ws: ws.id, query: q, entries: await findFiles(ws.path, q, limit) };
   });
 
-  app.get('/api/fs/file', async (req) => {    const query = req.query as { ws?: string; path?: string };
+  app.get('/api/fs/file', async (req) => {
+    const query = req.query as { ws?: string; path?: string };
     const ws = workspaceOf(ctx, query.ws);
     const rel = requireString(query.path, 'path');
     const abs = resolveInWorkspace(ws.path, rel);
     const info = await readTextFile(abs, { maxBytes: ctx.settings.settings.limits.editorMaxBytes });
     return { ...info, path: relativePath(ws.path, abs) };
+  });
+
+  app.get('/api/fs/raw', async (req, reply) => {
+    const query = req.query as { ws?: string; path?: string };
+    const ws = workspaceOf(ctx, query.ws);
+    const abs = resolveInWorkspace(ws.path, requireString(query.path, 'path'));
+    const stat = await fs.promises.stat(abs).catch(() => null);
+    if (!stat || !stat.isFile()) throw new HttpError(404, 'file not found', 'file_not_found');
+    if (stat.size > 20 * 1024 * 1024) throw new HttpError(413, 'file is larger than 20MB', 'file_too_large');
+    const ext = path.extname(abs).toLowerCase();
+    const types: Record<string, string> = {
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif',
+      '.webp': 'image/webp',
+      '.svg': 'image/svg+xml',
+      '.ico': 'image/x-icon',
+      '.bmp': 'image/bmp',
+      '.pdf': 'application/pdf',
+      '.mp4': 'video/mp4',
+      '.mp3': 'audio/mpeg',
+    };
+    reply.header('content-type', types[ext] ?? 'application/octet-stream');
+    reply.header('cache-control', 'private, max-age=60');
+    reply.send(await fs.promises.readFile(abs));
   });
 
   app.put('/api/fs/file', async (req) => {

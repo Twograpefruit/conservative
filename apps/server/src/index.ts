@@ -9,6 +9,7 @@ import { UpstreamManager } from './upstream.js';
 import { EventBus } from './sseBus.js';
 import { SnapshotService } from './lib/snapshots.js';
 import { ReplaceService } from './lib/replace.js';
+import { FormatService } from './lib/format.js';
 import { PtyService } from './lib/pty.js';
 import { resolveRg, type SearchContext } from './lib/search.js';
 import { findFreePort } from './lib/net.js';
@@ -83,6 +84,7 @@ async function main(): Promise<void> {
   const snapshots = new SnapshotService(host);
   const search: SearchContext = { host, rgPath: await resolveRg(host) };
   const replace = new ReplaceService(host, search);
+  const format = new FormatService();
   const pty = new PtyService(upstream, host);
 
   const ctx: AppContext = {
@@ -96,6 +98,7 @@ async function main(): Promise<void> {
     bus,
     snapshots,
     replace,
+    format,
     pty,
     search,
     probe: loadCachedProbe(),

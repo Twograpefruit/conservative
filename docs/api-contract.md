@@ -211,9 +211,9 @@
 
 | 范围 | 状态 | 说明 |
 | ---- | ---- | ---- |
-| M5 编辑器增强 | 未开始 / BLOCKED | 现有 CodeMirror 仅按扩展名静态加载 py/js/ts/json/md；未做语言注册表、懒加载、Markdown 预览、SQL 格式化 |
+| M5 编辑器增强 | 已实现（核心） | 语言注册表 + 动态 import；Markdown 源码/分屏/预览（DOMPurify、任务回写、图片经 `/api/fs/raw`）；SQL 方言高亮 + 格式化预览/应用/撤销；选区格式化为 PARTIAL |
 | M6 数据源 | 未开始 / BLOCKED | 无 DB/Redis 端点与凭据存储；M6-011/M6-016 的 CI 断言骨架已就绪但默认退出码 2 |
-| M7 交互系统 | 部分 | 已有基础快捷键（Alt+1..6、Ctrl+S）、暗色主题、Git 命令面板雏形；未做命令注册表/命令面板/主题三态/错误规则表 |
+| M7 交互系统 | 部分 | 已有基础快捷键（Alt+1..6、Ctrl+S）、Neumorphism 主题、Git 命令面板雏形；未做命令注册表/命令面板/主题三态/错误规则表 |
 | M8 通知 | 未开始 / BLOCKED | 无原生/应用内通知中心 |
 
 ### 12.1 CI 断言骨架
@@ -228,11 +228,11 @@
 
 | 编号 | 状态 | 说明 |
 | ---- | ---- | ---- |
-| ENV-015 SQL 格式化 | BLOCKED | `sql-formatter` / `sqlparse` 均未安装 |
+| ENV-015 SQL 格式化 | PASS | `sql-formatter` 15.9 已安装；`/api/format/text` 实测 SQLite/PostgreSQL 输出正确 |
 | ENV-016 凭据存储 | BLOCKED | 未实现 DPAPI/凭据管理器封装 |
 | ENV-017 原生模块编译链 | WARN | 无 `cl`；`better-sqlite3`/`node-pty` 不可编译，相关功能需显式关闭 |
 | ENV-018 本地测试实例 | PARTIAL | 本机有 `redis-cli`；未确认测试 Redis/SQLite 夹具 |
-| ENV-019 语言包体积审计 | PARTIAL | 当前首屏 JS gzip ≈381KB；懒加载与阈值审计待 M5 |
+| ENV-019 语言包体积审计 | PASS | 语言包拆为独立 chunk（MarkdownPreview 225KB；sql/各语言各自 chunk）；主包 gzip ≈294KB，低于上一版，懒加载生效 |
 | ENV-020 通知能力 | BLOCKED | 浏览器/Tauri 通知均未实现 |
 
 ---
@@ -251,3 +251,37 @@
 
 > 说明：@ 引用附件需要 `file:///` URI；已用真实 prompt 验证 opencode 会读取附件内容。UI 同时保留 `@path` 文本，便于模型理解上下文。
 
+
+
+---
+
+## 14. M5 编辑器增强（已实现 / 核心）
+
+| 编号 | 能力 | 实现 | 验证 |
+| ---- | ---- | ---- | ---- |
+| M5-001 | 语言注册表 | `features/editor/languages.ts` 按扩展名/文件名分派；状态栏显示语言名 | .py/.sql/.yaml/.json/.md/.toml/.ini/.conf/nginx.conf 走对应模式 |
+| M5-002 | 按需加载 | 语言加载器全部动态 `import()`；构建产物为独立 chunk | 构建出现 sql/各语言独立 chunk；MarkdownPreview 独立 225KB |
+| M5-003 | 切换不重建 | CodeMirror 使用 `Compartment.reconfigure` 切换语言扩展 | 切换语言不销毁 EditorView，滚动/撤销栈保留 |
+| M5-004 | nginx 降级 | 使用 `@codemirror/legacy-modes/mode/nginx` | Playwright 打开 nginx.conf，状态栏 Nginx，高亮 span 正常 |
+| M5-005 | 未知扩展名/大文件 | 纯文本 fallback；>2MB 仅读 | 原编辑器大文件读保护沿用 |
+| M5-006 | Markdown 源码高亮 | `@codemirror/lang-markdown` + `@codemirror/language-data` 围栏语言 | 围栏代码块二次高亮 |
+| M5-007 | Markdown 预览安全 | markdown-it（html:false）+ DOMPurify | 含 script/onerror 的测试 md：`window.__xss` undefined |
+| M5-008 | 双模式/滚动同步 | 源码 / 分屏 / 预览；源码滚动比例同步预览 | Playwright 分屏渲染正常 |
+| M5-009 | 任务列表回写 | 预览 checkbox → 定位源码第 N 个任务行 → update + 乐观锁 save | 勾选后文件变为 `- [x] first task` 并自动保存 |
+| M5-010 | 相对图片 | 预览重写 `src` 到 `/api/fs/raw`；路径越界 403 | 1x1 PNG：200 image/png；`../package.json`：403 |
+| M5-011 | SQL 方言高亮 | `@codemirror/lang-sql`，SQLite/PostgreSQL/MySQL/MariaDB/T-SQL/PLSQL | toolbar 可切换方言 |
+| M5-012 | SQL 格式化事务 | `sql-formatter` → diff 预览 → 备份 → 应用 → 撤销 | 实测格式化 `select id,name from users where id=1;`，应用后可撤销回原文 |
+| M5-013 | 失败保护 | 解析失败返回 422，不落盘 | 代码路径已就绪；未用存储过程样例走 UI |
+| M5-014 | 选区格式化 | `/api/format/text` 格式化选区，前端 splice 回编辑器，选区外不变，保存仍走 baseHash | PARTIAL（API/逻辑就绪，未做鼠标选区自动化） |
+
+### 14.1 新增接口
+
+- `GET /api/fs/raw?ws=&path=`：Markdown 图片/二进制静态读取（20MB 上限，路径越界拒绝）
+- `POST /api/format/text`：纯文本 SQL 格式化
+- `POST /api/format/preview`：文件级格式化预览（返回结构化 diff + plan id）
+- `POST /api/format/apply` / `POST /api/format/undo`：备份、应用、撤销
+
+### 14.2 依赖
+
+- GUI：`@codemirror/lang-*`、`@codemirror/legacy-modes`、`@codemirror/language-data`、`markdown-it`、`markdown-it-task-lists`、`dompurify`、`highlight.js`
+- BFF：`sql-formatter`、`diff`

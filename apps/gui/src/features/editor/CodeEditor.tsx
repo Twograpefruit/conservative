@@ -1,36 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import { basicSetup } from 'codemirror';
-import { EditorState, Compartment, type Extension } from '@codemirror/state';
+import { EditorState, Compartment } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
 import { defaultKeymap, historyKeymap } from '@codemirror/commands';
-import { python } from '@codemirror/lang-python';
-import { javascript } from '@codemirror/lang-javascript';
-import { json } from '@codemirror/lang-json';
-import { markdown } from '@codemirror/lang-markdown';
 import { lintGutter, setDiagnostics, type Diagnostic } from '@codemirror/lint';
 import type { LintDiagnostic } from '@ocg/protocol';
 import type { EditorTab } from '../../store/editorStore.js';
-
-function languageFor(path: string): Extension {
-  const ext = path.split('.').pop()?.toLowerCase();
-  switch (ext) {
-    case 'py':
-    case 'pyi':
-      return python();
-    case 'js':
-    case 'jsx':
-      return javascript({ jsx: true });
-    case 'ts':
-    case 'tsx':
-      return javascript({ jsx: true, typescript: true });
-    case 'json':
-      return json();
-    case 'md':
-      return markdown();
-    default:
-      return [];
-  }
-}
+import { loadLanguage, type SqlDialect } from './languages.js';
 
 export function CodeEditor({
   tab,
@@ -38,23 +14,40 @@ export function CodeEditor({
   onChange,
   onSave,
   onCursor,
+  onSelection,
+  onLanguage,
+  onScrollRatio,
   jumpLine,
+  languageOverride,
+  sqlDialect,
 }: {
   tab: EditorTab;
   diagnostics: LintDiagnostic[];
   onChange: (content: string) => void;
   onSave: () => void;
   onCursor?: (line: number, column: number) => void;
+  onSelection?: (selection: { from: number; to: number; text: string } | null) => void;
+  onLanguage?: (name: string) => void;
+  onScrollRatio?: (ratio: number) => void;
   jumpLine?: { line: number; nonce: number } | null;
+  languageOverride?: string | null;
+  sqlDialect?: SqlDialect;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
+  const languageCompartment = useRef(new Compartment());
   const saveRef = useRef(onSave);
   const changeRef = useRef(onChange);
   const cursorRef = useRef(onCursor);
+  const selectionRef = useRef(onSelection);
+  const languageRef = useRef(onLanguage);
+  const scrollRef = useRef(onScrollRatio);
   saveRef.current = onSave;
   changeRef.current = onChange;
   cursorRef.current = onCursor;
+  selectionRef.current = onSelection;
+  languageRef.current = onLanguage;
+  scrollRef.current = onScrollRatio;
 
   useEffect(() => {
     if (!host.current) return;
@@ -64,7 +57,7 @@ export function CodeEditor({
         basicSetup,
         lintGutter(),
         EditorState.readOnly.of(tab.readonly),
-        languageFor(tab.path),
+        languageCompartment.current.of([]),
         keymap.of([
           {
             key: 'Mod-s',
@@ -80,9 +73,17 @@ export function CodeEditor({
         EditorView.updateListener.of((update) => {
           if (update.docChanged) changeRef.current(update.state.doc.toString());
           if (update.selectionSet || update.docChanged) {
-            const pos = update.state.selection.main.head;
+            const sel = update.state.selection.main;
+            const pos = sel.head;
             const line = update.state.doc.lineAt(pos);
             cursorRef.current?.(line.number, pos - line.from + 1);
+            if (sel.from === sel.to) selectionRef.current?.(null);
+            else
+              selectionRef.current?.({
+                from: sel.from,
+                to: sel.to,
+                text: update.state.doc.sliceString(sel.from, sel.to),
+              });
           }
         }),
         EditorView.theme({
@@ -98,13 +99,33 @@ export function CodeEditor({
     });
     const instance = new EditorView({ state, parent: host.current });
     view.current = instance;
+    const onScroll = () => {
+      const el = instance.scrollDOM;
+      const max = Math.max(1, el.scrollHeight - el.clientHeight);
+      scrollRef.current?.(el.scrollTop / max);
+    };
+    instance.scrollDOM.addEventListener('scroll', onScroll, { passive: true });
     return () => {
+      instance.scrollDOM.removeEventListener('scroll', onScroll);
       instance.destroy();
       view.current = null;
     };
     // Remount per tab (keyed by path) keeps undo history scoped and avoids model drift.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab.path]);
+
+  useEffect(() => {
+    if (!view.current) return;
+    let cancelled = false;
+    void loadLanguage(tab.path, { override: languageOverride, sqlDialect }).then(({ name, extension }) => {
+      if (cancelled || !view.current) return;
+      view.current.dispatch({ effects: languageCompartment.current.reconfigure(extension) });
+      languageRef.current?.(name);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [tab.path, languageOverride, sqlDialect]);
 
   useEffect(() => {
     if (!view.current) return;

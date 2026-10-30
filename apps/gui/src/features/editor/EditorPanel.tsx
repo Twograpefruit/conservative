@@ -1,8 +1,26 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import type { FileDiff } from '@ocg/diff';
 import { FileTree } from '../../components/FileTree.js';
+import { DiffView } from '../diff/DiffView.js';
 import { useApp } from '../../store/appStore.js';
 import { useEditor } from '../../store/editorStore.js';
+import { api } from '../../api/client.js';
 import { CodeEditor } from './CodeEditor.js';
+import { LANGUAGE_DEFS, languageName, type SqlDialect } from './languages.js';
+
+const MarkdownPreview = React.lazy(() =>
+  import('./MarkdownPreview.js').then((m) => ({ default: m.MarkdownPreview })),
+);
+
+type MarkdownMode = 'source' | 'split' | 'preview';
+
+interface FormatPreview {
+  id: string;
+  path: string;
+  files: FileDiff[];
+  before: string;
+  after: string;
+}
 
 export function EditorPanel() {
   const workspaceID = useApp((s) => s.workspaceID);
@@ -20,12 +38,24 @@ export function EditorPanel() {
   const reload = useEditor((s) => s.reload);
   const consumeLine = useEditor((s) => s.consumeLine);
   const closeAll = useEditor((s) => s.closeAll);
+  const setLanguage = useEditor((s) => s.setLanguage);
+  const setSqlDialect = useEditor((s) => s.setSqlDialect);
   const [cursor, setCursor] = useState({ line: 1, column: 1 });
   const [jump, setJump] = useState<{ line: number; nonce: number } | null>(null);
+  const [mdMode, setMdMode] = useState<MarkdownMode>('source');
+  const [scrollRatio, setScrollRatio] = useState(0);
+  const [selection, setSelection] = useState<{ from: number; to: number; text: string } | null>(null);
+  const [resolvedLanguage, setResolvedLanguage] = useState('纯文本');
+  const [formatPreview, setFormatPreview] = useState<FormatPreview | null>(null);
+  const [lastFormatUndo, setLastFormatUndo] = useState<{ id: string; path: string } | null>(null);
+  const [formatBusy, setFormatBusy] = useState(false);
   const prevWorkspace = useRef<string | null>(workspaceID);
+  const scrollFrame = useRef<number | null>(null);
 
   const tab = tabs.find((t) => t.path === active) ?? null;
   const activeDiagnostics = tab ? diagnostics[tab.path] ?? [] : [];
+  const isMarkdown = tab ? /\.(md|markdown|mdx)$/i.test(tab.path) : false;
+  const isSql = tab ? /\.sql$/i.test(tab.path) : false;
 
   useEffect(() => {
     if (!openRequest) return;
@@ -49,15 +79,156 @@ export function EditorPanel() {
   }, [tab?.pendingLine, tab?.path, consumeLine]);
 
   useEffect(() => {
+    setResolvedLanguage(languageName(tab?.path ?? '', tab?.language));
+  }, [tab?.path, tab?.language]);
+
+  useEffect(() => {
+    setSelection(null);
+    setScrollRatio(0);
+  }, [tab?.path]);
+
+  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
         if (tab) void save(tab.path);
       }
+      if (e.altKey && e.shiftKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        void formatFull();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        // Let the chat search use Ctrl+F; only intercept here when the editor has a selection.
+        if (tab && selection) {
+          e.preventDefault();
+          void formatSelection();
+        }
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [tab, save]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, save, selection]);
+
+  const onSourceScroll = (ratio: number) => {
+    if (scrollFrame.current != null) return;
+    scrollFrame.current = requestAnimationFrame(() => {
+      scrollFrame.current = null;
+      setScrollRatio(ratio);
+    });
+  };
+
+  const ensureSaved = async (): Promise<boolean> => {
+    if (!tab) return false;
+    if (tab.content === tab.original) return true;
+    await save(tab.path);
+    const now = useEditor.getState().tabs.find((t) => t.path === tab.path);
+    if (!now || now.conflict || now.content !== now.original) {
+      notify('请先解决保存冲突或等待保存完成', 'error');
+      return false;
+    }
+    return true;
+  };
+
+  const formatFull = async () => {
+    if (!tab || !isSql || formatBusy) return;
+    if (!(await ensureSaved())) return;
+    setFormatBusy(true);
+    try {
+      const res = await api<{ id: string; changed: boolean; files: FileDiff[]; before: string; after: string }>(
+        '/api/format/preview',
+        {
+          method: 'POST',
+          body: JSON.stringify({ ws: workspaceID, path: tab.path, dialect: tab.sqlDialect, indent: 2, keywordCase: 'upper' }),
+          headers: { 'content-type': 'application/json' },
+        },
+      );
+      if (!res.changed) {
+        notify('SQL 已经是格式化状态');
+        return;
+      }
+      setFormatPreview({ id: res.id, path: tab.path, files: res.files, before: res.before, after: res.after });
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'SQL 格式化失败', 'error');
+    } finally {
+      setFormatBusy(false);
+    }
+  };
+
+  const formatSelection = async () => {
+    if (!tab || !isSql || !selection || formatBusy) return;
+    setFormatBusy(true);
+    try {
+      const res = await api<{ text: string }>('/api/format/text', {
+        method: 'POST',
+        body: JSON.stringify({ text: selection.text, dialect: tab.sqlDialect, indent: 2, keywordCase: 'upper' }),
+        headers: { 'content-type': 'application/json' },
+      });
+      const next = tab.content.slice(0, selection.from) + res.text + tab.content.slice(selection.to);
+      update(tab.path, next);
+      setSelection(null);
+      notify('已格式化选区；保存后写入磁盘');
+    } catch (err) {
+      notify(err instanceof Error ? err.message : '选区格式化失败', 'error');
+    } finally {
+      setFormatBusy(false);
+    }
+  };
+
+  const applyFormat = async () => {
+    if (!formatPreview || !tab) return;
+    setFormatBusy(true);
+    try {
+      const applied = await api<{ undoId: string; path: string }>('/api/format/apply', {
+        method: 'POST',
+        body: JSON.stringify({ ws: workspaceID, id: formatPreview.id }),
+        headers: { 'content-type': 'application/json' },
+      });
+      setLastFormatUndo({ id: applied.undoId, path: applied.path });
+      setFormatPreview(null);
+      await reload(tab.path);
+      setJump({ line: 1, nonce: Date.now() });
+      notify('SQL 格式化已应用（已备份，可撤销）');
+    } catch (err) {
+      notify(err instanceof Error ? err.message : '应用格式化失败', 'error');
+    } finally {
+      setFormatBusy(false);
+    }
+  };
+
+  const undoFormat = async () => {
+    if (!lastFormatUndo || !tab) return;
+    setFormatBusy(true);
+    try {
+      await api('/api/format/undo', {
+        method: 'POST',
+        body: JSON.stringify({ ws: workspaceID, id: lastFormatUndo.id }),
+        headers: { 'content-type': 'application/json' },
+      });
+      setLastFormatUndo(null);
+      await reload(lastFormatUndo.path);
+      notify('已撤销 SQL 格式化');
+    } catch (err) {
+      notify(err instanceof Error ? err.message : '撤销格式化失败', 'error');
+    } finally {
+      setFormatBusy(false);
+    }
+  };
+
+  const toggleTask = (index: number, checked: boolean) => {
+    if (!tab) return;
+    const lines = tab.content.split('\n');
+    let seen = 0;
+    for (let i = 0; i < lines.length; i++) {
+      const m = lines[i].match(/^(\s*[-*+]\s+\[)([ xX])(\])/);
+      if (!m) continue;
+      if (seen++ !== index) continue;
+      lines[i] = `${m[1]}${checked ? 'x' : ' '}${m[3]}${lines[i].slice(m[0].length)}`;
+      break;
+    }
+    update(tab.path, lines.join('\n'));
+    window.setTimeout(() => void save(tab.path), 0);
+  };
 
   const dirty = tab ? tab.content !== tab.original : false;
   const lines = useMemo(() => (tab ? tab.content.split('\n').length : 0), [tab?.content]);
@@ -99,6 +270,65 @@ export function EditorPanel() {
               <span className="editor-path">{tab.path}</span>
               <div className="editor-tools">
                 {tab.readonly ? <span className="chip chip-warn">只读</span> : null}
+                <select
+                  className="editor-language"
+                  value={tab.language ?? 'auto'}
+                  onChange={(e) => setLanguage(tab.path, e.target.value === 'auto' ? null : e.target.value)}
+                  title="语法高亮语言"
+                >
+                  <option value="auto">语言: 自动</option>
+                  {LANGUAGE_DEFS.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                    </option>
+                  ))}
+                </select>
+                {isSql ? (
+                  <>
+                    <select
+                      className="editor-language"
+                      value={tab.sqlDialect}
+                      onChange={(e) => setSqlDialect(tab.path, e.target.value as SqlDialect)}
+                      title="SQL 方言"
+                    >
+                      <option value="sqlite">SQLite</option>
+                      <option value="postgresql">PostgreSQL</option>
+                      <option value="mysql">MySQL</option>
+                      <option value="mariadb">MariaDB</option>
+                      <option value="tsql">T-SQL</option>
+                      <option value="plsql">PL/SQL</option>
+                    </select>
+                    <button className="btn btn-small" onClick={() => void formatFull()} disabled={formatBusy} title="Shift+Alt+F">
+                      格式化
+                    </button>
+                    <button
+                      className="btn btn-small"
+                      onClick={() => void formatSelection()}
+                      disabled={!selection || formatBusy}
+                      title="只格式化选中部分"
+                    >
+                      格式化选区
+                    </button>
+                    {lastFormatUndo && lastFormatUndo.path === tab.path ? (
+                      <button className="btn btn-small" onClick={() => void undoFormat()} disabled={formatBusy}>
+                        撤销格式化
+                      </button>
+                    ) : null}
+                  </>
+                ) : null}
+                {isMarkdown ? (
+                  <div className="segmented editor-md-mode">
+                    <button className={mdMode === 'source' ? 'active' : ''} onClick={() => setMdMode('source')}>
+                      源码
+                    </button>
+                    <button className={mdMode === 'split' ? 'active' : ''} onClick={() => setMdMode('split')}>
+                      分屏
+                    </button>
+                    <button className={mdMode === 'preview' ? 'active' : ''} onClick={() => setMdMode('preview')}>
+                      预览
+                    </button>
+                  </div>
+                ) : null}
                 <span className="chip">{tab.encoding}</span>
                 <span className="chip">{tab.eol.toUpperCase()}</span>
                 <button className="btn btn-small" onClick={() => void reload(tab.path)}>
@@ -127,7 +357,7 @@ export function EditorPanel() {
             ) : null}
             {tab.error ? <div className="banner banner-error">{tab.error}</div> : null}
 
-            <div className="editor-area">
+            <div className={`editor-area ${isMarkdown && mdMode !== 'source' ? 'editor-split' : ''}`}>
               {tab.loading ? (
                 <div className="empty-hint">加载中…</div>
               ) : tab.binary ? (
@@ -136,15 +366,37 @@ export function EditorPanel() {
                   <p>该文件为二进制（{formatSize(tab.size)}），编辑器不会尝试解码。</p>
                 </div>
               ) : (
-                <CodeEditor
-                  key={tab.path}
-                  tab={tab}
-                  diagnostics={activeDiagnostics}
-                  onChange={(content) => update(tab.path, content)}
-                  onSave={() => void save(tab.path)}
-                  onCursor={(line, column) => setCursor({ line, column })}
-                  jumpLine={jump}
-                />
+                <>
+                  <div className="editor-pane" style={{ display: isMarkdown && mdMode === 'preview' ? 'none' : 'flex' }}>
+                    <CodeEditor
+                      key={tab.path}
+                      tab={tab}
+                      diagnostics={activeDiagnostics}
+                      onChange={(content) => update(tab.path, content)}
+                      onSave={() => void save(tab.path)}
+                      onCursor={(line, column) => setCursor({ line, column })}
+                      onSelection={setSelection}
+                      onLanguage={setResolvedLanguage}
+                      onScrollRatio={onSourceScroll}
+                      jumpLine={jump}
+                      languageOverride={tab.language}
+                      sqlDialect={tab.sqlDialect}
+                    />
+                  </div>
+                  {isMarkdown && mdMode !== 'source' ? (
+                    <div className="preview-pane">
+                      <Suspense fallback={<div className="empty-hint">加载 Markdown 预览…</div>}>
+                        <MarkdownPreview
+                          content={tab.content}
+                          path={tab.path}
+                          workspaceID={workspaceID}
+                          scrollRatio={scrollRatio}
+                          onToggleTask={toggleTask}
+                        />
+                      </Suspense>
+                    </div>
+                  ) : null}
+                </>
               )}
             </div>
 
@@ -152,6 +404,7 @@ export function EditorPanel() {
               <span>
                 Ln {cursor.line}, Col {cursor.column}
               </span>
+              <span>{resolvedLanguage}</span>
               <span>{lines} 行</span>
               <span>{formatSize(tab.size)}</span>
               <span className={activeDiagnostics.some((d) => d.severity === 'error') ? 'text-error' : ''}>
@@ -183,13 +436,34 @@ export function EditorPanel() {
         ) : (
           <div className="empty-state">
             <h2>编辑器</h2>
-            <p>从左侧选择文件打开；支持保存冲突检测、EOL/编码保真与保存后诊断。</p>
+            <p>从左侧选择文件打开；支持多语言高亮、Markdown 预览、SQL 格式化、保存冲突检测与诊断。</p>
             <button className="btn" onClick={() => notify('从左侧文件树选择文件')}>
               提示
             </button>
           </div>
         )}
       </section>
+
+      {formatPreview ? (
+        <div className="format-overlay">
+          <div className="format-dialog">
+            <div className="format-head">
+              <strong>SQL 格式化预览</strong>
+              <span className="muted">{formatPreview.path}</span>
+              <span className="spacer" />
+              <button className="btn btn-small" onClick={() => setFormatPreview(null)}>
+                取消
+              </button>
+              <button className="btn btn-small btn-primary" onClick={() => void applyFormat()} disabled={formatBusy}>
+                应用
+              </button>
+            </div>
+            <div className="format-body">
+              <DiffView files={formatPreview.files} emptyText="没有差异" />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

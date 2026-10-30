@@ -28,6 +28,7 @@ opencode serve v2 (127.0.0.1 only, password held by BFF)
 | M3 | Git status/log/diff, hunk stage/unstage/discard, commit (auto-stage option), push, four diff sources normalized, shadow snapshots | Done |
 | M3.5 | One-time PTY tickets, ConPTY bridge, tabs, resize, find, scrollback | Done (upstream PTY fallback) |
 | M4 | Tauri/WebView2 packaging, tray, memory soak | Scaffold only |
+| M5 | Language registry with lazy loading, Markdown source/preview, SQL dialect highlighting + format preview/apply/undo | Done (core; selection format partial) |
 
 ### UI & conversation additions (2026-10-30)
 
@@ -46,6 +47,10 @@ dual light/dark shadows, 12–24px radii, inset inputs and no hard borders.
   searchable file picker backed by `GET /api/fs/find`; multiple files can be referenced in one
   message and are sent as `PromptInput.FileAttachment` entries with `file:///` URIs and
   `mention` offsets. Verified against opencode: the model received the attached file content.
+- **M5 editor**: language registry with dynamic imports (py/js/ts/go/rust/java/cpp/php/
+  sql/yaml/xml/html/css/md/nginx/toml/ini/shell/docker), Markdown source/split/preview with
+  DOMPurify + task-list writeback, and SQL dialect highlighting plus `sql-formatter` preview →
+  apply → undo (full file) and selection formatting.
 
 See [`docs/api-contract.md`](docs/api-contract.md) for the acceptance checklist and
 [`docs/acceptance.md`](docs/acceptance.md) for the probed opencode 2.2.1 contract.
@@ -113,7 +118,8 @@ Runtime data (never inside the repo):
 | Contract | `GET /api/oc/spec` |
 | Proxy | `ALL /api/oc/*` to upstream, Basic Auth injected, SSE unbuffered |
 | Events | `GET /api/events?since=<seq>` (SSE, `id:` = BFF seq, 5000-event ring) |
-| Files | `GET /api/fs/tree`, `GET /api/fs/find`, `GET/PUT /api/fs/file`, `POST /api/fs/{rename,delete,mkdir}` |
+| Files | `GET /api/fs/tree`, `GET /api/fs/find`, `GET /api/fs/file`, `GET /api/fs/raw`, `PUT /api/fs/file`, `POST /api/fs/{rename,delete,mkdir}` |
+| Format | `POST /api/format/preview`, `POST /api/format/apply`, `POST /api/format/undo`, `POST /api/format/text` |
 | Search | `POST /api/search` (NDJSON stream + cursor) |
 | Replace | `POST /api/replace/preview`, `POST /api/replace/apply`, `POST /api/replace/undo` |
 | Git | `GET /api/git/{info,status,log,diff}`, `POST /api/git/{exec,commit,push,apply-hunk}` |

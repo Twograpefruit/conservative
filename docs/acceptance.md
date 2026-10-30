@@ -201,7 +201,7 @@ v2 的 API 前缀是 **`/api`**，不是 v1 文档中的 `/global/*`。
 以下用例对应架构增补设计（多语言高亮 / Markdown / SQL 格式化 / 数据库 / Redis / 快捷键 / 主题 / Git 命令提示 / 通知）。
 执行前置：先跑 §1 ENV 组 + §1.1 新增闸门（ENV-015 起）；能力探测缺失的功能按 `api-contract.md` §5 隐藏入口，对应用例记 BLOCKED 而非 FAIL。
 
-> 当前状态（2026-10-30）：M5–M8 尚未实现，相关用例为 BLOCKED；M6-011/M6-016 的 CI 断言骨架已落地（`scripts/ci-assert.sh`），但真实用例在 M6 端点可用前同样记 BLOCKED。
+> 当前状态（2026-10-30）：M5 核心已实现（语言注册表/懒加载、Markdown 预览、SQL 格式化）；M6–M8 尚未实现，相关用例为 BLOCKED；M6-011/M6-016 的 CI 断言骨架已落地（`scripts/ci-assert.sh`），但真实用例在 M6 端点可用前同样记 BLOCKED。
 
 ---
 
@@ -933,3 +933,27 @@ main "$@"
 | UI-006 | Neumorphism | 检查背景、面板、按钮、输入框 | #e0e5ec、双光源阴影、圆角、inset 输入、无硬边框 | PASS（计算样式 + 截图走查） |
 
 > 说明：@ 附件使用 file:/// URI；opencode 2.2.1 实测可读取附件内容（探针返回 ATTACH-OK-731）。字号缩放同时作用于 CodeMirror 与 xterm，不需要重新创建编辑器实例。
+
+
+---
+
+## 7.14 2026-10-30 M5 编辑器增强验收
+
+| 编号 | 用例 | 结果 |
+| ---- | ---- | ---- |
+| M5-001 | 语言注册表分派 | PASS（.py/.sql/.yaml/.json/.md/.toml/.ini/.conf/nginx 均走注册表；状态栏显示） |
+| M5-002 | 按需加载 | PASS（语言动态 import；构建产出独立 chunk，主包 gzip ≈294KB） |
+| M5-003 | 语言切换不重建 | PASS（Compartment.reconfigure，不销毁 EditorView） |
+| M5-004 | nginx 降级 | PASS（legacy-modes nginx；Playwright 打开 nginx.conf，状态栏 Nginx，高亮正常） |
+| M5-005 | 未知扩展名/大文件 | PASS（纯文本 fallback；>2MB 只读沿用） |
+| M5-006 | Markdown 源码高亮 | PASS（lang-markdown + language-data 围栏代码） |
+| M5-007 | Markdown 预览安全 | PASS（script/onerror 测试 md 未执行，window.__xss undefined） |
+| M5-008 | 双模式/滚动同步 | PASS（源码/分屏/预览；源码滚动比例同步） |
+| M5-009 | 任务列表回写 | PASS（勾选后源码变 `- [x]` 并自动保存） |
+| M5-010 | 相对资源 | PASS（/api/fs/raw 返回 image/png；`../package.json` 返回 403） |
+| M5-011 | SQL 方言高亮 | PASS（sqlite/postgresql/mysql/mariadb/tsql/plsql 可切换） |
+| M5-012 | SQL 格式化事务 | PASS（预览 → 应用 → 撤销；实测格式化后文件正确，undo 复原） |
+| M5-013 | 格式化失败保护 | PARTIAL（后端 422 + 不落盘；未用存储过程样例走 UI） |
+| M5-014 | 选区格式化 | PARTIAL（/api/format/text + 前端 splice 已就绪；未做鼠标选区自动化） |
+
+> 运行状态：`npm run typecheck`、`npm test`（19 用例）、`npm run build` 均通过；Playwright 走查 Markdown 分屏/XSS/任务回写、SQL 格式化应用与撤销、nginx 语言切换。

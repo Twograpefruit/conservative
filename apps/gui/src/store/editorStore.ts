@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { FileContent, LintDiagnostic, WriteFileResult } from '@ocg/protocol';
 import { api, qs } from '../api/client.js';
 import { useApp } from './appStore.js';
+import type { SqlDialect } from '../features/editor/languages.js';
 
 export interface EditorTab {
   path: string;
@@ -20,6 +21,8 @@ export interface EditorTab {
   error: string | null;
   pendingLine: number | null;
   conflict: { currentHash: string; currentMtime: number } | null;
+  language: string | null;
+  sqlDialect: SqlDialect;
 }
 
 interface EditorStore {
@@ -31,6 +34,8 @@ interface EditorStore {
   close: (path: string) => void;
   closeAll: () => void;
   update: (path: string, content: string) => void;
+  setLanguage: (path: string, language: string | null) => void;
+  setSqlDialect: (path: string, dialect: SqlDialect) => void;
   save: (path: string) => Promise<void>;
   reload: (path: string) => Promise<void>;
   consumeLine: (path: string) => number | null;
@@ -76,6 +81,8 @@ export const useEditor = create<EditorStore>((set, get) => ({
       error: null,
       pendingLine: line ?? null,
       conflict: null,
+      language: null,
+      sqlDialect: 'sqlite',
     };
     set({ tabs: [...get().tabs, blank], active: path });
     try {
@@ -127,6 +134,14 @@ export const useEditor = create<EditorStore>((set, get) => ({
     set({ tabs: get().tabs.map((t) => (t.path === path ? { ...t, content } : t)) });
   },
 
+  setLanguage: (path, language) => {
+    set({ tabs: get().tabs.map((t) => (t.path === path ? { ...t, language } : t)) });
+  },
+
+  setSqlDialect: (path, dialect) => {
+    set({ tabs: get().tabs.map((t) => (t.path === path ? { ...t, sqlDialect: dialect } : t)) });
+  },
+
   save: async (path) => {
     const tab = get().tabs.find((t) => t.path === path);
     if (!tab || tab.readonly || tab.binary) return;
@@ -172,10 +187,42 @@ export const useEditor = create<EditorStore>((set, get) => ({
   },
 
   reload: async (path) => {
-    await get().open(path);
-    set({
-      tabs: get().tabs.map((t) => (t.path === path ? { ...t, conflict: null } : t)),
-    });
+    if (!get().tabs.some((t) => t.path === path)) {
+      await get().open(path);
+      return;
+    }
+    try {
+      const info = await api<FileContent>(`/api/fs/file${qs({ ws: ws(), path })}`);
+      set({
+        tabs: get().tabs.map((t) =>
+          t.path === path
+            ? {
+                ...t,
+                content: info.content,
+                original: info.content,
+                hash: info.hash,
+                mtime: info.mtime,
+                encoding: info.encoding,
+                eol: info.eol,
+                readonly: info.readonly,
+                binary: info.binary,
+                truncated: info.truncated,
+                size: info.size,
+                loading: false,
+                error: null,
+                conflict: null,
+              }
+            : t,
+        ),
+        diagnostics: { ...get().diagnostics, [path]: [] },
+      });
+    } catch (err) {
+      set({
+        tabs: get().tabs.map((t) =>
+          t.path === path ? { ...t, loading: false, error: err instanceof Error ? err.message : String(err) } : t,
+        ),
+      });
+    }
   },
 
   consumeLine: (path) => {
