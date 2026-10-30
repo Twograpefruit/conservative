@@ -203,10 +203,20 @@ self_test() {
   fi
   printf '1700000000.000000 [0 127.0.0.1:6379] "SCAN" "0" "MATCH" "*"\n' >"$tmp/monitor-ok.log"
   printf '1700000001.000000 [0 127.0.0.1:6379] "KEYS" "*"\n' >"$tmp/monitor-bad.log"
-  check_monitor_file "$tmp/monitor-ok.log" "self-test SCAN" >/dev/null 2>&1 || true
   local before="$FAILED"
+  check_monitor_file "$tmp/monitor-ok.log" "self-test SCAN" >/dev/null 2>&1 || true
+  local ok_failed="$FAILED"
+  FAILED="$before"
   check_monitor_file "$tmp/monitor-bad.log" "self-test KEYS" >/dev/null 2>&1 || true
-  if [ "$FAILED" -gt "$before" ]; then
+  local detected=0
+  [ "$FAILED" -gt "$before" ] && detected=1
+  FAILED="$before"
+  if [ "$ok_failed" -eq "$before" ]; then
+    pass "self-test SCAN 样本未误报"
+  else
+    fail "self-test SCAN 样本被误判"
+  fi
+  if [ "$detected" -eq 1 ]; then
     pass "self-test 能识别 KEYS（判定有效）"
   else
     fail "self-test 未识别 KEYS（判定失效）"
