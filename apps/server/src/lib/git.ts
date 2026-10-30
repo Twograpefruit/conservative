@@ -222,6 +222,57 @@ export async function execWhitelisted(ctx: GitContext, args: string[]): Promise<
 
 export type HunkAction = 'stage' | 'unstage' | 'discard';
 
+export async function overwriteLines(
+  ctx: GitContext,
+  input: { path: string; changes: Array<{ kind: 'add' | 'del'; newLine: number; text: string }> },
+): Promise<{ ok: true; changed: number }> {
+  if (!input.path?.trim()) badRequest('path is required');
+  if (!Array.isArray(input.changes) || input.changes.length === 0) badRequest('changes is required');
+  const abs = path.resolve(ctx.root, input.path);
+  const root = path.resolve(ctx.root);
+  if (abs !== root && !abs.startsWith(root + path.sep)) throw new HttpError(403, 'path escapes workspace', 'path_escape');
+  const stat = fs.existsSync(abs) ? fs.statSync(abs) : null;
+  if (!stat || !stat.isFile()) throw new HttpError(404, `file not found: ${input.path}`, 'file_not_found');
+  if (stat.size > 8 * 1024 * 1024) throw new HttpError(413, 'file is too large for line overwrite', 'file_too_large');
+  const raw = fs.readFileSync(abs, 'utf8');
+  const eol = raw.includes('\r\n') ? '\r\n' : '\n';
+  const lines = raw.split(/\r?\n/);
+  const removeMap = new Map<number, string[]>();
+  const insertMap = new Map<number, string[]>();
+  for (const change of input.changes) {
+    if (change.kind !== 'add' && change.kind !== 'del') badRequest('change kind must be add|del');
+    if (!Number.isInteger(change.newLine) || change.newLine < 1 || change.newLine > lines.length + 1) {
+      throw new HttpError(400, `invalid line number: ${change.newLine}`, 'invalid_line');
+    }
+    if (typeof change.text !== 'string') badRequest('change text is required');
+    if (change.kind === 'add') {
+      const list = removeMap.get(change.newLine) ?? [];
+      if (list.includes(change.text)) continue;
+      list.push(change.text);
+      removeMap.set(change.newLine, list);
+    } else {
+      const list = insertMap.get(change.newLine) ?? [];
+      list.push(change.text);
+      insertMap.set(change.newLine, list);
+    }
+  }
+  const maxLine = Math.max(...[...removeMap.keys(), ...insertMap.keys()]);
+  for (let n = maxLine; n >= 1; n--) {
+    const idx = n - 1;
+    const removals = removeMap.get(n) ?? [];
+    const current = lines.slice(idx, idx + removals.length);
+    if (removals.length && (current.length !== removals.length || current.some((line, i) => line !== removals[i]))) {
+      throw new HttpError(409, '文件已变化，所选行与当前内容不一致，请刷新后重试', 'line_conflict');
+    }
+    if (removals.length) lines.splice(idx, removals.length);
+    const inserts = insertMap.get(n) ?? [];
+    if (inserts.length) lines.splice(idx, 0, ...inserts);
+  }
+  const next = lines.join(eol);
+  fs.writeFileSync(abs, next, 'utf8');
+  return { ok: true, changed: input.changes.length };
+}
+
 export async function applyHunk(
   ctx: GitContext,
   input: { path: string; hunkIndex: number; action: HunkAction; mode?: DiffMode; base?: string },

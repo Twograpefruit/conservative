@@ -1,10 +1,43 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
+import { appDataDir } from '@ocg/config';
 import type { AppContext } from '../context.js';
 import { HttpError, badRequest, requireString } from '../lib/http.js';
 import { findFiles, listDirectory, readTextFile, relativePath, resolveInWorkspace, writeTextFileAtomic } from '../lib/fsutil.js';
 import { workspaceOf } from '../lib/workspace.js';
+
+const IMAGE_EXT: Record<string, string> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/jpg': 'jpg',
+  'image/gif': 'gif',
+  'image/webp': 'webp',
+  'image/bmp': 'bmp',
+  'image/svg+xml': 'svg',
+};
+
+const EXT_MIME: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  bmp: 'image/bmp',
+  svg: 'image/svg+xml',
+};
+
+function attachmentDir(): string {
+  const dir = path.join(appDataDir(), 'attachments');
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+function safeAttachment(name: string): string {
+  if (!/^[A-Za-z0-9._-]+$/.test(name)) throw badRequest('invalid attachment name', 'invalid_name');
+  return path.join(attachmentDir(), name);
+}
 
 export async function registerFsRoutes(app: FastifyInstance, ctx: AppContext): Promise<void> {
   app.get('/api/fs/tree', async (req) => {
@@ -29,6 +62,38 @@ export async function registerFsRoutes(app: FastifyInstance, ctx: AppContext): P
     const abs = resolveInWorkspace(ws.path, rel);
     const info = await readTextFile(abs, { maxBytes: ctx.settings.settings.limits.editorMaxBytes });
     return { ...info, path: relativePath(ws.path, abs) };
+  });
+
+  app.post('/api/chat/attachment', async (req) => {
+    const body = req.body as { data?: string; mime?: string; name?: string };
+    if (typeof body.data !== 'string' || !body.data) badRequest('data (base64) is required', 'missing_data');
+    const mime = (body.mime || 'image/png').toLowerCase();
+    const ext = IMAGE_EXT[mime] ?? 'png';
+    const raw = body.data.includes(',') ? body.data.slice(body.data.indexOf(',') + 1) : body.data;
+    const buffer = Buffer.from(raw, 'base64');
+    if (buffer.length === 0) badRequest('empty attachment', 'empty_attachment');
+    if (buffer.length > 10 * 1024 * 1024) throw new HttpError(413, 'attachment is larger than 10MB', 'file_too_large');
+    const base = (body.name ?? 'image').replace(/[^A-Za-z0-9._-]+/g, '_').replace(/\.[^.]+$/, '');
+    const name = `${Date.now()}-${randomUUID().slice(0, 8)}-${base.slice(0, 40) || 'image'}.${ext}`;
+    const abs = safeAttachment(name);
+    await fs.promises.writeFile(abs, buffer);
+    return {
+      name,
+      mime,
+      size: buffer.length,
+      url: `/api/chat/attachment?name=${encodeURIComponent(name)}`,
+      uri: `file:///${abs.replace(/\\/g, '/').replace(/^\/+/, '')}`,
+    };
+  });
+
+  app.get('/api/chat/attachment', async (req, reply) => {
+    const query = req.query as { name?: string };
+    const abs = safeAttachment(requireString(query.name, 'name'));
+    const stat = await fs.promises.stat(abs).catch(() => null);
+    if (!stat || !stat.isFile()) throw new HttpError(404, 'attachment not found', 'file_not_found');
+    reply.header('content-type', EXT_MIME[path.extname(abs).slice(1).toLowerCase()] ?? 'application/octet-stream');
+    reply.header('cache-control', 'private, max-age=3600');
+    reply.send(await fs.promises.readFile(abs));
   });
 
   app.get('/api/fs/raw', async (req, reply) => {

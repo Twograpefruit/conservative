@@ -11,6 +11,7 @@ import {
   execWhitelisted,
   info,
   log,
+  overwriteLines,
   push,
   status,
   type DiffMode,
@@ -124,6 +125,66 @@ export async function registerGitRoutes(app: FastifyInstance, ctx: AppContext): 
       mode: body.mode,
       base: body.base,
     });
+  });
+
+  app.post('/api/git/overwrite-lines', async (req) => {
+    const body = req.body as {
+      ws?: string;
+      path?: string;
+      changes?: Array<{ kind: 'add' | 'del'; newLine: number; text: string }>;
+    };
+    const ws = workspaceOf(ctx, body.ws);
+    if (!Array.isArray(body.changes)) throw new HttpError(400, 'changes is required', 'invalid_field');
+    return overwriteLines(ctxOf(ctx, ws), {
+      path: requireString(body.path, 'path'),
+      changes: body.changes,
+    });
+  });
+
+  app.get('/api/git/profiles', async () => ctx.gitProfiles.listPublic());
+
+  app.post('/api/git/profiles', async (req) => {
+    const body = req.body as Record<string, unknown>;
+    return ctx.gitProfiles.create({
+      label: typeof body.label === 'string' ? body.label : undefined,
+      provider: typeof body.provider === 'string' ? (body.provider as 'gitee' | 'github' | 'git') : undefined,
+      remoteUrl: typeof body.remoteUrl === 'string' ? body.remoteUrl : undefined,
+      username: typeof body.username === 'string' ? body.username : undefined,
+      secret: typeof body.secret === 'string' ? body.secret : undefined,
+    });
+  });
+
+  app.put('/api/git/profiles/:id', async (req) => {
+    const { id } = req.params as { id: string };
+    const body = req.body as Record<string, unknown>;
+    return ctx.gitProfiles.update(id, {
+      label: typeof body.label === 'string' ? body.label : undefined,
+      provider: typeof body.provider === 'string' ? (body.provider as 'gitee' | 'github' | 'git') : undefined,
+      remoteUrl: typeof body.remoteUrl === 'string' ? body.remoteUrl : undefined,
+      username: typeof body.username === 'string' ? body.username : undefined,
+      secret: typeof body.secret === 'string' ? body.secret : undefined,
+      clearToken: body.clearToken === true,
+    });
+  });
+
+  app.delete('/api/git/profiles/:id', async (req) => {
+    const { id } = req.params as { id: string };
+    ctx.gitProfiles.remove(id);
+    return { ok: true };
+  });
+
+  app.post('/api/git/profiles/:id/apply', async (req) => {
+    const { id } = req.params as { id: string };
+    const body = req.body as { ws?: string };
+    const ws = workspaceOf(ctx, body.ws);
+    return ctx.gitProfiles.apply(ws, id);
+  });
+
+  app.post('/api/git/profiles/:id/test', async (req) => {
+    const { id } = req.params as { id: string };
+    const body = req.body as { ws?: string };
+    const ws = workspaceOf(ctx, body.ws);
+    return ctx.gitProfiles.test(ws, id);
   });
 
   app.get('/api/diff/session', async (req) => {

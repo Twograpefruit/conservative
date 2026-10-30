@@ -13,6 +13,7 @@ import type { SqliteService } from './lib/sqlite.js';
 import type { RedisService } from './lib/redis.js';
 import type { MysqlService } from './lib/mysql.js';
 import type { GitCommandService } from './lib/gitCatalog.js';
+import type { GitProfileStore } from './lib/gitProfiles.js';
 import type { PtyService } from './lib/pty.js';
 import type { SearchContext } from './lib/search.js';
 
@@ -34,6 +35,7 @@ export interface AppContext {
   redis: RedisService;
   mysql: MysqlService;
   gitCommands: GitCommandService;
+  gitProfiles: GitProfileStore;
   pty: PtyService;
   search: SearchContext;
   probe: ProbeResult | null;

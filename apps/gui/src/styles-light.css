@@ -184,3 +184,19 @@ html[data-theme='light'] .notify-icon.level-error {
   background: #fee2e2;
   color: #b42318;
 }
+html[data-theme='light'] .diff-half.diff-add {
+  background: #e8f6ee;
+}
+html[data-theme='light'] .diff-half.diff-del {
+  background: #fdecee;
+}
+html[data-theme='light'] .diff-half.diff-empty {
+  background: #f3f5f9;
+}
+html[data-theme='light'] .archive-dialog,
+html[data-theme='light'] .git-profile {
+  box-shadow: none;
+}
+html[data-theme='light'] .quote-chip {
+  background: #eef2f8;
+}

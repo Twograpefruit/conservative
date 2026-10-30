@@ -296,15 +296,15 @@
 | M6-001 | 连接档案 CRUD | `connections.json` 只存 `authRef`；密码写入 Windows DPAPI（CurrentUser） | API/UI 新建、编辑、删除；文件 grep 无明文、无 password 字段 |
 | M6-002 | 连接测试 | SQLite select 1；Redis PING/INFO；错误映射为 502 | 两项均返回 ok；错误 host 返回明确错误 |
 | M6-003 | 元数据 | SQLite `sqlite_master` + `PRAGMA table_info/index_list/index_info` | users 表、列、idx_users_age 与 CLI 一致 |
-| M6-004 | 数据网格 | 结果表 + rowLimit + 滚动；默认 500 行 | 3 行表 + rowLimit=2 时返回 2 行并标 truncated；万行虚拟滚动为 PARTIAL |
+| M6-004 | 数据网格 | 结果表 + rowLimit + 行虚拟化；默认 500，最大 10k | MySQL 1000 行仅渲染 33 个 tbody 行，滚动到底显示第 1000 行 |
 | M6-005 | 只读守卫 | 只读档案拒绝写；SQLite 以 readOnly 打开 | `update users set age=1` → 403，数据库未变 |
 | M6-006 | 单语句 | 引号/注释感知的 SQL 扫描；多语句拒绝 | `select 1; drop table users` → 400 |
 | M6-007 | 参数绑定 | `params` 数组传给 prepared statement | `select ... where age > ?` 正确返回 |
 | M6-008 | 超时/行数 | worker_threads 隔离 + terminate 超时；rowLimit | rowLimit 实测；超时逻辑已实现，慢查询注入为 PARTIAL |
-| M6-009 | 导出 | CSV/JSON，带 content-disposition | CSV 实测；当前先聚合并发，非严格流式（PARTIAL） |
+| M6-009 | 导出 | CSV/JSON，带 content-disposition | MySQL 逐行流式写响应（200 行 JSON 可解析）；SQLite 仍缓冲 |
 | M6-010 | 编辑器联动 | `.sql` 的 Ctrl+Enter / 数据面板执行按钮 → Data panel | Playwright：编辑 SQL → Ctrl+Enter → 数据面板返回 2 行 |
 | M6-011 | Redis SCAN | 键浏览只用 `SCAN cursor MATCH COUNT`；类型 pipeline | CI 断言 PASS：捕获 SCAN，无 KEYS/FLUSH/CONFIG |
-| M6-012 | 大键空间 | 游标 + 加载更多 + 100/页 | 3 键实测；10 万键压测未做（PARTIAL） |
+| M6-012 | 大键空间 | 游标 + 加载更多 + 100/页 | 按用户要求跳过 10 万键压测（SKIPPED） |
 | M6-013 | 类型查看 | string/hash/list/set/zset/stream 分派，大值截断 | hash/string/list 实测 |
 | M6-014 | 危险命令 | 只读白名单；KEYS/FLUSHALL/CONFIG/SHUTDOWN/EVAL 等 403 | GET 成功；KEYS/FLUSHALL 均 403 |
 | M6-015 | 订阅 | BFF SSE + ioredis 订阅连接 | Playwright 订阅频道，外部 PUBLISH 后前端收到消息 |
@@ -388,3 +388,38 @@
 - 设置页新增“通知”卡片：启用、系统通知权限、隐私模式、免打扰时段、来源静音。
 
 > 说明：M4 的 Tauri 原生通知尚未打包，当前以浏览器通知作为原生通道；禁用权限时自动降级为应用内通知。
+
+
+---
+
+## 18. 2026-10-30 增量接口与行为
+
+### 18.1 会话
+
+- `POST /api/oc/api/session/{id}/fork` body `{before: messageID}`：在该消息之前创建独立分支会话。
+- 消息操作：复制、引用（引用块随下一条 prompt 发送）、分支；user/assistant 均显示时间。
+- 图片：`POST /api/chat/attachment` body `{data(base64), mime, name}` → `{name,url,uri,mime,size}`；
+  `GET /api/chat/attachment?name=` 返回图片。文件保存在 `%APPDATA%\opencode-gui\attachments`。
+- 归档：仍使用 opencode `PATCH /api/session/{id} {archived}`；分组名称保存在本机
+  `localStorage.ocg.archiveGroups`，归档区按名称分组。
+- 进入会话强制滚动到底部；对话搜索查询与结果保存到 sessionStorage，跳转/切换视图不清空。
+
+### 18.2 Git
+
+- `GET/POST /api/git/profiles`、`PUT/DELETE /api/git/profiles/:id`
+  body `{label,provider:gitee|github|git,remoteUrl,username,secret?,clearToken?}`。
+- `POST /api/git/profiles/:id/apply` body `{ws}`：把 `origin` 指向该远端。
+- `POST /api/git/profiles/:id/test` body `{ws}`：临时 askpass + `git ls-remote`，令牌不落盘到 git 配置。
+- `POST /api/git/overwrite-lines` body `{ws,path,changes:[{kind:'add'|'del',newLine,text}]}`：
+  按行把工作区覆盖回原版本；行内容不匹配返回 409 `line_conflict`。
+- Diff 视图改为左右分栏，可勾选单行或代码块后覆盖。
+
+### 18.3 界面 / M6 / M8
+
+- `--ui-scale` 50–250%，使用 `ResizeObserver` 监听视口并以补偿 transform 实时铺满；
+  `--font-scale` 60–300%，顶栏/设置页均有数字输入框。
+- 字体：设置页可加载本机字体（Local Font Access API）并一键重置 UI/文字/字体。
+- MySQL 结果表格按行虚拟化（`ROW_H=24`），`rowLimit` 最大 10k。
+- MySQL 导出改为流式响应（CSV/JSON），不再聚合成数组；SQLite 仍为缓冲导出。
+- PostgreSQL 按用户要求不处理；Redis 10 万键压测跳过。
+- 通知新增标题闪烁：失焦时显示未读计数，聚焦、全部已读或清空后恢复标题。

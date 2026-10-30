@@ -26,6 +26,7 @@ export interface NotifySettings {
   enabled: boolean;
   native: boolean;
   privacy: boolean;
+  flashTitle: boolean;
   quietHours: { enabled: boolean; start: string; end: string };
   muteSources: NotificationSource[];
   muteSessions: string[];
@@ -65,10 +66,39 @@ const DEFAULT_SETTINGS: NotifySettings = {
   enabled: true,
   native: false,
   privacy: false,
+  flashTitle: true,
   quietHours: { enabled: false, start: '22:00', end: '08:00' },
   muteSources: [],
   muteSessions: [],
 };
+
+let flashTimer: ReturnType<typeof setInterval> | null = null;
+let flashBase = '';
+let flashPhase = false;
+
+function startTitleFlash(count: number, enabled: boolean): void {
+  if (!enabled || flashTimer) return;
+  flashBase = document.title.replace(/^\(\d+\+?\)\s*/, '').replace(/^⏺\s*/, '');
+  flashPhase = false;
+  flashTimer = setInterval(() => {
+    flashPhase = !flashPhase;
+    document.title = flashPhase ? `(${count > 99 ? '99+' : count}) 新通知` : `⏺ 新通知`;
+  }, 700);
+}
+
+function stopTitleFlash(): void {
+  if (!flashTimer) return;
+  clearInterval(flashTimer);
+  flashTimer = null;
+  document.title = flashBase || 'OpenCode GUI';
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('focus', stopTitleFlash);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') stopTitleFlash();
+  });
+}
 
 function loadItems(): AppNotification[] {
   try {
@@ -196,6 +226,8 @@ export const useNotify = create<NotifyStore>((set, get) => ({
     if (quiet) return;
     const focused = document.visibilityState === 'visible' && document.hasFocus();
     if (!focused) {
+      const unread = get().items.filter((n) => !n.read).length;
+      startTitleFlash(unread, settings.flashTitle);
       if (settings.native) showNative(next, privacy);
       return;
     }
@@ -210,11 +242,13 @@ export const useNotify = create<NotifyStore>((set, get) => ({
   markAllRead: () => {
     set({ items: get().items.map((n) => ({ ...n, read: true })) });
     save(get().items);
+    stopTitleFlash();
   },
 
   clear: () => {
     set({ items: [] });
     save([]);
+    stopTitleFlash();
   },
 
   open: (id) => {

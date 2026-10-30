@@ -1,4 +1,6 @@
 import mysql from 'mysql2/promise';
+import mysqlCallback from 'mysql2';
+import { PassThrough, type Readable } from 'node:stream';
 import type {
   ConnectionProfile,
   DbColumnInfo,
@@ -230,6 +232,75 @@ export class MysqlService {
     const result = await this.query(profile, secret, sql, params);
     if (result.kind !== 'read') throw new HttpError(400, '只能导出查询结果', 'not_read_only');
     return { columns: result.columns, rows: result.rows };
+  }
+
+  /**
+   * Stream a read-only query straight to the HTTP response. Rows are never
+   * accumulated in memory, unlike exportRows().
+   */
+  async exportStream(
+    profile: MysqlProfile,
+    secret: string | null,
+    sql: string,
+    params: unknown[],
+    format: 'csv' | 'json',
+  ): Promise<Readable> {
+    this.ensure(profile);
+    assertStatement(sql, true);
+    const conn = mysqlCallback.createConnection({
+      host: profile.host,
+      port: profile.port || 3306,
+      user: profile.user,
+      password: secret ?? '',
+      ...(profile.database ? { database: profile.database } : {}),
+      connectTimeout: Math.min(profile.timeoutMs || 5000, 10_000),
+      multipleStatements: false,
+      dateStrings: true,
+      supportBigNumbers: true,
+      bigNumberStrings: true,
+      charset: 'utf8mb4',
+      rowsAsArray: true,
+    });
+    const out = new PassThrough();
+    let columns: string[] = [];
+    let first = true;
+    const esc = (v: unknown) => {
+      const s = v == null ? '' : typeof v === 'string' ? v : JSON.stringify(clean(v));
+      return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    conn.on('error', (err) => out.destroy(err instanceof Error ? err : new Error(String(err))));
+    conn.connect((err) => {
+      if (err) {
+        out.destroy(err);
+        return;
+      }
+      const query = conn.query({ sql, values: params });
+      query.on('fields', (fields: Array<{ name: string }>) => {
+        columns = fields.map((f) => f.name);
+        if (format === 'csv') out.write(columns.map(esc).join(',') + '\r\n');
+        else out.write('[');
+      });
+      query.on('result', (row: unknown) => {
+        const values = Array.isArray(row) ? row : [row];
+        if (format === 'csv') {
+          out.write(values.map(esc).join(',') + '\r\n');
+        } else {
+          const obj = Object.fromEntries(columns.map((c, i) => [c, clean(values[i])]));
+          out.write(`${first ? '' : ','}${JSON.stringify(obj)}`);
+          first = false;
+        }
+      });
+      query.on('error', (queryErr: Error) => {
+        out.destroy(queryErr);
+        conn.end();
+      });
+      query.on('end', () => {
+        if (format === 'json') out.write(']');
+        out.end();
+        conn.end();
+      });
+    });
+    return out;
   }
 
   static quoteTable(name: string): string {

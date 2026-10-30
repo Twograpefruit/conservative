@@ -1026,3 +1026,30 @@ main "$@"
 | M7-017 | 输出脱敏 | PASS（token/password 正则打码；单测） |
 
 > 说明：已移除 Neumorphism 风格代码与 `docs/neumorphism.md`，恢复原版暗色 UI；亮色主题为普通平面主题。M7-006 保留键提示仍为 PARTIAL。
+
+
+---
+
+## 7.17 2026-10-30 增量验收（会话 / 分支 / Git / 自适应 / M6 / M8）
+
+| 编号 | 用例 | 结果 |
+| ---- | ---- | ---- |
+| UI-011 | 界面大小实时自适应 | PASS（ResizeObserver + 补偿 transform；1200×800 与 1700×1000 下 app 尺寸与视口一致） |
+| UI-012 | 文字大小 60–300% | PASS（顶栏与设置页均可直接输入百分比；不再限制 125%） |
+| UI-013 | 字体加载与重置 | PASS（Local Font Access 枚举 + document.fonts.load；一键重置 UI/文字/字体） |
+| CHAT-001 | 消息复制 | PASS（user/assistant 悬停出现“复制”） |
+| CHAT-002 | 对话引用 | PASS（“引用”生成 quote chip，发送时作为引用块前置） |
+| CHAT-003 | 对话分支 | PASS（消息“分支”→ POST /api/session/{id}/fork {before}，生成独立会话；API 实测 200） |
+| CHAT-004 | 消息时间 | PASS（消息头/气泡显示 HH:mm:ss，跨天显示日期） |
+| CHAT-005 | 图片发送 | PASS（文件选择 + 剪切板粘贴；上传到附件目录并以 FileAttachment 发送；Playwright 验证预览） |
+| CHAT-006 | 进入会话滚到底部 | PASS（activeSession 变化后 0/80/320ms 强制滚到底） |
+| CHAT-007 | 搜索状态保留 | PASS（查询与结果在跳转、切换视图后仍保留；sessionStorage） |
+| ARCH-001 | 归档命名与分组 | PASS（归档弹窗可选已有名称或新建；归档区按名称分组） |
+| GIT-010 | 自定义 Gitee/Git 远端 | PASS（新增/编辑/删除/测试/设为 origin；令牌仅 DPAPI，远端 URL 无凭据） |
+| GIT-011 | PyCharm 风格左右对比 | PASS（左右分栏 + 每行复选框） |
+| GIT-012 | 按行覆盖 | PASS（临时仓库：恢复删除行 + 移除新增行，文件回到 HEAD；冲突/越界拒绝） |
+| M6-018 | MySQL 万行虚拟网格 | PASS（1000 行查询仅渲染 33 个 tbody 行，滚动到底显示第 1000 行） |
+| M6-019 | MySQL 严格流式导出 | PASS（CSV/JSON 逐行写响应；200 行 JSON 可完整解析） |
+| M6-020 | PostgreSQL | SKIPPED（本地无环境，按用户要求不处理） |
+| M6-021 | Redis 10 万键压测 | SKIPPED（按用户要求不做） |
+| M8-011 | 标题闪烁 | PASS（失焦且未静音时标题在“(N) 新通知 / ⏺ 新通知”间切换；聚焦/全部已读/清空停止） |

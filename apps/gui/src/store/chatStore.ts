@@ -37,6 +37,7 @@ interface ChatStore {
   selectSession: (id: string) => Promise<void>;
   loadMessages: (id: string) => Promise<void>;
   createSession: () => Promise<void>;
+  forkSession: (sourceSessionID: string, beforeMessageID: string) => Promise<void>;
   deleteSession: (id: string) => Promise<void>;
   renameSession: (id: string, title: string) => Promise<void>;
   sendPrompt: (text: string, files?: PromptUploadFile[]) => Promise<void>;
@@ -266,6 +267,25 @@ export const useChat = create<ChatStore>((set, get) => ({
       useApp.getState().setView('chat');
     } catch (err) {
       useApp.getState().notify(err instanceof Error ? err.message : String(err), 'error');
+    }
+  },
+
+  forkSession: async (sourceSessionID, beforeMessageID) => {
+    try {
+      const res = await api<{ data: SessionInfo }>(
+        `/api/oc/api/session/${encodeURIComponent(sourceSessionID)}/fork`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ before: beforeMessageID }),
+          headers: { 'content-type': 'application/json' },
+        },
+      );
+      await get().refreshSessions();
+      await get().selectSession(res.data.id);
+      useApp.getState().setView('chat');
+      useApp.getState().notify('已从该消息创建分支会话');
+    } catch (err) {
+      useApp.getState().notify(err instanceof Error ? err.message : '分支创建失败', 'error');
     }
   },
 

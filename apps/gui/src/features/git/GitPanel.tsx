@@ -5,8 +5,9 @@ import { api, qs } from '../../api/client.js';
 import { useApp } from '../../store/appStore.js';
 import { DiffView, type HunkAction } from '../diff/DiffView.js';
 import { GitCommands } from './GitCommands.js';
+import { GitProfiles } from './GitProfiles.js';
 
-type Tab = 'changes' | 'log' | 'snapshots' | 'commands';
+type Tab = 'changes' | 'log' | 'snapshots' | 'commands' | 'remotes';
 
 interface GitInfo {
   repo: boolean;
@@ -87,6 +88,24 @@ export function GitPanel() {
     setBase(nextBase);
     setSnapshotDiff(null);
     await loadDiff(next, nextBase);
+  };
+
+  const overwriteLines = async (
+    file: FileDiff,
+    changes: Array<{ kind: 'add' | 'del'; newLine: number; text: string }>,
+  ) => {
+    if (!changes.length) return;
+    try {
+      await api('/api/git/overwrite-lines', {
+        method: 'POST',
+        body: JSON.stringify({ ws: workspaceID, path: file.path, changes }),
+        headers: { 'content-type': 'application/json' },
+      });
+      notify(`已用原版本覆盖 ${changes.length} 行`);
+      await reload();
+    } catch (err) {
+      notify(err instanceof Error ? err.message : '覆盖失败', 'error');
+    }
   };
 
   const applyHunk = async (file: FileDiff, hunkIndex: number, action: 'stage' | 'unstage' | 'discard') => {
@@ -255,6 +274,9 @@ export function GitPanel() {
           <button className={tab === 'commands' ? 'active' : ''} onClick={() => setTab('commands')}>
             命令
           </button>
+          <button className={tab === 'remotes' ? 'active' : ''} onClick={() => setTab('remotes')}>
+            远端
+          </button>
         </div>
 
         {tab === 'changes' ? (
@@ -341,6 +363,8 @@ export function GitPanel() {
       <section className="git-main">
         {tab === 'commands' ? (
           <GitCommands workspaceID={workspaceID} onChanged={() => void reload()} />
+        ) : tab === 'remotes' ? (
+          <GitProfiles workspaceID={workspaceID} onChanged={() => void reload()} />
         ) : (
           <>
         <div className="git-diff-head">
@@ -392,7 +416,11 @@ export function GitPanel() {
                 </div>
               </div>
             ) : null}
-            <DiffView files={files} actions={actions} />
+            <DiffView
+              files={files}
+              actions={actions}
+              onOverwrite={mode === 'working' ? (file, changes) => void overwriteLines(file, changes) : undefined}
+            />
           </div>
         ) : tab === 'snapshots' ? (
           <div className="git-diff-scroll">

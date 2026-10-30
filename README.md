@@ -31,23 +31,33 @@ opencode serve v2 (127.0.0.1 only, password held by BFF)
 | M5 | Language registry with lazy loading, Markdown source/preview, SQL dialect highlighting + format preview/apply/undo | Done (core; selection format partial) |
 | M6 | SQLite + MySQL + Redis connections, DPAPI credentials, read-only SQL guard, query/export, SCAN key browser, read-only command console, pub/sub | Done (SQLite/MySQL/Redis; PostgreSQL not enabled) |
 | M7 | Command registry + palette, keybinding overrides/conflict detection, dark/light/system themes, Git command catalog with argv preview, safety confirm, output/hints/history | Done (core; reserved-key warnings pending) |
-| M8 | In-app notification center, focused/blurred routing, native Notification API, 3s dedupe, quiet hours, privacy mode, mute by source/session, deep links | Done (core; Tauri native + workspace mute partial) |
+| M8 | In-app notification center, focused/blurred routing, native Notification API, title flashing, 3s dedupe, quiet hours, privacy mode, mute by source/session, deep links | Done (core; Tauri native + workspace mute partial) |
 
 ### UI & conversation additions (2026-10-30)
 
 - **Original dark theme**: restored the pre-Neumorphism dark palette; CodeMirror uses One Dark,
   xterm uses the dark terminal theme.
-- **Text size**: top-bar `A- / A+` and Settings slider, 85%–125%, persisted locally; only text
-  (chat, editor, terminal, tables) scales.
-- **UI size**: separate top-bar `UI- / UI+` and Settings slider, 80%–130%; scales the whole layout
-  and stays layout-compensated so the app fills the viewport without scrollbars.
-- **Right-click menus**: file tree (open/rename/delete), session list (archive/rename/delete) and
-  editor tabs (close/close others/close all/copy path/reload).
+- **Text size**: top-bar `A- / A+`, direct percentage input and Settings slider/number input,
+  60%–300%, persisted locally; only text (chat, editor, terminal, tables) scales.
+- **UI size**: separate top-bar `UI- / UI+`, direct percentage input and Settings controls,
+  50%–250%; the layout re-measures `ResizeObserver` viewport dimensions and uses a compensated
+  transform, so it keeps filling the window after every resize (no dead right/bottom area).
+- **Fonts**: Settings can pick a UI/body font, load installed fonts via the Local Font Access API,
+  and reset UI/text/font to defaults from one button.
+- **Right-click menus**: file tree (open/rename/delete), session list (archive/rename/delete/mute)
+  and editor tabs (close/close others/close all/copy path/reload).
 - **Session archive**: archive/unarchive from the always-visible archive icon or the session
-  context menu, plus an optional archived section, backed by opencode's
-  `PATCH /api/session/{id} {archived}`.
+  context menu. Archiving asks for an existing archive name or a new one; archived sessions are
+  grouped by name. Backed by opencode's `PATCH /api/session/{id} {archived}` plus local grouping.
 - **In-conversation navigation**: `↑`/`↓` (also `Alt+↑/↓`) jump between messages, `⇣` returns to
   the latest, and `Ctrl+F` opens in-conversation keyword search with snippets and jump targets.
+  The query/results survive jumping and switching views (sessionStorage), and entering a session
+  always scrolls to the newest message.
+- **Conversation tools**: every user/assistant message has copy, quote and branch actions, with a
+  timestamp. Quote inserts a block-quote reference into the composer; branch calls opencode's
+  `POST /api/session/{id}/fork {before}` and opens the new independent session.
+- **Images**: send images from the file picker or paste clipboard images; files are stored under
+  `%APPDATA%\opencode-gui\attachments` and attached as `PromptInput.FileAttachment` URIs.
 - **Continuous `@` mentions**: typing `@` (at start or after whitespace, repeatedly) opens a
   searchable file picker backed by `GET /api/fs/find`; multiple files can be referenced in one
   message and are sent as `PromptInput.FileAttachment` entries with `file:///` URIs and
@@ -57,21 +67,28 @@ opencode serve v2 (127.0.0.1 only, password held by BFF)
   DOMPurify + task-list writeback, and SQL dialect highlighting plus `sql-formatter` preview →
   apply → undo (full file) and selection formatting.
 - **M6 data**: SQLite (built-in `node:sqlite`, worker-isolated with timeout/row-limit), MySQL
-  (`mysql2`, information_schema metadata, session timeouts, read-only guard) and Redis (ioredis,
-  SCAN-only key browser, read-only command whitelist, pub/sub). Passwords go to Windows DPAPI;
-  `connections.json` contains only an `authRef`. Read-only profiles reject writes and
-  multi-statement SQL. Ctrl+Enter in a `.sql` file sends the selection/file to the Data panel.
+  (`mysql2`, information_schema metadata, session timeouts, read-only guard, virtualized 10k-row
+  result grid, true streaming CSV/JSON export) and Redis (ioredis, SCAN-only key browser,
+  read-only command whitelist, pub/sub). Passwords go to Windows DPAPI; `connections.json`
+  contains only an `authRef`. Read-only profiles reject writes and multi-statement SQL. Ctrl+Enter
+  in a `.sql` file sends the selection/file to the Data panel.
 - **CI assertions**: `M6-011` (no `KEYS`) and `M6-016` (no credential leakage) now run against
   the real endpoints; both pass locally.
 - **M7 interaction**: command registry + `Ctrl+Shift+P` palette, user keybinding overrides with
   conflict detection, dark/light/system themes (CodeMirror One Dark ↔ light), and a Git command
   catalog with argv preview, danger confirmation + pre-command shadow snapshot, redacted
   stdout/stderr, actionable error hints and persistent history.
+- **Git remotes / Gitee**: the Git panel has a “远端” tab for custom Gitee/GitHub/generic Git
+  profiles (remote URL, username, token). Tokens live in DPAPI; “设为 origin” updates the remote,
+  “测试” uses a temporary askpass helper and never writes the token into `.git/config`.
+- **PyCharm-style diff**: side-by-side old/new view with per-line checkboxes. Selected added lines
+  are removed and selected deleted lines are restored directly in the working file
+  (`POST /api/git/overwrite-lines`), independent of hunk-level stage/unstage/discard.
 - **M8 notifications**: notification center in the top bar (unread badge, mark all read, clear),
   source-aware app toasts, native `Notification` when the window is blurred (permission-based),
-  3-second dedupe/aggregation, source and per-session mute, quiet hours, privacy mode, and
-  click-through deep links to the session/view. Chat completion/failure/permission, Git command
-  results, DB queries and terminal exits are wired in.
+  flashing document title with the unread count, 3-second dedupe/aggregation, source and
+  per-session mute, quiet hours, privacy mode, and click-through deep links to the session/view.
+  Chat completion/failure/permission, Git command results, DB queries and terminal exits are wired in.
 
 See [`docs/api-contract.md`](docs/api-contract.md) for the acceptance checklist and
 [`docs/acceptance.md`](docs/acceptance.md) for the probed opencode 2.2.1 contract.
@@ -219,10 +236,10 @@ real assertions currently report **BLOCKED**; `--self-test` validates the detect
 - **M4 is a scaffold.** Tray, installer, shell-owned lifecycle and WebView memory instrumentation
   are not implemented. `apps/desktop/README.md` lists the remaining work.
 - **M6 is SQLite/MySQL/Redis.** SQLite uses Node's built-in `node:sqlite` (Node 22.5+/24); on
-  Node 20 the SQLite feature is unavailable. PostgreSQL profiles are rejected with
-  `driver_not_available` until its driver is added. The result grid is limited by `rowLimit`
-  (default 500, max 10k) rather than a full virtualized 10k-row grid; export currently buffers
-  the result before writing.
+  Node 20 the SQLite feature is unavailable. PostgreSQL is intentionally not enabled (no local
+  test instance) and those profiles return `driver_not_available`. MySQL results are virtualized
+  in the UI up to `rowLimit` (default 500, max 10k) and MySQL CSV/JSON export streams row by row.
+  SQLite export still buffers, and the 100k-key Redis stress test is intentionally skipped.
 - **Redis command console is read-only.** `KEYS`, `FLUSHALL`, `CONFIG`, `SHUTDOWN`, `EVAL`, etc.
   are hard-blocked; key navigation always uses `SCAN` cursors.
 - **M7 reserved-key warnings** are not implemented yet; binding `Ctrl+W/F5` etc. may still be

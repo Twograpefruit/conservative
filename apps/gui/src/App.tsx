@@ -35,6 +35,8 @@ export function App() {
   const setUiScale = useApp((s) => s.setUiScale);
   const textScale = useApp((s) => s.textScale);
   const setTextScale = useApp((s) => s.setTextScale);
+  const fontFamily = useApp((s) => s.fontFamily);
+  const resetAppearance = useApp((s) => s.resetAppearance);
   const themeMode = useApp((s) => s.themeMode);
   const resolvedTheme = useApp((s) => s.resolvedTheme);
   const setThemeMode = useApp((s) => s.setThemeMode);
@@ -73,10 +75,30 @@ export function App() {
   }, [workspaceID]);
 
   useEffect(() => {
+    const root = document.documentElement;
+    const apply = () => {
+      root.style.setProperty('--viewport-w', `${window.innerWidth}px`);
+      root.style.setProperty('--viewport-h', `${window.innerHeight}px`);
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(root);
+    window.addEventListener('resize', apply);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', apply);
+    };
+  }, []);
+
+  useEffect(() => {
     document.documentElement.style.setProperty('--ui-scale', String(uiScale));
     document.documentElement.style.setProperty('--font-scale', String(textScale));
+    document.documentElement.style.setProperty(
+      '--font-family',
+      fontFamily || "-apple-system, 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif",
+    );
     document.documentElement.dataset.theme = resolvedTheme;
-  }, [uiScale, textScale, resolvedTheme]);
+  }, [uiScale, textScale, fontFamily, resolvedTheme]);
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
@@ -172,23 +194,52 @@ export function App() {
         </nav>
         <div className="top-status">
           <div className="font-controls" title={`文字大小 ${Math.round(textScale * 100)}%`}>
-            <button className="icon-btn" onClick={() => setTextScale(textScale - 0.05)} disabled={textScale <= 0.85}>
+            <button className="icon-btn" onClick={() => setTextScale(textScale - 0.05)} disabled={textScale <= 0.6}>
               A-
             </button>
-            <span>{Math.round(textScale * 100)}%</span>
-            <button className="icon-btn" onClick={() => setTextScale(textScale + 0.05)} disabled={textScale >= 1.25}>
+            <input
+              className="scale-input"
+              type="number"
+              min={60}
+              max={300}
+              step={5}
+              value={Math.round(textScale * 100)}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                if (Number.isFinite(v)) setTextScale(v / 100);
+              }}
+              title="文字大小（60–300%）"
+            />
+            <span className="scale-unit">%</span>
+            <button className="icon-btn" onClick={() => setTextScale(textScale + 0.05)} disabled={textScale >= 3}>
               A+
             </button>
           </div>
           <div className="font-controls" title={`界面大小 ${Math.round(uiScale * 100)}%`}>
-            <button className="icon-btn" onClick={() => setUiScale(uiScale - 0.05)} disabled={uiScale <= 0.8}>
+            <button className="icon-btn" onClick={() => setUiScale(uiScale - 0.05)} disabled={uiScale <= 0.5}>
               UI-
             </button>
-            <span>{Math.round(uiScale * 100)}%</span>
-            <button className="icon-btn" onClick={() => setUiScale(uiScale + 0.05)} disabled={uiScale >= 1.3}>
+            <input
+              className="scale-input"
+              type="number"
+              min={50}
+              max={250}
+              step={5}
+              value={Math.round(uiScale * 100)}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                if (Number.isFinite(v)) setUiScale(v / 100);
+              }}
+              title="界面大小（50–250%）"
+            />
+            <span className="scale-unit">%</span>
+            <button className="icon-btn" onClick={() => setUiScale(uiScale + 0.05)} disabled={uiScale >= 2.5}>
               UI+
             </button>
           </div>
+          <button className="icon-btn" title="重置界面、文字与字体为默认" onClick={resetAppearance}>
+            ↺
+          </button>
           <button
             className="icon-btn"
             title={`主题：${themeMode === 'system' ? `跟随系统（${resolvedTheme}）` : themeMode}`}

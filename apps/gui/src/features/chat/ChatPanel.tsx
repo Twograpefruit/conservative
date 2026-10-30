@@ -19,6 +19,99 @@ function timeAgo(ts?: number): string {
   return new Date(ts).toLocaleDateString();
 }
 
+function timeText(ts?: number): string {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const today = new Date();
+  const sameDay = d.toDateString() === today.toDateString();
+  return sameDay
+    ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    : d.toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+export interface QuoteRef {
+  id: string;
+  role: string;
+  text: string;
+}
+
+export interface ChatImage {
+  name: string;
+  url: string;
+  uri: string;
+  mime: string;
+  size: number;
+}
+
+function attachmentPreview(uri?: string): string | null {
+  if (!uri) return null;
+  const name = uri.split('/').pop();
+  if (!name) return null;
+  if (!/\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(name)) return null;
+  return `/api/chat/attachment?name=${encodeURIComponent(name)}`;
+}
+
+function UserAttachments({ files }: { files?: Array<{ source?: { type?: string; uri?: string }; name?: string; mime?: string }> }) {
+  if (!files?.length) return null;
+  return (
+    <div className="msg-attachments">
+      {files.map((f, i) => {
+        const src = attachmentPreview(f.source?.uri);
+        return src ? (
+          <a key={`${f.name ?? i}`} href={src} target="_blank" rel="noreferrer" className="msg-image">
+            <img src={src} alt={f.name ?? 'image'} />
+          </a>
+        ) : (
+          <span className="msg-attachment" key={`${f.name ?? i}`}>
+            📎 {f.name ?? f.mime ?? '附件'}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+function MessageMeta({
+  message,
+  role,
+  onQuote,
+  onBranch,
+}: {
+  message: MessageInfo;
+  role: string;
+  onQuote: (quote: QuoteRef) => void;
+  onBranch: (messageID: string) => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const text = messageText(message);
+  return (
+    <div className="msg-actions">
+      <button
+        className="icon-btn"
+        title="复制消息内容"
+        onClick={() => {
+          void navigator.clipboard?.writeText(text).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1200);
+          });
+        }}
+      >
+        {copied ? '已复制' : '复制'}
+      </button>
+      <button
+        className="icon-btn"
+        title="在输入框中引用此消息"
+        onClick={() => onQuote({ id: message.id, role, text: text.slice(0, 1200) })}
+      >
+        引用
+      </button>
+      <button className="icon-btn" title="从此消息之前创建新会话分支" onClick={() => onBranch(message.id)}>
+        分支
+      </button>
+    </div>
+  );
+}
+
 function statusDot(status?: string): string {
   switch (status) {
     case 'busy':
@@ -122,9 +215,13 @@ function SessionItem({
 function AssistantBlock({
   message,
   stream,
+  onQuote,
+  onBranch,
 }: {
   message?: MessageInfo;
   stream?: AssistantStream;
+  onQuote: (quote: QuoteRef) => void;
+  onBranch: (messageID: string) => void;
 }) {
   const parts = renderParts(message, stream);
   const assistant = message && (message as { type?: string }).type === 'assistant' ? (message as { agent?: string; model?: { id?: string }; time?: { created?: number }; cost?: number; error?: { message?: string } }) : null;
@@ -135,6 +232,7 @@ function AssistantBlock({
         {assistant?.agent ? <span className="msg-chip">{assistant.agent}</span> : null}
         {assistant?.model?.id ? <span className="msg-chip">{assistant.model.id}</span> : null}
         {assistant?.cost ? <span className="msg-chip">${assistant.cost.toFixed(4)}</span> : null}
+        {assistant?.time?.created ? <span className="msg-time">{timeText(assistant.time.created)}</span> : null}
       </div>
       <div className="msg-body">
         {parts.map((part) => {
@@ -155,17 +253,31 @@ function AssistantBlock({
         })}
         {assistant?.error?.message ? <div className="msg-error">{assistant.error.message}</div> : null}
       </div>
+      {message ? <MessageMeta message={message} role="assistant" onQuote={onQuote} onBranch={onBranch} /> : null}
     </div>
   );
 }
 
-function UserBlock({ message }: { message: MessageInfo }) {
+function UserBlock({
+  message,
+  onQuote,
+  onBranch,
+}: {
+  message: MessageInfo;
+  onQuote: (quote: QuoteRef) => void;
+  onBranch: (messageID: string) => void;
+}) {
   const text = (message as { text?: string }).text ?? '';
+  const files = (message as { files?: Array<{ source?: { type?: string; uri?: string }; name?: string; mime?: string }> }).files;
+  const created = (message as { time?: { created?: number } }).time?.created;
   return (
     <div className="msg user">
       <div className="bubble">
-        <Markdown text={text} />
+        {text ? <Markdown text={text} /> : null}
+        <UserAttachments files={files} />
+        <div className="bubble-time">{timeText(created)}</div>
       </div>
+      <MessageMeta message={message} role="user" onQuote={onQuote} onBranch={onBranch} />
     </div>
   );
 }
@@ -179,8 +291,20 @@ function toFileUri(workspacePath: string | undefined, rel: string): string {
   return `file:///${abs.replace(/^\/+/, '')}`;
 }
 
-function Composer({ session, busy }: { session: SessionInfo | null; busy: boolean }) {
+function Composer({
+  session,
+  busy,
+  quote,
+  onClearQuote,
+}: {
+  session: SessionInfo | null;
+  busy: boolean;
+  quote: QuoteRef | null;
+  onClearQuote: () => void;
+}) {
   const [text, setText] = useState('');
+  const [images, setImages] = useState<ChatImage[]>([]);
+  const [uploading, setUploading] = useState(false);
   const sendPrompt = useChat((s) => s.sendPrompt);
   const interrupt = useChat((s) => s.interrupt);
   const models = useChat((s) => s.models);
@@ -191,6 +315,7 @@ function Composer({ session, busy }: { session: SessionInfo | null; busy: boolea
   const workspaces = useApp((s) => s.workspaces);
   const notify = useApp((s) => s.notify);
   const ta = useRef<HTMLTextAreaElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
   const [mentionOpen, setMentionOpen] = useState(false);
   const [mentionStart, setMentionStart] = useState(0);
   const [mentionQuery, setMentionQuery] = useState('');
@@ -254,9 +379,37 @@ function Composer({ session, busy }: { session: SessionInfo | null; busy: boolea
     setSelectedFiles((prev) => prev.filter((f) => f.path !== path));
   };
 
+  const uploadImages = async (files: File[]) => {
+    const list = files.filter((f) => f.type.startsWith('image/'));
+    if (!list.length) return;
+    setUploading(true);
+    try {
+      const uploaded: ChatImage[] = [];
+      for (const file of list.slice(0, 8)) {
+        const data = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result ?? ''));
+          reader.onerror = () => reject(reader.error ?? new Error('读取图片失败'));
+          reader.readAsDataURL(file);
+        });
+        const res = await api<ChatImage>('/api/chat/attachment', {
+          method: 'POST',
+          body: JSON.stringify({ data, mime: file.type || 'image/png', name: file.name }),
+          headers: { 'content-type': 'application/json' },
+        });
+        uploaded.push(res);
+      }
+      setImages((prev) => [...prev, ...uploaded].slice(0, 12));
+    } catch (err) {
+      notify(err instanceof Error ? err.message : '图片上传失败', 'error');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const submit = async () => {
     const value = text;
-    if (!value.trim() || !session) return;
+    if ((!value.trim() && !images.length && !quote) || !session) return;
     const files: PromptUploadFile[] = [];
     for (const f of selectedFiles) {
       const token = `@${f.path}`;
@@ -268,10 +421,18 @@ function Composer({ session, busy }: { session: SessionInfo | null; busy: boolea
         mention: { start, end: start + token.length, text: token },
       });
     }
+    for (const image of images) {
+      files.push({ uri: image.uri, name: image.name, description: `image:${image.mime}` });
+    }
+    const quoted = quote
+      ? `> 引用 ${quote.role}：${quote.text.replace(/\n/g, '\n> ')}\n\n`
+      : '';
     setText('');
     setSelectedFiles([]);
+    setImages([]);
     setMentionOpen(false);
-    await sendPrompt(value, files);
+    onClearQuote();
+    await sendPrompt(`${quoted}${value}`, files);
     ta.current?.focus();
   };
 
@@ -321,15 +482,46 @@ function Composer({ session, busy }: { session: SessionInfo | null; busy: boolea
             ))}
           </div>
         ) : null}
+        {quote ? (
+          <div className="quote-chip" title={quote.text}>
+            <span className="quote-label">引用 {quote.role}</span>
+            <span className="quote-text">{quote.text.replace(/\s+/g, ' ').slice(0, 140)}</span>
+            <button type="button" onClick={onClearQuote} aria-label="取消引用">
+              ×
+            </button>
+          </div>
+        ) : null}
+        {images.length ? (
+          <div className="image-chips">
+            {images.map((img) => (
+              <span className="image-chip" key={img.url}>
+                <img src={img.url} alt={img.name} />
+                <button type="button" onClick={() => setImages((prev) => prev.filter((x) => x.url !== img.url))}>
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : null}
         <textarea
           ref={ta}
           value={text}
-          placeholder={session ? '输入消息；输入 @ 引用文件，可连续引用多个…' : '请先创建或选择一个会话'}
+          placeholder={session ? '输入消息；@ 引用文件，可粘贴/选择图片；Enter 发送' : '请先创建或选择一个会话'}
           rows={3}
           onChange={(e) => {
             const value = e.target.value;
             setText(value);
             detectMention(value, e.target.selectionStart ?? value.length);
+          }}
+          onPaste={(e) => {
+            const files = Array.from(e.clipboardData?.items ?? [])
+              .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
+              .map((item) => item.getAsFile())
+              .filter((f): f is File => Boolean(f));
+            if (files.length) {
+              e.preventDefault();
+              void uploadImages(files);
+            }
           }}
           onKeyDown={(e) => {
             if (mentionOpen && mentionFiles.length > 0) {
@@ -393,13 +585,37 @@ function Composer({ session, busy }: { session: SessionInfo | null; busy: boolea
             <span className="composer-hint" title="输入 @ 可连续引用多个文件">
               @ 引用文件
             </span>
+            <input
+              ref={fileInput}
+              type="file"
+              accept="image/*"
+              multiple
+              hidden
+              onChange={(e) => {
+                void uploadImages(Array.from(e.target.files ?? []));
+                e.target.value = '';
+              }}
+            />
+            <button
+              className="btn btn-small"
+              type="button"
+              onClick={() => fileInput.current?.click()}
+              disabled={!session || uploading}
+              title="选择图片或直接粘贴剪切板图片"
+            >
+              {uploading ? '上传中…' : '图片'}
+            </button>
           </div>
           {busy ? (
             <button className="btn btn-danger" onClick={() => void interrupt()}>
               停止
             </button>
           ) : (
-            <button className="btn btn-primary" onClick={() => void submit()} disabled={!session || !text.trim()}>
+            <button
+              className="btn btn-primary"
+              onClick={() => void submit()}
+              disabled={!session || (!text.trim() && !images.length && !quote)}
+            >
               发送
             </button>
           )}
@@ -416,6 +632,7 @@ export function ChatPanel() {
   const refresh = useChat((s) => s.refreshSessions);
   const select = useChat((s) => s.selectSession);
   const create = useChat((s) => s.createSession);
+  const fork = useChat((s) => s.forkSession);
   const del = useChat((s) => s.deleteSession);
   const rename = useChat((s) => s.renameSession);
   const reply = useChat((s) => s.replyPermission);
@@ -424,11 +641,16 @@ export function ChatPanel() {
   const setShowArchived = useChat((s) => s.setShowArchived);
   const archiveSession = useChat((s) => s.archiveSession);
   const [filter, setFilter] = useState('');
-  const [chatQuery, setChatQuery] = useState('');
-  const [chatSearchOpen, setChatSearchOpen] = useState(false);
+  const [chatQuery, setChatQuery] = useState(() => sessionStorage.getItem('ocg.chatQuery') ?? '');
+  const [chatSearchOpen, setChatSearchOpen] = useState(() => sessionStorage.getItem('ocg.chatSearchOpen') === '1');
   const [jumpIndex, setJumpIndex] = useState(0);
   const [flashID, setFlashID] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<MenuPosition | null>(null);
+  const [quote, setQuote] = useState<QuoteRef | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<SessionInfo | null>(null);
+  const [archiveName, setArchiveName] = useState('');
+  const archiveGroups = useApp((s) => s.archiveGroups);
+  const setArchiveGroup = useApp((s) => s.setArchiveGroup);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const anchors = useRef(new Map<string, HTMLDivElement>());
@@ -462,6 +684,34 @@ export function ChatPanel() {
       .slice(0, 80)
       .map((m) => ({ id: m.message.id, type: (m.message as { type?: string }).type ?? 'event', text: snippet(m.text, q) }));
   }, [messages, chatQuery]);
+
+  useEffect(() => {
+    setQuote(null);
+  }, [activeID]);
+
+  useEffect(() => {
+    sessionStorage.setItem('ocg.chatQuery', chatQuery);
+  }, [chatQuery]);
+
+  useEffect(() => {
+    sessionStorage.setItem('ocg.chatSearchOpen', chatSearchOpen ? '1' : '0');
+  }, [chatSearchOpen]);
+
+  useEffect(() => {
+    if (!activeID) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const jumpToBottom = () => {
+      if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    };
+    jumpToBottom();
+    const t1 = setTimeout(jumpToBottom, 80);
+    const t2 = setTimeout(jumpToBottom, 320);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [activeID]);
 
   useEffect(() => {
     const onSearch = () => setChatSearchOpen(true);
@@ -534,6 +784,27 @@ export function ChatPanel() {
           ? '错误'
           : '空闲';
 
+  const openArchive = (s: SessionInfo) => {
+    setArchiveName(archiveGroups[s.id] ?? '默认归档');
+    setArchiveTarget(s);
+  };
+
+  const confirmArchive = async () => {
+    if (!archiveTarget) return;
+    const group = archiveName.trim() || '默认归档';
+    await archiveSession(archiveTarget.id, true);
+    setArchiveGroup(archiveTarget.id, group);
+    setArchiveTarget(null);
+  };
+
+  const groupNames = Array.from(
+    new Set([...Object.values(archiveGroups), ...archivedSessions.map((s) => archiveGroups[s.id] ?? '未分组')]),
+  ).filter(Boolean);
+
+  const archivedFiltered = archivedSessions
+    .filter((s) => !filter || (s.title ?? '').toLowerCase().includes(filter.toLowerCase()))
+    .sort((a, b) => (archiveGroups[a.id] ?? '未分组').localeCompare(archiveGroups[b.id] ?? '未分组'));
+
   const sessionMenu = (e: React.MouseEvent, s: SessionInfo, archived = false) => {
     e.preventDefault();
     e.stopPropagation();
@@ -542,7 +813,7 @@ export function ChatPanel() {
       x: e.clientX,
       y: e.clientY,
       items: [
-        { label: archived ? '取消归档' : '归档会话', onClick: () => void archiveSession(s.id, !archived) },
+        { label: archived ? '取消归档' : '归档会话', onClick: () => archived ? void archiveSession(s.id, false) : openArchive(s) },
         {
           label: '重命名…',
           onClick: () => {
@@ -610,35 +881,39 @@ export function ChatPanel() {
                 const title = window.prompt('新的会话标题', s.title ?? '');
                 if (title) void rename(s.id, title);
               }}
-              onArchive={() => void archiveSession(s.id, true)}
+              onArchive={() => openArchive(s)}
               onContextMenu={(e) => sessionMenu(e, s)}
             />
           ))}
           {showArchived ? (
             <>
               <div className="session-section-title">已归档</div>
-              {archivedSessions.length === 0 ? <div className="empty-hint">暂无归档会话</div> : null}
-              {archivedSessions
-                .filter((s) => !filter || (s.title ?? '').toLowerCase().includes(filter.toLowerCase()))
-                .map((s) => (
-                  <SessionItem
-                    key={s.id}
-                    session={s}
-                    active={s.id === activeID}
-                    archived
-                    permissions={(state.permissions[s.id] ?? []).length}
-                    onClick={() => void select(s.id)}
-                    onDelete={() => {
-                      if (window.confirm(`删除会话“${s.title ?? s.id}”？`)) void del(s.id);
-                    }}
-                    onRename={() => {
-                      const title = window.prompt('新的会话标题', s.title ?? '');
-                      if (title) void rename(s.id, title);
-                    }}
-                    onArchive={() => void archiveSession(s.id, false)}
-                    onContextMenu={(e) => sessionMenu(e, s, true)}
-                  />
-                ))}
+              {archivedFiltered.length === 0 ? <div className="empty-hint">暂无归档会话</div> : null}
+              {archivedFiltered.map((s, index) => {
+                const group = archiveGroups[s.id] ?? '未分组';
+                const prev = index > 0 ? archiveGroups[archivedFiltered[index - 1].id] ?? '未分组' : null;
+                return (
+                  <React.Fragment key={s.id}>
+                    {group !== prev ? <div className="archive-group-title">📁 {group}</div> : null}
+                    <SessionItem
+                      session={s}
+                      active={s.id === activeID}
+                      archived
+                      permissions={(state.permissions[s.id] ?? []).length}
+                      onClick={() => void select(s.id)}
+                      onDelete={() => {
+                        if (window.confirm(`删除会话“${s.title ?? s.id}”？`)) void del(s.id);
+                      }}
+                      onRename={() => {
+                        const title = window.prompt('新的会话标题', s.title ?? '');
+                        if (title) void rename(s.id, title);
+                      }}
+                      onArchive={() => void archiveSession(s.id, false)}
+                      onContextMenu={(e) => sessionMenu(e, s, true)}
+                    />
+                  </React.Fragment>
+                );
+              })}
             </>
           ) : null}
         </div>
@@ -747,11 +1022,16 @@ export function ChatPanel() {
                 </div>
               ) : null}
               {messages.map((m) => {
+                const onQuote = (q: QuoteRef) => setQuote(q);
+                const onBranch = (messageID: string) => {
+                  if (!activeID) return;
+                  void fork(activeID, messageID);
+                };
                 const inner =
                   (m as { type?: string }).type === 'user' ? (
-                    <UserBlockMemo message={m} />
+                    <UserBlockMemo message={m} onQuote={onQuote} onBranch={onBranch} />
                   ) : (m as { type?: string }).type === 'assistant' ? (
-                    <AssistantBlockMemo message={m} stream={state.streams[m.id]} />
+                    <AssistantBlockMemo message={m} stream={state.streams[m.id]} onQuote={onQuote} onBranch={onBranch} />
                   ) : (
                     <div className="msg system">{String((m as { type?: string }).type ?? 'event')}</div>
                   );
@@ -769,7 +1049,12 @@ export function ChatPanel() {
                 );
               })}
               {liveStreams.map((s) => (
-                <AssistantBlockMemo key={s.messageID} stream={s} />
+                <AssistantBlockMemo
+                  key={s.messageID}
+                  stream={s}
+                  onQuote={(q) => setQuote(q)}
+                  onBranch={(messageID) => activeID && void fork(activeID, messageID)}
+                />
               ))}
               {busy && liveStreams.length === 0 && messages.length > 0 ? (
                 <div className="typing">
@@ -786,7 +1071,15 @@ export function ChatPanel() {
                 <PermissionCard key={p.id} request={p} onReply={(decision) => void reply(p, decision)} />
               ))}
             </div>
-            <Composer session={active} busy={busy} />
+            <Composer session={active} busy={busy} quote={quote} onClearQuote={() => setQuote(null)} />
+            {quote ? (
+              <div className="composer-quote-hint">
+                正在引用 {quote.role} 消息；发送时会作为引用块附在消息前。
+                <button className="icon-btn" onClick={() => setQuote(null)}>
+                  ×
+                </button>
+              </div>
+            ) : null}
           </>
         ) : (
           <div className="empty-state">
@@ -798,6 +1091,49 @@ export function ChatPanel() {
           </div>
         )}
       </section>
+      {archiveTarget ? (
+        <div className="format-overlay" onMouseDown={() => setArchiveTarget(null)}>
+          <div className="archive-dialog" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="format-head">
+              <strong>归档会话</strong>
+              <span className="muted">{archiveTarget.title || archiveTarget.id}</span>
+              <span className="spacer" />
+              <button className="btn btn-small" onClick={() => setArchiveTarget(null)}>
+                取消
+              </button>
+              <button className="btn btn-small btn-primary" onClick={() => void confirmArchive()}>
+                归档
+              </button>
+            </div>
+            <div className="archive-body">
+              <label className="muted small">选择已有归档名称，或直接输入新名称</label>
+              <input
+                className="input"
+                autoFocus
+                value={archiveName}
+                onChange={(e) => setArchiveName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void confirmArchive();
+                }}
+                placeholder="例如：2026-Q4、旧需求、待复盘"
+              />
+              <div className="archive-group-picks">
+                {groupNames.map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    className={`btn btn-small ${archiveName === g ? 'btn-primary' : ''}`}
+                    onClick={() => setArchiveName(g)}
+                  >
+                    📁 {g}
+                  </button>
+                ))}
+                {groupNames.length === 0 ? <span className="muted small">还没有归档分组</span> : null}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <ContextMenu menu={contextMenu} onClose={() => setContextMenu(null)} />
     </div>
   );

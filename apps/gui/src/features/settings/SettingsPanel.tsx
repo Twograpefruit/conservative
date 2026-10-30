@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { ProbeResult, WorkspaceInfo } from '@ocg/protocol';
 import { api } from '../../api/client.js';
 import { useApp } from '../../store/appStore.js';
@@ -18,6 +18,9 @@ export function SettingsPanel() {
   const setUiScale = useApp((s) => s.setUiScale);
   const textScale = useApp((s) => s.textScale);
   const setTextScale = useApp((s) => s.setTextScale);
+  const fontFamily = useApp((s) => s.fontFamily);
+  const setFontFamily = useApp((s) => s.setFontFamily);
+  const resetAppearance = useApp((s) => s.resetAppearance);
   const themeMode = useApp((s) => s.themeMode);
   const setThemeMode = useApp((s) => s.setThemeMode);
   const notify = useApp((s) => s.notify);
@@ -30,6 +33,49 @@ export function SettingsPanel() {
   const [refreshBusy, setRefreshBusy] = useState(false);
   const [bindings, setBindings] = useState<Record<string, string[]>>(() => getBindings());
   const [conflicts, setConflicts] = useState(() => bindingConflicts());
+  const [fontOptions, setFontOptions] = useState<string[]>(['Cascadia Code', 'Consolas', 'Microsoft YaHei', 'Segoe UI', 'SimSun', 'KaiTi']);
+  const [fontBusy, setFontBusy] = useState(false);
+  const fontFile = useRef<HTMLInputElement | null>(null);
+
+  const loadFontFile = async (file: File) => {
+    setFontBusy(true);
+    try {
+      const family = file.name.replace(/\.[^.]+$/, '').replace(/[^\w\u4e00-\u9fa5-]+/g, ' ') || 'Custom Font';
+      const buffer = await file.arrayBuffer();
+      const face = new FontFace(family, buffer);
+      await face.load();
+      document.fonts.add(face);
+      setFontOptions((prev) => (prev.includes(family) ? prev : [family, ...prev]));
+      setFontFamily(`"${family}", "Microsoft YaHei", sans-serif`);
+      notify(`已加载字体：${family}`);
+    } catch (err) {
+      notify(err instanceof Error ? err.message : '字体文件加载失败', 'error');
+    } finally {
+      setFontBusy(false);
+    }
+  };
+
+  const loadLocalFonts = async () => {
+    const api = (window as unknown as {
+      queryLocalFonts?: () => Promise<Array<{ family: string }>>;
+    }).queryLocalFonts;
+    if (!api) {
+      notify('当前浏览器不支持枚举本机字体；可手动选择内置字体', 'error');
+      return;
+    }
+    setFontBusy(true);
+    try {
+      const list = await api();
+      const families = [...new Set(list.map((f) => f.family))].sort((a, b) => a.localeCompare(b));
+      setFontOptions(families);
+      await Promise.all(families.slice(0, 80).map((family) => document.fonts.load(`13px "${family}"`).catch(() => undefined)));
+      notify(`已加载 ${families.length} 个本机字体`);
+    } catch (err) {
+      notify(err instanceof Error ? err.message : '字体加载失败（可能未授予权限）', 'error');
+    } finally {
+      setFontBusy(false);
+    }
+  };
 
   useEffect(() => {
     void loadHealth();
@@ -107,6 +153,14 @@ export function SettingsPanel() {
               }}
             />
             Windows / 浏览器系统通知（窗口失焦时）
+          </label>
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={notifySettings.flashTitle}
+              onChange={(e) => setNotifySettings({ flashTitle: e.target.checked })}
+            />
+            窗口失焦时闪烁标题（新通知计数）
           </label>
           <label className="checkbox-row">
             <input
@@ -304,39 +358,105 @@ export function SettingsPanel() {
           <h3>界面大小与文字大小</h3>
           <div className="font-scale-row">
             <span className="muted small">界面</span>
-            <button className="btn btn-small" onClick={() => setUiScale(uiScale - 0.05)} disabled={uiScale <= 0.8}>
+            <button className="btn btn-small" onClick={() => setUiScale(uiScale - 0.05)} disabled={uiScale <= 0.5}>
               UI-
             </button>
             <input
               type="range"
-              min={0.8}
-              max={1.3}
+              min={0.5}
+              max={2.5}
               step={0.05}
               value={uiScale}
               onChange={(e) => setUiScale(Number(e.target.value))}
             />
-            <button className="btn btn-small" onClick={() => setUiScale(uiScale + 0.05)} disabled={uiScale >= 1.3}>
+            <input
+              className="input scale-number"
+              type="number"
+              min={50}
+              max={250}
+              step={5}
+              value={Math.round(uiScale * 100)}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                if (Number.isFinite(v)) setUiScale(v / 100);
+              }}
+            />
+            <span className="muted small">%</span>
+            <button className="btn btn-small" onClick={() => setUiScale(uiScale + 0.05)} disabled={uiScale >= 2.5}>
               UI+
             </button>
-            <span className="badge">{Math.round(uiScale * 100)}%</span>
           </div>
           <div className="font-scale-row">
             <span className="muted small">文字</span>
-            <button className="btn btn-small" onClick={() => setTextScale(textScale - 0.05)} disabled={textScale <= 0.85}>
+            <button className="btn btn-small" onClick={() => setTextScale(textScale - 0.05)} disabled={textScale <= 0.6}>
               A-
             </button>
             <input
               type="range"
-              min={0.85}
-              max={1.25}
+              min={0.6}
+              max={3}
               step={0.05}
               value={textScale}
               onChange={(e) => setTextScale(Number(e.target.value))}
             />
-            <button className="btn btn-small" onClick={() => setTextScale(textScale + 0.05)} disabled={textScale >= 1.25}>
+            <input
+              className="input scale-number"
+              type="number"
+              min={60}
+              max={300}
+              step={5}
+              value={Math.round(textScale * 100)}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                if (Number.isFinite(v)) setTextScale(v / 100);
+              }}
+            />
+            <span className="muted small">%</span>
+            <button className="btn btn-small" onClick={() => setTextScale(textScale + 0.05)} disabled={textScale >= 3}>
               A+
             </button>
-            <span className="badge">{Math.round(textScale * 100)}%</span>
+          </div>
+          <div className="font-scale-row">
+            <span className="muted small">字体</span>
+            <select
+              className="input grow"
+              value={fontFamily}
+              onChange={(e) => setFontFamily(e.target.value)}
+              title="界面与正文优先使用的字体"
+            >
+              <option value="">默认（Segoe UI / 微软雅黑）</option>
+              {fontOptions.map((f) => (
+                <option key={f} value={`"${f}", "Microsoft YaHei", sans-serif`}>
+                  {f}
+                </option>
+              ))}
+            </select>
+            <button className="btn btn-small" onClick={() => void loadLocalFonts()} disabled={fontBusy}>
+              {fontBusy ? '加载中…' : '加载本机字体'}
+            </button>
+            <input
+              ref={fontFile}
+              type="file"
+              accept=".ttf,.otf,.woff,.woff2"
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void loadFontFile(file);
+                e.target.value = '';
+              }}
+            />
+            <button className="btn btn-small" onClick={() => fontFile.current?.click()} disabled={fontBusy}>
+              加载字体文件
+            </button>
+            <button
+              className="btn btn-small"
+              onClick={() => {
+                resetAppearance();
+                notify('已重置界面、文字与字体为默认');
+              }}
+            >
+              重置默认
+            </button>
           </div>
           <div className="row">
             <span className="muted small">主题</span>
@@ -352,7 +472,9 @@ export function SettingsPanel() {
               </button>
             </div>
           </div>
-          <div className="muted small">界面大小改变整体布局；文字大小只调整正文/编辑器字号。偏好保存在本机浏览器。</div>
+          <div className="muted small">
+            界面大小实时跟随窗口可视区域缩放；文字大小只调整正文、编辑器与终端字号（60–300%）。偏好保存在本机浏览器。
+          </div>
         </section>
 
         <section className="settings-card">

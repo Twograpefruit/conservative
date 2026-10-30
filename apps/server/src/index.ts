@@ -17,6 +17,7 @@ import { RedisService } from './lib/redis.js';
 import { MysqlService } from './lib/mysql.js';
 import { loadLocalConfig, seedLocalConnections } from './lib/localConfig.js';
 import { GitCommandService } from './lib/gitCatalog.js';
+import { GitProfileStore } from './lib/gitProfiles.js';
 import { PtyService } from './lib/pty.js';
 import { resolveRg, type SearchContext } from './lib/search.js';
 import { findFreePort } from './lib/net.js';
@@ -98,6 +99,7 @@ async function main(): Promise<void> {
   const redis = new RedisService();
   const mysql = new MysqlService();
   const gitCommands = new GitCommandService(host);
+  const gitProfiles = new GitProfileStore(host, credentials);
   const pty = new PtyService(upstream, host);
 
   try {
@@ -124,6 +126,7 @@ async function main(): Promise<void> {
     redis,
     mysql,
     gitCommands,
+    gitProfiles,
     pty,
     search,
     probe: loadCachedProbe(),

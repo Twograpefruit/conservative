@@ -84,6 +84,10 @@ export function DataPanel() {
   const [sql, setSql] = useState('SELECT 1 AS ok');
   const [paramsText, setParamsText] = useState('[]');
   const [result, setResult] = useState<DbQueryResult | null>(null);
+  const [resultScrollTop, setResultScrollTop] = useState(0);
+  const [resultViewH, setResultViewH] = useState(560);
+  const resultScroll = useRef<HTMLDivElement | null>(null);
+  const ROW_H = 24;
 
   const [pattern, setPattern] = useState('*');
   const [scan, setScan] = useState<RedisScanResult | null>(null);
@@ -366,6 +370,11 @@ export function DataPanel() {
   };
 
   useEffect(() => {
+    setResultScrollTop(0);
+    if (resultScroll.current) resultScroll.current.scrollTop = 0;
+  }, [result]);
+
+  useEffect(() => {
     if (!pendingSql || !loaded) return;
     if (!selected) {
       setSql(pendingSql.sql);
@@ -386,6 +395,10 @@ export function DataPanel() {
   }, [pendingSql, selectedId, loaded]);
 
   const tableColumns = table ? metadata?.columns[table] ?? [] : [];
+  const allRows = result?.rows ?? [];
+  const viewportRows = Math.ceil(resultViewH / ROW_H);
+  const startRow = Math.max(0, Math.floor(resultScrollTop / ROW_H) - 4);
+  const endRow = Math.min(allRows.length, startRow + viewportRows + 8);
 
   return (
     <div className="data-layout">
@@ -536,8 +549,15 @@ export function DataPanel() {
                           {result.truncated ? ' · 已达行数上限' : ''}
                         </div>
                         {result.kind === 'read' ? (
-                          <div className="result-scroll">
-                            <table className="result-table">
+                          <div
+                            className="result-scroll"
+                            ref={(el) => {
+                              resultScroll.current = el;
+                              if (el && el.clientHeight !== resultViewH) setResultViewH(el.clientHeight);
+                            }}
+                            onScroll={(e) => setResultScrollTop((e.target as HTMLDivElement).scrollTop)}
+                          >
+                            <table className="result-table virtual">
                               <thead>
                                 <tr>
                                   <th>#</th>
@@ -547,9 +567,14 @@ export function DataPanel() {
                                 </tr>
                               </thead>
                               <tbody>
-                                {result.rows.map((row, i) => (
-                                  <tr key={i}>
-                                    <td className="row-index">{i + 1}</td>
+                                {startRow > 0 ? (
+                                  <tr style={{ height: startRow * ROW_H }}>
+                                    <td colSpan={result.columns.length + 1} />
+                                  </tr>
+                                ) : null}
+                                {allRows.slice(startRow, endRow).map((row, i) => (
+                                  <tr key={startRow + i}>
+                                    <td className="row-index">{startRow + i + 1}</td>
                                     {row.map((v, j) => (
                                       <td key={j} title={valueText(v)}>
                                         {valueText(v)}
@@ -557,6 +582,11 @@ export function DataPanel() {
                                     ))}
                                   </tr>
                                 ))}
+                                {endRow < allRows.length ? (
+                                  <tr style={{ height: (allRows.length - endRow) * ROW_H }}>
+                                    <td colSpan={result.columns.length + 1} />
+                                  </tr>
+                                ) : null}
                               </tbody>
                             </table>
                           </div>

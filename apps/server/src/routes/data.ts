@@ -105,6 +105,21 @@ export async function registerDataRoutes(app: FastifyInstance, ctx: AppContext):
     const body = req.body as { profileId?: string; sql?: string; params?: unknown[]; format?: 'csv' | 'json' };
     const profile = profileOf(ctx, body.profileId);
     const sql = requireString(body.sql, 'sql');
+    const format = body.format === 'json' ? 'json' : 'csv';
+    const base = `${profile.label.replace(/[^\w.-]+/g, '_')}-export.${format}`;
+    reply.header('content-disposition', `attachment; filename="${base}"`);
+    if (profile.kind === 'mysql') {
+      const secret = await ctx.connections.getSecret(profile);
+      const stream = await ctx.mysql.exportStream(
+        profile as MysqlProfile,
+        secret,
+        sql,
+        Array.isArray(body.params) ? body.params : [],
+        format,
+      );
+      reply.header('content-type', format === 'json' ? 'application/json; charset=utf-8' : 'text/csv; charset=utf-8');
+      return reply.send(stream);
+    }
     let columns: string[];
     let rows: unknown[][];
     if (profile.kind === 'sqlite') {
@@ -113,20 +128,9 @@ export async function registerDataRoutes(app: FastifyInstance, ctx: AppContext):
         sql,
         Array.isArray(body.params) ? body.params : [],
       ));
-    } else if (profile.kind === 'mysql') {
-      const secret = await ctx.connections.getSecret(profile);
-      ({ columns, rows } = await ctx.mysql.exportRows(
-        profile as MysqlProfile,
-        secret,
-        sql,
-        Array.isArray(body.params) ? body.params : [],
-      ));
     } else {
       throw new HttpError(501, 'export 目前支持 SQLite/MySQL', 'driver_not_available');
     }
-    const format = body.format === 'json' ? 'json' : 'csv';
-    const base = `${profile.label.replace(/[^\w.-]+/g, '_')}-export.${format}`;
-    reply.header('content-disposition', `attachment; filename="${base}"`);
     if (format === 'json') {
       reply.header('content-type', 'application/json; charset=utf-8');
       return { columns, rows };
