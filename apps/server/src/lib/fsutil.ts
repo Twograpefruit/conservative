@@ -268,3 +268,50 @@ export async function pathExists(abs: string): Promise<boolean> {
     return false;
   }
 }
+
+/** Lightweight recursive file finder for @mentions. Ignores the usual heavy dirs. */
+export async function findFiles(root: string, query: string, limit = 50): Promise<FileEntry[]> {
+  const q = query.trim().toLowerCase();
+  const out: FileEntry[] = [];
+  let visited = 0;
+
+  if (!q) {
+    const top = await listDirectory(root, '', { maxEntries: 200 });
+    return top.filter((e) => e.type === 'file').slice(0, limit);
+  }
+
+  async function walk(dir: string): Promise<void> {
+    if (out.length >= limit || visited > 20000) return;
+    let entries: fs.Dirent[];
+    try {
+      entries = await fs.promises.readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (out.length >= limit || visited++ > 20000) return;
+      if (entry.isDirectory()) {
+        if (IGNORED_DIRS.has(entry.name)) continue;
+        await walk(path.join(dir, entry.name));
+      } else if (entry.isFile()) {
+        if (IGNORED_FILES.has(entry.name)) continue;
+        const abs = path.join(dir, entry.name);
+        const rel = relativePath(root, abs);
+        const lower = rel.toLowerCase();
+        const base = entry.name.toLowerCase();
+        if (!lower.includes(q)) continue;
+        out.push({
+          name: entry.name,
+          path: rel,
+          type: 'file',
+          ...(base.startsWith(q) ? { mtime: 2_000_000_000_000 } : base.includes(q) ? { mtime: 1_000_000_000_000 } : {}),
+        });
+        if (out.length >= limit) return;
+      }
+    }
+  }
+
+  await walk(root);
+  out.sort((a, b) => (b.mtime ?? 0) - (a.mtime ?? 0) || a.path.length - b.path.length);
+  return out.slice(0, limit);
+}

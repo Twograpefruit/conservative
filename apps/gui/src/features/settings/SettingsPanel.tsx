@@ -12,6 +12,8 @@ export function SettingsPanel() {
   const loadWorkspaces = useApp((s) => s.loadWorkspaces);
   const loadHealth = useApp((s) => s.loadHealth);
   const setWorkspace = useApp((s) => s.setWorkspace);
+  const uiScale = useApp((s) => s.uiScale);
+  const setUiScale = useApp((s) => s.setUiScale);
   const notify = useApp((s) => s.notify);
   const [logs, setLogs] = useState<string[]>([]);
   const [newPath, setNewPath] = useState('');
@@ -163,6 +165,28 @@ export function SettingsPanel() {
               添加
             </button>
           </div>
+        </section>
+
+        <section className="settings-card">
+          <h3>界面字号</h3>
+          <div className="font-scale-row">
+            <button className="btn btn-small" onClick={() => setUiScale(uiScale - 0.05)} disabled={uiScale <= 0.8}>
+              A-
+            </button>
+            <input
+              type="range"
+              min={0.8}
+              max={1.3}
+              step={0.05}
+              value={uiScale}
+              onChange={(e) => setUiScale(Number(e.target.value))}
+            />
+            <button className="btn btn-small" onClick={() => setUiScale(uiScale + 0.05)} disabled={uiScale >= 1.3}>
+              A+
+            </button>
+            <span className="badge">{Math.round(uiScale * 100)}%</span>
+          </div>
+          <div className="muted small">只影响界面缩放，不改变文件内容；偏好保存在本机浏览器。</div>
         </section>
 
         <section className="settings-card">

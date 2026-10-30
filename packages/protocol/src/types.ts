@@ -121,6 +121,13 @@ export interface StructuredError {
   response?: { body?: string };
 }
 
+export interface PromptUploadFile {
+  uri: string;
+  name: string;
+  description?: string;
+  mention?: { start: number; end: number; text: string };
+}
+
 export interface PermissionRequest {
   id: string;
   sessionID: string;

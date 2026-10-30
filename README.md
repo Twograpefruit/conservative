@@ -29,6 +29,24 @@ opencode serve v2 (127.0.0.1 only, password held by BFF)
 | M3.5 | One-time PTY tickets, ConPTY bridge, tabs, resize, find, scrollback | Done (upstream PTY fallback) |
 | M4 | Tauri/WebView2 packaging, tray, memory soak | Scaffold only |
 
+### UI & conversation additions (2026-10-30)
+
+The visual system follows [`docs/neumorphism.md`](docs/neumorphism.md): `#e0e5ec` surfaces,
+dual light/dark shadows, 12–24px radii, inset inputs and no hard borders.
+
+- **Neumorphism / Soft UI** theme: `#e0e5ec` surfaces, dual light/dark shadows, 12–24px radii,
+  inset inputs, no hard borders; CodeMirror and xterm use the light palette too.
+- **Text size**: top-bar `A- / A+` and Settings slider, 80%–130%, persisted locally; zoom is
+  layout-compensated so the app still fills the viewport without scrollbars.
+- **Session archive**: archive/unarchive from the session list, optional archived section,
+  backed by opencode's `PATCH /api/session/{id} {archived}`.
+- **In-conversation navigation**: `↑`/`↓` (also `Alt+↑/↓`) jump between messages, `⇣` returns to
+  the latest, and `Ctrl+F` opens in-conversation keyword search with snippets and jump targets.
+- **Continuous `@` mentions**: typing `@` (at start or after whitespace, repeatedly) opens a
+  searchable file picker backed by `GET /api/fs/find`; multiple files can be referenced in one
+  message and are sent as `PromptInput.FileAttachment` entries with `file:///` URIs and
+  `mention` offsets. Verified against opencode: the model received the attached file content.
+
 See [`docs/api-contract.md`](docs/api-contract.md) for the acceptance checklist and
 [`docs/acceptance.md`](docs/acceptance.md) for the probed opencode 2.2.1 contract.
 
@@ -95,7 +113,7 @@ Runtime data (never inside the repo):
 | Contract | `GET /api/oc/spec` |
 | Proxy | `ALL /api/oc/*` to upstream, Basic Auth injected, SSE unbuffered |
 | Events | `GET /api/events?since=<seq>` (SSE, `id:` = BFF seq, 5000-event ring) |
-| Files | `GET /api/fs/tree`, `GET/PUT /api/fs/file`, `POST /api/fs/{rename,delete,mkdir}` |
+| Files | `GET /api/fs/tree`, `GET /api/fs/find`, `GET/PUT /api/fs/file`, `POST /api/fs/{rename,delete,mkdir}` |
 | Search | `POST /api/search` (NDJSON stream + cursor) |
 | Replace | `POST /api/replace/preview`, `POST /api/replace/apply`, `POST /api/replace/undo` |
 | Git | `GET /api/git/{info,status,log,diff}`, `POST /api/git/{exec,commit,push,apply-hunk}` |

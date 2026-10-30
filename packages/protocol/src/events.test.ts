@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createChatState,
   hydrateMessages,
+  hydrateSessions,
   reduceEvent,
   type UpstreamEvent,
 } from '../src/index.js';
@@ -141,5 +142,14 @@ describe('event reducer', () => {
     state = hydrateMessages(state, 's1', [msg]);
     expect(state.messages.s1.m1).toEqual(msg);
     expect(state.streams.m1.texts[0].text).toBe('live');
+  });
+
+  it('replaces the session set when refreshing so archived sessions disappear', () => {
+    let state = createChatState();
+    state = reduceEvent(state, ev('session.created', { sessionID: 'a', title: 'A' }));
+    state = reduceEvent(state, ev('session.created', { sessionID: 'b', title: 'B' }));
+    state = hydrateSessions(state, [session('b', 'B')]);
+    expect(Object.keys(state.sessions)).toEqual(['b']);
+    expect(state.sessionOrder).toEqual(['b']);
   });
 });

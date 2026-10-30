@@ -18,8 +18,10 @@ interface AppState {
   probe: ProbeResult | null;
   openRequest: OpenRequest | null;
   toast: { id: number; message: string; kind: 'info' | 'error' } | null;
+  uiScale: number;
   setView: (view: View) => void;
   setWorkspace: (id: string) => void;
+  setUiScale: (scale: number) => void;
   loadWorkspaces: () => Promise<void>;
   loadHealth: () => Promise<void>;
   loadProbe: (refresh?: boolean) => Promise<void>;
@@ -31,6 +33,8 @@ interface AppState {
 
 const savedView = (localStorage.getItem('ocg.view') as View) || 'chat';
 const savedWorkspace = localStorage.getItem('ocg.workspace');
+const savedScale = Number(localStorage.getItem('ocg.uiScale') ?? '1');
+const initialScale = Number.isFinite(savedScale) ? Math.min(1.3, Math.max(0.8, savedScale)) : 1;
 
 export const useApp = create<AppState>((set, get) => ({
   view: savedView,
@@ -40,6 +44,7 @@ export const useApp = create<AppState>((set, get) => ({
   probe: null,
   openRequest: null,
   toast: null,
+  uiScale: initialScale,
 
   setView: (view) => {
     localStorage.setItem('ocg.view', view);
@@ -49,6 +54,12 @@ export const useApp = create<AppState>((set, get) => ({
   setWorkspace: (id) => {
     localStorage.setItem('ocg.workspace', id);
     set({ workspaceID: id });
+  },
+
+  setUiScale: (scale) => {
+    const clamped = Math.min(1.3, Math.max(0.8, Math.round(scale * 100) / 100));
+    localStorage.setItem('ocg.uiScale', String(clamped));
+    set({ uiScale: clamped });
   },
 
   loadWorkspaces: async () => {

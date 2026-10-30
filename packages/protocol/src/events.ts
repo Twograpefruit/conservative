@@ -775,11 +775,11 @@ export function reduceEvent(prev: ChatState, event: UpstreamEvent): ChatState {
 }
 
 export function hydrateSessions(state: ChatState, sessions: SessionInfo[]): ChatState {
-  const next: ChatState = { ...state, sessions: { ...state.sessions }, sessionOrder: [] };
+  const next: ChatState = { ...state, sessions: {}, sessionOrder: [] };
   for (const raw of sessions) {
     const s = normalizeSession(raw);
     if (!s) continue;
-    next.sessions[s.id] = { ...(next.sessions[s.id] ?? { time: { created: 0, updated: 0 } }), ...s };
+    next.sessions[s.id] = s;
   }
   next.sessionOrder = Object.keys(next.sessions).sort(
     (a, b) => (next.sessions[b]?.time.updated ?? 0) - (next.sessions[a]?.time.updated ?? 0),

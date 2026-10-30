@@ -3,7 +3,7 @@ import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import type { AppContext } from '../context.js';
 import { HttpError, badRequest, requireString } from '../lib/http.js';
-import { listDirectory, readTextFile, relativePath, resolveInWorkspace, writeTextFileAtomic } from '../lib/fsutil.js';
+import { findFiles, listDirectory, readTextFile, relativePath, resolveInWorkspace, writeTextFileAtomic } from '../lib/fsutil.js';
 import { workspaceOf } from '../lib/workspace.js';
 
 export async function registerFsRoutes(app: FastifyInstance, ctx: AppContext): Promise<void> {
@@ -14,8 +14,15 @@ export async function registerFsRoutes(app: FastifyInstance, ctx: AppContext): P
     return { ws: ws.id, path: query.path ?? '', entries };
   });
 
-  app.get('/api/fs/file', async (req) => {
-    const query = req.query as { ws?: string; path?: string };
+  app.get('/api/fs/find', async (req) => {
+    const query = req.query as { ws?: string; q?: string; query?: string; limit?: string };
+    const ws = workspaceOf(ctx, query.ws);
+    const q = query.q ?? query.query ?? '';
+    const limit = Math.max(1, Math.min(Number(query.limit ?? 50) || 50, 200));
+    return { ws: ws.id, query: q, entries: await findFiles(ws.path, q, limit) };
+  });
+
+  app.get('/api/fs/file', async (req) => {    const query = req.query as { ws?: string; path?: string };
     const ws = workspaceOf(ctx, query.ws);
     const rel = requireString(query.path, 'path');
     const abs = resolveInWorkspace(ws.path, rel);

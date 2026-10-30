@@ -11,7 +11,7 @@ const statusLabel: Record<string, string> = {
 export function ToolCard({ tool }: { tool: NonNullable<RenderPart['tool']> }) {
   const [open, setOpen] = useState(tool.status === 'error');
   const output = toolText(tool);
-  const input = tool.input != null ? formatInput(tool.input) : tool.inputText;
+  const input = tool.input != null ? formatInput(tool.input) : tool.inputText ?? '';
   return (
     <div className={`tool-card tool-${tool.status}`}>
       <button className="tool-head" onClick={() => setOpen((v) => !v)}>
@@ -31,7 +31,7 @@ export function ToolCard({ tool }: { tool: NonNullable<RenderPart['tool']> }) {
           {output ? (
             <div className="tool-section">
               <div className="tool-label">输出</div>
-              <pre className="tool-pre">{output.slice(0, 20000)}</pre>
+              <pre className="tool-pre">{String(output).slice(0, 20000)}</pre>
             </div>
           ) : null}
           {tool.metadata && Object.keys(tool.metadata).length ? (

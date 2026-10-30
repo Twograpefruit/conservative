@@ -128,11 +128,18 @@ export function toolText(tool: NonNullable<RenderPart['tool']>): string {
       .map((c) => (typeof c.text === 'string' ? c.text : JSON.stringify(c)))
       .join('\n');
   }
-  if (tool.error) return tool.error;
+  if (tool.error != null) {
+    return typeof tool.error === 'string' ? tool.error : JSON.stringify(tool.error);
+  }
   if (tool.metadata) {
     const status = tool.metadata.status;
     const exit = tool.metadata.exit;
     if (status != null || exit != null) return `status=${String(status ?? '')} exit=${String(exit ?? '')}`;
+    try {
+      return JSON.stringify(tool.metadata);
+    } catch {
+      return String(tool.metadata);
+    }
   }
   return '';
 }

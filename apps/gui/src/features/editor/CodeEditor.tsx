@@ -7,7 +7,6 @@ import { python } from '@codemirror/lang-python';
 import { javascript } from '@codemirror/lang-javascript';
 import { json } from '@codemirror/lang-json';
 import { markdown } from '@codemirror/lang-markdown';
-import { oneDark } from '@codemirror/theme-one-dark';
 import { lintGutter, setDiagnostics, type Diagnostic } from '@codemirror/lint';
 import type { LintDiagnostic } from '@ocg/protocol';
 import type { EditorTab } from '../../store/editorStore.js';
@@ -63,7 +62,6 @@ export function CodeEditor({
       doc: tab.content,
       extensions: [
         basicSetup,
-        oneDark,
         lintGutter(),
         EditorState.readOnly.of(tab.readonly),
         languageFor(tab.path),
@@ -88,8 +86,13 @@ export function CodeEditor({
           }
         }),
         EditorView.theme({
-          '&': { height: '100%', fontSize: '13px' },
+          '&': { height: '100%', fontSize: '13px', backgroundColor: 'transparent', color: '#333333' },
           '.cm-scroller': { fontFamily: "'Cascadia Code', Consolas, monospace" },
+          '.cm-gutters': { backgroundColor: 'transparent', color: '#8b93a7', border: 'none' },
+          '.cm-activeLine': { backgroundColor: '#d9e0ea' },
+          '.cm-activeLineGutter': { backgroundColor: '#d9e0ea' },
+          '.cm-selectionBackground, ::selection': { backgroundColor: '#c9d4f5 !important' },
+          '.cm-cursor': { borderLeftColor: '#6d5dfc' },
         }),
       ],
     });

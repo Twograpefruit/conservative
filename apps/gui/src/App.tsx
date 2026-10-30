@@ -25,6 +25,8 @@ export function App() {
   const setWorkspace = useApp((s) => s.setWorkspace);
   const health = useApp((s) => s.health);
   const toast = useApp((s) => s.toast);
+  const uiScale = useApp((s) => s.uiScale);
+  const setUiScale = useApp((s) => s.setUiScale);
   const loadWorkspaces = useApp((s) => s.loadWorkspaces);
   const startHealthPolling = useApp((s) => s.startHealthPolling);
   const loadProbe = useApp((s) => s.loadProbe);
@@ -57,6 +59,10 @@ export function App() {
     void useChat.getState().refreshSessions(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceID]);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--ui-scale', String(uiScale));
+  }, [uiScale]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -100,6 +106,15 @@ export function App() {
           ))}
         </nav>
         <div className="top-status">
+          <div className="font-controls" title={`界面字号 ${Math.round(uiScale * 100)}%`}>
+            <button className="icon-btn" onClick={() => setUiScale(uiScale - 0.05)} disabled={uiScale <= 0.8}>
+              A-
+            </button>
+            <span>{Math.round(uiScale * 100)}%</span>
+            <button className="icon-btn" onClick={() => setUiScale(uiScale + 0.05)} disabled={uiScale >= 1.3}>
+              A+
+            </button>
+          </div>
           {permissionCount > 0 ? <span className="badge badge-warn">{permissionCount} 待授权</span> : null}
           <span className={`conn ${connected ? 'ok' : 'bad'}`} title={lastError ?? ''}>
             <span className={`dot ${connected ? 'dot-idle' : 'dot-error'}`} />

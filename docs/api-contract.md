@@ -234,3 +234,20 @@
 | ENV-018 本地测试实例 | PARTIAL | 本机有 `redis-cli`；未确认测试 Redis/SQLite 夹具 |
 | ENV-019 语言包体积审计 | PARTIAL | 当前首屏 JS gzip ≈381KB；懒加载与阈值审计待 M5 |
 | ENV-020 通知能力 | BLOCKED | 浏览器/Tauri 通知均未实现 |
+
+---
+
+## 13. 2026-10-30 UI 增强（已实现）
+
+| 能力 | 实现 | 验证 |
+| ---- | ---- | ---- |
+| Neumorphism 主题 | `apps/gui/src/styles.css` 全量替换为浅色 Soft UI：`#e0e5ec`、双光源阴影、12–24px 圆角、inset 输入、无硬边框；CodeMirror/xterm 同步浅色 | Playwright 计算样式：body `rgb(224,229,236)`，面板/按钮双阴影，过渡 300ms |
+| 字号调节 | 顶栏 A-/A+ 与设置页滑杆，80%–130%，localStorage 持久化；`.app` 使用 layout-compensated zoom | 1.05/1.30 下 `scrollWidth == innerWidth`、`scrollHeight == innerHeight`，无溢出 |
+| 会话归档 | 列表归档/取消归档、显示归档分区；`PATCH /api/session/{id} {archived}` | API 归档→出现在 `archived=true`→取消→回到 active；UI 归档后从活动列表消失，归档区显示 |
+| 对话内关键词搜索 | `Ctrl+F` 打开搜索条，匹配消息正文/工具输入输出，显示片段，点击跳转并闪烁定位 | 200 条消息中搜索 `opencode` 得到 42 条；点击后 `msg-flash` 命中 |
+| 上下条消息跳转 | 顶栏 ↑/↓、`Alt+↑/↓`、`⇣` 回最新，显示 `当前/总数` | Playwright 点击后计数从 1/200 变为 2/200 |
+| 连续 @ 文件引用 | Composer 检测 `@` token（开头或空白后），`GET /api/fs/find` 按路径搜索；可连续引用多个，发送 `files[{uri,name,mention}]` | 连续两次引用生成 2 个 chips；拦截请求体确认 `file:///` URI 与 mention 偏移；真实会话中模型返回文件内容 `ATTACH-OK-731` |
+| 文件搜索端点 | `GET /api/fs/find?ws&q&limit`，跳过 `.git/.venv/node_modules` 等 | 搜索 `package` 返回 10 条结果 |
+
+> 说明：@ 引用附件需要 `file:///` URI；已用真实 prompt 验证 opencode 会读取附件内容。UI 同时保留 `@path` 文本，便于模型理解上下文。
+

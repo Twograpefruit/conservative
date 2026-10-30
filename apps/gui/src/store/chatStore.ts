@@ -12,6 +12,7 @@ import {
   type MessageInfo,
   type ModelInfo,
   type PermissionRequest,
+  type PromptUploadFile,
   type SessionInfo,
 } from '@ocg/protocol';
 import { api, qs } from '../api/client.js';
@@ -22,17 +23,22 @@ interface ChatStore {
   activeSessionID: string | null;
   models: ModelInfo[];
   agents: AgentInfo[];
+  archivedSessions: SessionInfo[];
+  showArchived: boolean;
   connected: boolean;
   lastError: string | null;
   init: () => Promise<void>;
   stop: () => void;
   refreshSessions: (select?: boolean) => Promise<void>;
+  loadArchived: () => Promise<void>;
+  setShowArchived: (show: boolean) => Promise<void>;
+  archiveSession: (id: string, archived: boolean) => Promise<void>;
   selectSession: (id: string) => Promise<void>;
   loadMessages: (id: string) => Promise<void>;
   createSession: () => Promise<void>;
   deleteSession: (id: string) => Promise<void>;
   renameSession: (id: string, title: string) => Promise<void>;
-  sendPrompt: (text: string) => Promise<void>;
+  sendPrompt: (text: string, files?: PromptUploadFile[]) => Promise<void>;
   interrupt: () => Promise<void>;
   replyPermission: (request: PermissionRequest, decision: 'once' | 'always' | 'reject') => Promise<void>;
   setModel: (model: ModelInfo) => Promise<void>;
@@ -93,6 +99,8 @@ export const useChat = create<ChatStore>((set, get) => ({
   activeSessionID: localStorage.getItem('ocg.session'),
   models: [],
   agents: [],
+  archivedSessions: [],
+  showArchived: false,
   connected: false,
   lastError: null,
 
@@ -128,7 +136,7 @@ export const useChat = create<ChatStore>((set, get) => ({
 
   refreshSessions: async (select = false) => {
     try {
-      const res = await api<{ data: SessionInfo[] }>(`/api/oc/api/session${qs({ limit: 100 })}`);
+      const res = await api<{ data: SessionInfo[] }>(`/api/oc/api/session${qs({ limit: 100, archived: 'false' })}`);
       const dir = workspaceDir()?.replace(/\\/g, '/').toLowerCase();
       const visible = dir
         ? (res.data ?? []).filter((s) => !s.location?.directory || s.location.directory.replace(/\\/g, '/').toLowerCase() === dir)
@@ -143,6 +151,45 @@ export const useChat = create<ChatStore>((set, get) => ({
       if (active && (select || !state.messages[active])) await get().loadMessages(active);
     } catch (err) {
       set({ lastError: err instanceof Error ? err.message : String(err) });
+    }
+  },
+
+  loadArchived: async () => {
+    try {
+      const res = await api<{ data: SessionInfo[] }>(`/api/oc/api/session${qs({ limit: 100, archived: 'true' })}`);
+      const dir = workspaceDir()?.replace(/\\/g, '/').toLowerCase();
+      const list = dir
+        ? (res.data ?? []).filter((s) => !s.location?.directory || s.location.directory.replace(/\\/g, '/').toLowerCase() === dir)
+        : res.data ?? [];
+      set({ archivedSessions: list });
+    } catch (err) {
+      useApp.getState().notify(err instanceof Error ? err.message : '归档列表加载失败', 'error');
+    }
+  },
+
+  setShowArchived: async (show) => {
+    set({ showArchived: show });
+    if (show) await get().loadArchived();
+  },
+
+  archiveSession: async (id, archived) => {
+    try {
+      await api(`/api/oc/api/session/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ archived }),
+        headers: { 'content-type': 'application/json' },
+      });
+      if (archived && get().activeSessionID === id) {
+        const state = get().state;
+        const next = state.sessionOrder.find((sid) => sid !== id) ?? null;
+        set({ activeSessionID: next });
+        if (next) await get().loadMessages(next);
+      }
+      await get().refreshSessions(false);
+      if (get().showArchived) await get().loadArchived();
+      useApp.getState().notify(archived ? '会话已归档' : '会话已取消归档');
+    } catch (err) {
+      useApp.getState().notify(err instanceof Error ? err.message : '归档操作失败', 'error');
     }
   },
 
@@ -206,13 +253,13 @@ export const useChat = create<ChatStore>((set, get) => ({
     }
   },
 
-  sendPrompt: async (text) => {
+  sendPrompt: async (text, files) => {
     const id = get().activeSessionID;
     if (!id || !text.trim()) return;
     try {
       await api(`/api/oc/api/session/${encodeURIComponent(id)}/prompt`, {
         method: 'POST',
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, ...(files?.length ? { files } : {}) }),
         headers: { 'content-type': 'application/json' },
       });
     } catch (err) {
