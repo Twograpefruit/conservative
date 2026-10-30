@@ -1109,3 +1109,22 @@ main "$@"
 | HIG-006 | 亮/暗外观 | PASS（侧栏、工具栏、卡片、输入框、代码块均使用语义色） |
 | HIG-007 | 可访问性 | PASS（图标按钮 aria-label、focus-visible ring、reduced-motion、可键盘导航） |
 | HIG-008 | 设计归属 | PASS（README 标注 Apple Design Skill 与 Apple HIG 版权归属） |
+
+
+---
+
+## 7.21 2026-10-30 增量验收（导航 / 代码导航 / 文件对比 / 会话置底）
+
+| 编号 | 用例 | 结果 |
+| ---- | ---- | ---- |
+| UI-022 | 侧栏收起 | PASS（折叠为 58px logo 栏，悬停 title 显示名称，状态持久化） |
+| UI-023 | 终端对比度 | PASS（终端图标/文字使用高对比绿色） |
+| EDIT-001 | 文件夹内搜索 | PASS（右键文件夹 → 搜索面板 glob=folder/**） |
+| EDIT-002 | 单文件内搜索 | PASS（右键文件 → 搜索面板 glob=文件路径） |
+| EDIT-003 | 文件对比 | PASS（A/B 选择 → /api/fs/compare → 左右 Diff 弹层；临时文件实测） |
+| EDIT-004 | Ctrl+点击跳转 | PASS（当前文件内 1 个定义直接跳转；多个显示可点击列表） |
+| EDIT-005 | 跳回定义 | PASS（浮动“← 返回”与 Mod+Alt+←，返回栈） |
+| EDIT-006 | 悬停符号信息 | PASS（签名 + 折叠的定义注释，单击 details 展开） |
+| CHAT-011 | 会话固定底部 | PASS（followBottom 默认开启，新消息/流式输出自动置底；上滚后暂停） |
+| UI-024 | 代码字体独立设置 | PASS（代码字体 + 10–24px 字号，仅影响编辑器/代码块） |
+| UI-025 | 设置第二排 | PASS（外观与字体 + 编辑与诊断 位于第二排，其余卡片后置） |

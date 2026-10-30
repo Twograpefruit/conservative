@@ -101,10 +101,13 @@ export function App() {
   const uiScale = useApp((s) => s.uiScale);
   const textScale = useApp((s) => s.textScale);
   const fontFamily = useApp((s) => s.fontFamily);
+  const codeFontFamily = useApp((s) => s.codeFontFamily);
+  const codeFontSize = useApp((s) => s.codeFontSize);
   const themeMode = useApp((s) => s.themeMode);
   const resolvedTheme = useApp((s) => s.resolvedTheme);
   const setThemeMode = useApp((s) => s.setThemeMode);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('ocg.sidebarCollapsed') === '1');
   const loadWorkspaces = useApp((s) => s.loadWorkspaces);
   const startHealthPolling = useApp((s) => s.startHealthPolling);
   const loadProbe = useApp((s) => s.loadProbe);
@@ -139,6 +142,10 @@ export function App() {
   }, [workspaceID]);
 
   useEffect(() => {
+    localStorage.setItem('ocg.sidebarCollapsed', sidebarCollapsed ? '1' : '0');
+  }, [sidebarCollapsed]);
+
+  useEffect(() => {
     const root = document.documentElement;
     const apply = () => {
       root.style.setProperty('--viewport-w', `${window.innerWidth}px`);
@@ -161,9 +168,11 @@ export function App() {
       '--font-family',
       fontFamily || "-apple-system, 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif",
     );
+    document.documentElement.style.setProperty('--code-font-family', codeFontFamily);
+    document.documentElement.style.setProperty('--code-font-size', `${codeFontSize}px`);
     document.documentElement.dataset.theme = resolvedTheme;
     document.documentElement.dataset.textScale = textScale > 2 ? 'xxl' : textScale > 1.5 ? 'xl' : 'normal';
-  }, [uiScale, textScale, fontFamily, resolvedTheme]);
+  }, [uiScale, textScale, fontFamily, codeFontFamily, codeFontSize, resolvedTheme]);
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
@@ -231,18 +240,27 @@ export function App() {
 
   return (
     <div className="app">
-      <aside className="app-sidebar">
-        <div className="sidebar-brand">
+      <aside className={`app-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
+        <div className="sidebar-brand" title={sidebarCollapsed ? 'Conser' : undefined}>
           <span className="sidebar-brand-mark">C</span>
           <span className="sidebar-brand-name">Conser</span>
+          <button
+            className="icon-btn sidebar-collapse"
+            onClick={() => setSidebarCollapsed((v) => !v)}
+            title={sidebarCollapsed ? '展开导航' : '收起导航'}
+            aria-label={sidebarCollapsed ? '展开导航' : '收起导航'}
+          >
+            {sidebarCollapsed ? '›' : '‹'}
+          </button>
         </div>
         <nav className="side-nav">
           {NAV.map((item, i) => (
             <button
               key={item.id}
-              className={`side-nav-item ${view === item.id ? 'active' : ''}`}
+              className={`side-nav-item nav-${item.id} ${view === item.id ? 'active' : ''}`}
               onClick={() => setView(item.id)}
               title={`${item.label} (Alt+${i + 1})`}
+              data-label={item.label}
             >
               <NavGlyph name={item.icon} />
               <span className="side-nav-label">{item.label}</span>

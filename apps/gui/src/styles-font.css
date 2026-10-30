@@ -26,7 +26,8 @@
 }
 
 .cm-editor {
-  font-size: calc(13px * var(--font-scale, 1)) !important;
+  font-size: var(--code-font-size, calc(13px * var(--font-scale, 1))) !important;
+  font-family: var(--code-font-family, 'Cascadia Code', Consolas, monospace) !important;
 }
 
 .tool-pre,

@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import type { FileEntry } from '@ocg/protocol';
+import type { FileDiff } from '@ocg/diff';
 import { api, qs } from '../api/client.js';
 import { useApp } from '../store/appStore.js';
 import { useEditor } from '../store/editorStore.js';
 import { ContextMenu, type MenuPosition } from './ContextMenu.js';
+import { DiffView } from '../features/diff/DiffView.js';
 
 export function FileTree({ workspaceID, onOpen }: { workspaceID: string | null; onOpen: (path: string) => void }) {
   const [entries, setEntries] = useState<Record<string, FileEntry[]>>({});
@@ -11,7 +13,11 @@ export function FileTree({ workspaceID, onOpen }: { workspaceID: string | null; 
   const [loading, setLoading] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState('');
   const [menu, setMenu] = useState<MenuPosition | null>(null);
+  const [comparePick, setComparePick] = useState<string[]>([]);
+  const [compare, setCompare] = useState<{ a: string; b: string; files: FileDiff[] } | null>(null);
+  const [compareBusy, setCompareBusy] = useState(false);
   const notify = useApp((s) => s.notify);
+  const requestSearch = useApp((s) => s.requestSearch);
   const closeTab = useEditor((s) => s.close);
 
   const load = useCallback(
@@ -106,16 +112,60 @@ export function FileTree({ workspaceID, onOpen }: { workspaceID: string | null; 
     }
   };
 
+  const runCompare = async (a: string, b: string) => {
+    setCompareBusy(true);
+    try {
+      const res = await api<{ files: FileDiff[] }>(`/api/fs/compare${qs({ ws: workspaceID, a, b })}`);
+      setCompare({ a, b, files: res.files });
+    } catch (err) {
+      notify(err instanceof Error ? err.message : '文件对比失败', 'error');
+    } finally {
+      setCompareBusy(false);
+    }
+  };
+
+  const compareEntry = (entry: FileEntry) => {
+    if (comparePick.includes(entry.path)) {
+      setComparePick((prev) => prev.filter((p) => p !== entry.path));
+      return;
+    }
+    if (comparePick.length === 0) {
+      setComparePick([entry.path]);
+      notify(`已选择对比文件 A：${entry.path}`);
+      return;
+    }
+    const other = comparePick[0];
+    setComparePick([]);
+    void runCompare(other, entry.path);
+  };
+
   const entryMenu = (e: React.MouseEvent, entry: FileEntry) => {
     e.preventDefault();
     e.stopPropagation();
     const items = entry.type === 'file'
       ? [
           { label: '打开', onClick: () => onOpen(entry.path) },
+          {
+            label: '在此文件中搜索',
+            onClick: () => requestSearch({ glob: entry.path }),
+          },
+          {
+            label: comparePick.includes(entry.path)
+              ? '取消对比选择'
+              : comparePick.length === 0
+                ? '选为对比文件 A'
+                : `与 ${comparePick[0]} 对比`,
+            disabled: compareBusy,
+            onClick: () => compareEntry(entry),
+          },
           { label: '重命名…', onClick: () => void renameEntry(entry) },
           { label: '删除', danger: true, onClick: () => void deleteEntry(entry) },
         ]
       : [
+          {
+            label: '在此文件夹中搜索',
+            onClick: () => requestSearch({ glob: `${entry.path}/**` }),
+          },
           { label: '新建文件…', onClick: () => void createFile() },
           { label: '刷新目录', onClick: () => void load(entry.path) },
           { label: '重命名…', onClick: () => void renameEntry(entry) },
@@ -161,6 +211,15 @@ export function FileTree({ workspaceID, onOpen }: { workspaceID: string | null; 
         </div>
       </div>
       <input className="input tree-filter" placeholder="筛选已展开文件…" value={filter} onChange={(e) => setFilter(e.target.value)} />
+      {comparePick.length ? (
+        <div className="compare-pick-bar">
+          <span>对比 A</span>
+          <code title={comparePick[0]}>{comparePick[0]}</code>
+          <button className="icon-btn" title="取消对比选择" onClick={() => setComparePick([])}>
+            ×
+          </button>
+        </div>
+      ) : null}
       <div
         className="tree-scroll"
         onContextMenu={(e) => {
@@ -179,6 +238,24 @@ export function FileTree({ workspaceID, onOpen }: { workspaceID: string | null; 
         {renderDir('', 0)}
       </div>
       <ContextMenu menu={menu} onClose={() => setMenu(null)} />
+      {compare ? (
+        <div className="format-overlay" onMouseDown={() => setCompare(null)}>
+          <div className="compare-dialog" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="format-head">
+              <strong>文件对比</strong>
+              <span className="muted">{compare.a}</span>
+              <span className="muted">↔ {compare.b}</span>
+              <span className="spacer" />
+              <button className="btn btn-small" onClick={() => setCompare(null)}>
+                关闭
+              </button>
+            </div>
+            <div className="format-body">
+              <DiffView files={compare.files} emptyText="两个文件内容相同" selectable={false} />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

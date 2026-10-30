@@ -1864,6 +1864,14 @@
   flex: 1 1 180px;
   min-width: 140px;
 }
+.code-size-box {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--fg-dim);
+  white-space: nowrap;
+}
 
 /* capability install */
 .caps {
@@ -1995,6 +2003,42 @@
 .settings-grid {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
 }
+.settings-break {
+  grid-column: 1 / -1;
+  height: 0;
+  margin: 0;
+  padding: 0;
+}
+.notify-settings {
+  order: 1;
+}
+.shortcuts-settings {
+  order: 2;
+}
+.runtime-settings {
+  order: 3;
+}
+.break-one {
+  order: 4;
+}
+.appearance-settings {
+  order: 5;
+}
+.editor-settings {
+  order: 6;
+}
+.break-two {
+  order: 7;
+}
+.capabilities-settings {
+  order: 8;
+}
+.oc-config {
+  order: 9;
+}
+.logs-settings {
+  order: 10;
+}
 .settings-card {
   overflow-wrap: anywhere;
   min-width: 0;
@@ -2101,4 +2145,151 @@ html[data-text-scale='xxl'] .session-item-title {
 }
 html[data-text-scale='xxl'] .segmented button {
   flex: 1 1 auto;
+}
+
+/* code symbol navigation */
+.cm-host-wrap {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+}
+.editor-back-btn {
+  position: absolute;
+  top: 8px;
+  right: 14px;
+  z-index: 12;
+  background: var(--bg-3);
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  color: var(--fg);
+  font-size: 10.5px;
+  padding: 3px 8px;
+  box-shadow: var(--shadow-card, 0 4px 14px rgba(0, 0, 0, 0.25));
+}
+.code-symbol-list {
+  position: fixed;
+  z-index: 220;
+  width: min(350px, 90vw);
+  max-height: 260px;
+  overflow: auto;
+  background: var(--bg-2);
+  border: 1px solid var(--line-2);
+  border-radius: 9px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.52);
+  padding: 5px;
+}
+.code-symbol-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 6px;
+  color: var(--fg-dim);
+  font-size: 10px;
+}
+.code-symbol-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 7px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--fg);
+  text-align: left;
+}
+.code-symbol-item:hover {
+  background: var(--bg-4);
+}
+.code-symbol-line {
+  flex: 0 0 34px;
+  color: var(--accent);
+  font-size: 9.5px;
+  font-family: var(--mono);
+}
+.code-symbol-item code {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.code-symbol-tooltip {
+  max-width: 460px;
+  padding: 8px 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.45);
+  color: var(--fg);
+  font-size: 11px;
+}
+.code-symbol-head {
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 0 0 4px;
+  text-align: left;
+}
+.code-symbol-signature {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--fg);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 3px 0;
+}
+.code-symbol-tooltip details {
+  margin-top: 5px;
+  border-top: 1px solid var(--line);
+  padding-top: 4px;
+}
+.code-symbol-tooltip summary {
+  cursor: pointer;
+  color: var(--fg-dim);
+  font-size: 10px;
+}
+.code-symbol-tooltip pre {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+  color: var(--fg-dim);
+  font-size: 10px;
+  max-height: 160px;
+  overflow: auto;
+}
+
+.compare-pick-bar {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0 6px 4px;
+  padding: 4px 6px;
+  border: 1px solid var(--line-2);
+  border-radius: 5px;
+  background: var(--bg-3);
+  font-size: 10px;
+  color: var(--fg-dim);
+}
+.compare-pick-bar code {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg);
+  font-family: var(--mono);
+}
+.compare-dialog {
+  width: min(1200px, 94vw);
+  height: min(820px, 90vh);
+  background: var(--bg-2);
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.65);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }

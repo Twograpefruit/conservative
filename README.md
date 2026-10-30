@@ -27,6 +27,8 @@ BFF (Node 20+, Fastify, single process)
 - Copy, quote and branch actions on every message; branch uses opencode's native session fork
   (`POST /api/session/{id}/fork`).
 - Image attachments from the file picker or clipboard, plus an Emoji picker.
+- **Conversations**: streaming assistant messages with rich Markdown; the message list stays
+  pinned to the newest reply unless you deliberately scroll up.
 - Per-session draft persistence (text, images, `@` file references) across session switches,
   view changes, crashes and page reloads.
 - In-conversation search with snippets, jump targets, result retention and search history.
@@ -36,7 +38,16 @@ BFF (Node 20+, Fastify, single process)
 ### Editor
 
 - CodeMirror 6 with lazy language loading, One Dark / light themes, diagnostics and format preview.
+- **Symbol navigation**: Ctrl/Cmd-click an identifier to jump to its definition; multiple matches
+  open a clickable list; a floating “← 返回” button and `Mod+Alt+←` jump back. Hovering an
+  identifier shows its signature and a collapsed doc-comment panel.
+- **Dedicated code typography**: code font family and size (10–24 px) are configured separately
+  from the UI/text scale and apply to the editor and rendered code blocks.
 - File tree with large folder icons and context menus (open, rename, delete, refresh).
+- Right-click a folder to search inside it, right-click a file to search only that file, or select
+  two files (A/B) to open a side-by-side comparison.
+- **Collapsible navigation**: the app sidebar collapses to a logo rail; icon tooltips show the
+  destination name on hover. The collapsed state is persisted.
 - UTF-8 ↔ GB18030 encoding conversion directly from the editor toolbar.
 - Markdown source/split/preview and SQL dialect highlighting + `sql-formatter`.
 
@@ -188,6 +199,8 @@ for the detailed contract and verification records.
 - Tauri packaging is a scaffold; the browser build is the supported runtime. Native notifications
   use the Web Notification API.
 - Git line overwrite applies to the working tree only; staged/commit review remains read-only.
+- Code symbol navigation is a lightweight current-document index, not a full LSP; definitions in
+  other files are not followed automatically.
 - Reserved browser shortcuts (`Ctrl+W`, `F5`) cannot be fully intercepted.
 
 ## Repository layout

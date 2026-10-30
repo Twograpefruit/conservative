@@ -222,6 +222,28 @@ export async function execWhitelisted(ctx: GitContext, args: string[]): Promise<
 
 export type HunkAction = 'stage' | 'unstage' | 'discard';
 
+export async function compareFiles(
+  ctx: GitContext,
+  a: string,
+  b: string,
+): Promise<FileDiff[]> {
+  const res = await ctx.host.exec(
+    'git',
+    ['-c', 'core.quotePath=false', 'diff', '--no-index', '--no-color', '--src-prefix=a/', '--dst-prefix=b/', '--', a, b],
+    { cwd: ctx.root, timeoutMs: 30_000 },
+  );
+  if (res.code !== 0 && !res.out.trim()) {
+    if (/binary files/i.test(res.err)) return [];
+    if (res.code === 1) return [];
+    throw new HttpError(409, res.err.trim() || 'file compare failed', 'compare_failed');
+  }
+  const parsed = parseUnifiedDiff(res.out);
+  if (!parsed.length && res.err.trim()) {
+    throw new HttpError(409, res.err.trim(), 'compare_failed');
+  }
+  return parsed;
+}
+
 export async function overwriteLines(
   ctx: GitContext,
   input: { path: string; changes: Array<{ kind: 'add' | 'del'; newLine: number; text: string }> },

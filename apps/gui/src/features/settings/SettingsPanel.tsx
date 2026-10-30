@@ -32,6 +32,10 @@ export function SettingsPanel() {
   const setTextScale = useApp((s) => s.setTextScale);
   const fontFamily = useApp((s) => s.fontFamily);
   const setFontFamily = useApp((s) => s.setFontFamily);
+  const codeFontFamily = useApp((s) => s.codeFontFamily);
+  const setCodeFontFamily = useApp((s) => s.setCodeFontFamily);
+  const codeFontSize = useApp((s) => s.codeFontSize);
+  const setCodeFontSize = useApp((s) => s.setCodeFontSize);
   const resetAppearance = useApp((s) => s.resetAppearance);
   const themeMode = useApp((s) => s.themeMode);
   const setThemeMode = useApp((s) => s.setThemeMode);
@@ -332,7 +336,7 @@ export function SettingsPanel() {
           <div className="muted small">窗口聚焦时只弹应用内 toast；失焦时按权限走系统通知；3 秒内同源事件聚合。</div>
         </section>
 
-        <section className="settings-card">
+        <section className="settings-card shortcuts-settings">
           <h3>快捷键</h3>
           <div className="keybinding-list">
             {COMMANDS.map((cmd) => (
@@ -393,7 +397,7 @@ export function SettingsPanel() {
           </div>
         </section>
 
-        <section className="settings-card">
+        <section className="settings-card runtime-settings">
           <h3>运行状态</h3>
           <div className="kv">
             <span>BFF</span>
@@ -418,7 +422,9 @@ export function SettingsPanel() {
           </div>
         </section>
 
-        <section className="settings-card">
+        <div className="settings-break break-one" />
+
+        <section className="settings-card capabilities-settings">
           <h3>能力探测（M0/T0.6）</h3>
           <div className="caps">
             {caps
@@ -660,6 +666,40 @@ export function SettingsPanel() {
 
           <div className="appearance-row">
             <div className="appearance-label">
+              <strong>代码字体</strong>
+              <small>只影响编辑器与代码块</small>
+            </div>
+            <div className="appearance-control font-control">
+              <select
+                className="input grow"
+                value={codeFontFamily}
+                onChange={(e) => setCodeFontFamily(e.target.value)}
+                title="代码字体"
+              >
+                <option value="'Cascadia Code', Consolas, monospace">Cascadia Code</option>
+                <option value="Consolas, monospace">Consolas</option>
+                <option value="'JetBrains Mono', Consolas, monospace">JetBrains Mono</option>
+                <option value="'Fira Code', Consolas, monospace">Fira Code</option>
+                <option value="'Microsoft YaHei Mono', Consolas, monospace">微软雅黑等宽</option>
+              </select>
+              <label className="code-size-box">
+                字号
+                <input
+                  className="input scale-number"
+                  type="number"
+                  min={10}
+                  max={24}
+                  step={1}
+                  value={codeFontSize}
+                  onChange={(e) => setCodeFontSize(Number(e.target.value))}
+                />
+                px
+              </label>
+            </div>
+          </div>
+
+          <div className="appearance-row">
+            <div className="appearance-label">
               <strong>主题</strong>
               <small>暗色 / 亮色 / 跟随系统</small>
             </div>
@@ -678,7 +718,7 @@ export function SettingsPanel() {
           <div className="muted small">界面大小实时跟随窗口可视区域缩放；文字放大时控件会自动换行和增高，不再挤压边框。</div>
         </section>
 
-        <section className="settings-card">
+        <section className="settings-card editor-settings">
           <h3>编辑与诊断</h3>
           <label className="row">
             <input type="checkbox" checked={lintEnabled} onChange={(e) => void saveLint(e.target.checked)} /> 保存后运行
@@ -697,7 +737,9 @@ export function SettingsPanel() {
           </div>
         </section>
 
-        <section className="settings-card settings-wide">
+        <div className="settings-break break-two" />
+
+        <section className="settings-card settings-wide logs-settings">
           <h3>上游日志（末尾）</h3>
           <pre className="log-tail">{logs.join('\n') || '暂无日志'}</pre>
         </section>

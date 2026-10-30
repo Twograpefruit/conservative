@@ -455,3 +455,13 @@
 - 聊天 Markdown：markdown-it + DOMPurify + highlight.js；支持标题/列表/表格/引用/任务列表/代码块。
 - Emoji：输入框 Emoji 面板，按 textarea 光标位置插入。
 - 设计：新增 `apps/gui/src/styles-design.css`，参考 Emil Kowalski skills（MIT），详见 README 归属章节。
+
+
+### 20.1 文件对比与代码导航
+
+- `GET /api/fs/compare?ws=&a=&b=`：调用 `git diff --no-index` 并解析为 FileDiff，用于编辑器
+  文件树的 A/B 对比弹层。
+- 搜索面板接受 `requestSearch({query?,glob?})`：文件夹传 `folder/**`，单文件传文件路径。
+- 代码导航在前端基于当前文档符号索引：Ctrl/Cmd+点击跳转定义、重复定义列表、返回栈、
+  hover 签名与折叠注释；不依赖 LSP。
+- 代码字体与字号独立于 UI/文字缩放，变量为 `--code-font-family` / `--code-font-size`。

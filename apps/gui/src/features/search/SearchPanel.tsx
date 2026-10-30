@@ -51,6 +51,8 @@ function loadHistory(): string[] {
 export function SearchPanel() {
   const workspaceID = useApp((s) => s.workspaceID);
   const requestOpen = useApp((s) => s.requestOpen);
+  const searchRequest = useApp((s) => s.searchRequest);
+  const consumeSearch = useApp((s) => s.consumeSearch);
   const notify = useApp((s) => s.notify);
   const [mode, setMode] = useState<'search' | 'replace'>('search');
   const [query, setQuery] = useState('');
@@ -69,6 +71,14 @@ export function SearchPanel() {
   const [applied, setApplied] = useState<ReplaceApplyResult | null>(null);
   const [history, setHistory] = useState<string[]>(() => loadHistory());
   const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    if (!searchRequest) return;
+    if (searchRequest.glob !== undefined) setGlob(searchRequest.glob);
+    if (searchRequest.query !== undefined) setQuery(searchRequest.query);
+    consumeSearch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchRequest?.nonce]);
 
   useEffect(() => {
     if (CACHE.ws !== workspaceID) {

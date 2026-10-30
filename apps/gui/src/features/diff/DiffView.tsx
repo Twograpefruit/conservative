@@ -63,11 +63,13 @@ export function DiffView({
   actions,
   emptyText = '没有差异',
   onOverwrite,
+  selectable = true,
 }: {
   files: FileDiff[];
   actions?: HunkAction[];
   emptyText?: string;
   onOverwrite?: (file: FileDiff, changes: LineChange[]) => void;
+  selectable?: boolean;
 }) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -190,7 +192,7 @@ export function DiffView({
                         {rows.map((row, ri) => (
                           <div className="diff-split-row" key={ri}>
                             <div className={`diff-half ${row.left?.kind === '-' ? 'diff-del' : row.left ? 'diff-ctx' : 'diff-empty'}`}>
-                              {row.left?.kind === '-' ? (
+                              {selectable && row.left?.kind === '-' ? (
                                 <input
                                   type="checkbox"
                                   checked={Boolean(selected[`${file.path}:${hi}:${ri}:l`])}
@@ -204,7 +206,7 @@ export function DiffView({
                               <span className="code">{row.left?.text ?? ''}</span>
                             </div>
                             <div className={`diff-half ${row.right?.kind === '+' ? 'diff-add' : row.right ? 'diff-ctx' : 'diff-empty'}`}>
-                              {row.right?.kind === '+' ? (
+                              {selectable && row.right?.kind === '+' ? (
                                 <input
                                   type="checkbox"
                                   checked={Boolean(selected[`${file.path}:${hi}:${ri}:r`])}

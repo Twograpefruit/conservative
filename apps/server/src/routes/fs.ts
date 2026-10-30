@@ -6,6 +6,7 @@ import { appDataDir } from '@ocg/config';
 import type { AppContext } from '../context.js';
 import { HttpError, badRequest, requireString } from '../lib/http.js';
 import { findFiles, listDirectory, readTextFile, relativePath, resolveInWorkspace, writeTextFileAtomic } from '../lib/fsutil.js';
+import { compareFiles } from '../lib/git.js';
 import { workspaceOf } from '../lib/workspace.js';
 
 const IMAGE_EXT: Record<string, string> = {
@@ -62,6 +63,21 @@ export async function registerFsRoutes(app: FastifyInstance, ctx: AppContext): P
     const abs = resolveInWorkspace(ws.path, rel);
     const info = await readTextFile(abs, { maxBytes: ctx.settings.settings.limits.editorMaxBytes });
     return { ...info, path: relativePath(ws.path, abs) };
+  });
+
+  app.get('/api/fs/compare', async (req) => {
+    const query = req.query as { ws?: string; a?: string; b?: string };
+    const ws = workspaceOf(ctx, query.ws);
+    const a = requireString(query.a, 'a');
+    const b = requireString(query.b, 'b');
+    const absA = resolveInWorkspace(ws.path, a);
+    const absB = resolveInWorkspace(ws.path, b);
+    const files = await compareFiles(
+      { host: ctx.host, root: ws.path },
+      relativePath(ws.path, absA),
+      relativePath(ws.path, absB),
+    );
+    return { files, a, b };
   });
 
   app.post('/api/chat/attachment', async (req) => {

@@ -19,10 +19,13 @@ interface AppState {
   probe: ProbeResult | null;
   openRequest: OpenRequest | null;
   pendingSql: { sql: string; nonce: number } | null;
+  searchRequest: { query?: string; glob?: string; nonce: number } | null;
   toast: { id: number; message: string; kind: 'info' | 'error' } | null;
   uiScale: number;
   textScale: number;
   fontFamily: string;
+  codeFontFamily: string;
+  codeFontSize: number;
   themeMode: ThemeMode;
   resolvedTheme: 'dark' | 'light';
   archiveGroups: Record<string, string>;
@@ -31,6 +34,8 @@ interface AppState {
   setUiScale: (scale: number) => void;
   setTextScale: (scale: number) => void;
   setFontFamily: (family: string) => void;
+  setCodeFontFamily: (family: string) => void;
+  setCodeFontSize: (size: number) => void;
   resetAppearance: () => void;
   setThemeMode: (mode: ThemeMode) => void;
   setArchiveGroup: (sessionID: string, group: string | null) => void;
@@ -42,6 +47,8 @@ interface AppState {
   consumeOpen: () => void;
   requestSql: (sql: string) => void;
   consumeSql: () => void;
+  requestSearch: (input: { query?: string; glob?: string }) => void;
+  consumeSearch: () => void;
   notify: (message: string, kind?: 'info' | 'error') => void;
 }
 
@@ -52,6 +59,9 @@ const initialScale = Number.isFinite(savedScale) ? Math.min(2.5, Math.max(0.5, s
 const savedTextScale = Number(localStorage.getItem('ocg.textScale') ?? '1');
 const initialTextScale = Number.isFinite(savedTextScale) ? Math.min(3, Math.max(0.6, savedTextScale)) : 1;
 const savedFont = localStorage.getItem('ocg.fontFamily') ?? '';
+const savedCodeFont = localStorage.getItem('ocg.codeFontFamily') ?? "'Cascadia Code', Consolas, monospace";
+const savedCodeSize = Number(localStorage.getItem('ocg.codeFontSize') ?? '13');
+const initialCodeSize = Number.isFinite(savedCodeSize) ? Math.min(24, Math.max(10, savedCodeSize)) : 13;
 const savedGroups = (() => {
   try {
     const raw = JSON.parse(localStorage.getItem('ocg.archiveGroups') ?? '{}') as Record<string, string>;
@@ -73,10 +83,13 @@ export const useApp = create<AppState>((set, get) => ({
   probe: null,
   openRequest: null,
   pendingSql: null,
+  searchRequest: null,
   toast: null,
   uiScale: initialScale,
   textScale: initialTextScale,
   fontFamily: savedFont,
+  codeFontFamily: savedCodeFont,
+  codeFontSize: initialCodeSize,
   themeMode: savedTheme,
   resolvedTheme: resolve(savedTheme),
   archiveGroups: savedGroups,
@@ -108,11 +121,30 @@ export const useApp = create<AppState>((set, get) => ({
     set({ fontFamily: family });
   },
 
+  setCodeFontFamily: (family) => {
+    localStorage.setItem('ocg.codeFontFamily', family);
+    set({ codeFontFamily: family });
+  },
+
+  setCodeFontSize: (size) => {
+    const clamped = Math.min(24, Math.max(10, Math.round(size)));
+    localStorage.setItem('ocg.codeFontSize', String(clamped));
+    set({ codeFontSize: clamped });
+  },
+
   resetAppearance: () => {
     localStorage.setItem('ocg.uiScale', '1');
     localStorage.setItem('ocg.textScale', '1');
     localStorage.setItem('ocg.fontFamily', '');
-    set({ uiScale: 1, textScale: 1, fontFamily: '' });
+    localStorage.setItem('ocg.codeFontFamily', "'Cascadia Code', Consolas, monospace");
+    localStorage.setItem('ocg.codeFontSize', '13');
+    set({
+      uiScale: 1,
+      textScale: 1,
+      fontFamily: '',
+      codeFontFamily: "'Cascadia Code', Consolas, monospace",
+      codeFontSize: 13,
+    });
   },
 
   setArchiveGroup: (sessionID, group) => {
@@ -180,6 +212,13 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   consumeSql: () => set({ pendingSql: null }),
+
+  requestSearch: (input) => {
+    set({ searchRequest: { ...input, nonce: Date.now() }, view: 'search' });
+    localStorage.setItem('ocg.view', 'search');
+  },
+
+  consumeSearch: () => set({ searchRequest: null }),
 
   notify: (message, kind = 'info') => {
     const id = Date.now();

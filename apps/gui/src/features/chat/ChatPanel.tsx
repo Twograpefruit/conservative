@@ -740,6 +740,7 @@ export function ChatPanel() {
       return [];
     }
   });
+  const [followBottom, setFollowBottom] = useState(true);
   const archiveGroups = useApp((s) => s.archiveGroups);
   const setArchiveGroup = useApp((s) => s.setArchiveGroup);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -789,20 +790,16 @@ export function ChatPanel() {
   }, [chatSearchOpen]);
 
   useEffect(() => {
-    if (!activeID) return;
+    setFollowBottom(true);
     const el = scrollRef.current;
-    if (!el) return;
-    const jumpToBottom = () => {
-      if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    };
-    jumpToBottom();
-    const t1 = setTimeout(jumpToBottom, 80);
-    const t2 = setTimeout(jumpToBottom, 320);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
+    if (el) el.scrollTop = el.scrollHeight;
   }, [activeID]);
+
+  useEffect(() => {
+    if (!followBottom) return;
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [activeID, followBottom, messages.length, liveStreams.length, state.streams]);
 
   useEffect(() => {
     const onSearch = () => setChatSearchOpen(true);
@@ -869,10 +866,15 @@ export function ChatPanel() {
 
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el) return;
-    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 220;
-    if (nearBottom) el.scrollTop = el.scrollHeight;
-  }, [messages.length, liveStreams.length, state.streams]);
+    if (!el || !followBottom) return;
+    el.scrollTop = el.scrollHeight;
+  }, [followBottom, messages.length, liveStreams.length, state.streams]);
+
+  const onMessagesScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    const near = el.scrollHeight - el.scrollTop - el.clientHeight < 72;
+    if (near !== followBottom) setFollowBottom(near);
+  };
 
   const statusText =
     runtime?.status === 'retry'
@@ -1063,7 +1065,14 @@ export function ChatPanel() {
                 >
                   ⌕
                 </button>
-                <button className="icon-btn" title="回到最新" onClick={() => jumpToId(messages[messages.length - 1]?.id ?? '')}>
+                <button
+                  className="icon-btn"
+                  title="回到最新"
+                  onClick={() => {
+                    setFollowBottom(true);
+                    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+                  }}
+                >
                   ⇣
                 </button>
               </div>
@@ -1146,7 +1155,7 @@ export function ChatPanel() {
               </div>
             ) : null}
 
-            <div className="messages" ref={scrollRef}>
+            <div className="messages" ref={scrollRef} onScroll={onMessagesScroll}>
               {messages.length === 0 && liveStreams.length === 0 ? (
                 <div className="welcome">
                   <h2>连接 opencode v2</h2>
