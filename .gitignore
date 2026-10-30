@@ -11,3 +11,5 @@ coverage/
 Thumbs.db
 .vite/
 apps/desktop/src-tauri/target/
+artifacts/
+scripts/fixtures/secrets.local.json

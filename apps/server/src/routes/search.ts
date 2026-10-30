@@ -72,9 +72,12 @@ export async function registerSearchRoutes(app: FastifyInstance, ctx: AppContext
   });
 
   app.post('/api/replace/apply', async (req) => {
-    const body = req.body as { ws?: string; id?: string; snapshot?: boolean };
+    const body = req.body as { ws?: string; id?: string; snapshot?: boolean; paths?: string[] };
     const ws = workspaceOf(ctx, body.ws);
     const id = requireString(body.id, 'id');
+    if (body.paths !== undefined && (!Array.isArray(body.paths) || body.paths.some((p) => typeof p !== 'string'))) {
+      throw new HttpError(400, 'paths must be a string array', 'invalid_field');
+    }
     let snapshot: string | null = null;
     if (body.snapshot !== false) {
       try {
@@ -85,7 +88,7 @@ export async function registerSearchRoutes(app: FastifyInstance, ctx: AppContext
         console.warn('[replace] snapshot failed (continuing with backups):', err);
       }
     }
-    const result = await ctx.replace.apply(id);
+    const result = await ctx.replace.apply(id, body.paths);
     ctx.bus.local('bff.files.changed', { reason: 'replace', files: result.appliedFiles, snapshot });
     return { ...result, snapshot };
   });

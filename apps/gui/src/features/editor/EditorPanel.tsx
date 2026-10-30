@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { FileTree } from '../../components/FileTree.js';
 import { useApp } from '../../store/appStore.js';
 import { useEditor } from '../../store/editorStore.js';
@@ -21,7 +21,8 @@ export function EditorPanel() {
   const consumeLine = useEditor((s) => s.consumeLine);
   const closeAll = useEditor((s) => s.closeAll);
   const [cursor, setCursor] = useState({ line: 1, column: 1 });
-  const [jump, setJump] = useState<number | null>(null);
+  const [jump, setJump] = useState<{ line: number; nonce: number } | null>(null);
+  const prevWorkspace = useRef<string | null>(workspaceID);
 
   const tab = tabs.find((t) => t.path === active) ?? null;
   const activeDiagnostics = tab ? diagnostics[tab.path] ?? [] : [];
@@ -33,14 +34,18 @@ export function EditorPanel() {
   }, [openRequest, open, consumeOpen]);
 
   useEffect(() => {
-    closeAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workspaceID]);
+    // Only clear tabs when the workspace actually changes; closing on first mount
+    // would immediately discard a file opened from search (the original jump bug).
+    if (prevWorkspace.current !== workspaceID) {
+      prevWorkspace.current = workspaceID;
+      closeAll();
+    }
+  }, [workspaceID, closeAll]);
 
   useEffect(() => {
     if (!tab?.pendingLine) return;
     const line = consumeLine(tab.path);
-    if (line) setJump(line);
+    if (line) setJump({ line, nonce: Date.now() });
   }, [tab?.pendingLine, tab?.path, consumeLine]);
 
   useEffect(() => {
@@ -162,7 +167,7 @@ export function EditorPanel() {
                   <button
                     key={`${d.line}-${d.column}-${i}`}
                     className={`diag-item diag-${d.severity}`}
-                    onClick={() => setJump(d.line)}
+                    onClick={() => setJump({ line: d.line, nonce: Date.now() })}
                     title={d.message}
                   >
                     <span className="diag-loc">

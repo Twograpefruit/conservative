@@ -160,13 +160,19 @@ export class ReplaceService {
     return preview;
   }
 
-  async apply(planId: string): Promise<ReplaceApplyResult> {
+  async apply(planId: string, selectedPaths?: string[]): Promise<ReplaceApplyResult> {
     this.gc();
     const plan = this.plans.get(planId);
     if (!plan) throw new HttpError(410, 'replace preview expired; run preview again', 'preview_expired');
 
+    const selected = Array.isArray(selectedPaths) && selectedPaths.length > 0 ? new Set(selectedPaths) : null;
+    const targets = selected ? plan.files.filter((f) => selected.has(f.rel)) : plan.files;
+    if (targets.length === 0) {
+      throw new HttpError(400, '没有选中任何文件', 'nothing_selected');
+    }
+
     const conflicts: Array<{ path: string; reason: string }> = [];
-    for (const file of plan.files) {
+    for (const file of targets) {
       try {
         const buf = await fs.promises.readFile(file.abs);
         if (hashBuffer(buf) !== file.hash) conflicts.push({ path: file.rel, reason: 'changed since preview' });
@@ -183,7 +189,7 @@ export class ReplaceService {
     const written: PlannedFile[] = [];
     const applied = new Map<string, { raw: Buffer; hash: string }>();
     try {
-      for (const file of plan.files) {
+      for (const file of targets) {
         const backupPath = path.join(dir, file.rel.replace(/[\\/]/g, '__'));
         await fs.promises.writeFile(backupPath, file.raw);
         const next = encodeText(applyEol(file.after, file.eolTarget), 'utf-8', file.bom);
@@ -211,18 +217,25 @@ export class ReplaceService {
       planId: plan.id,
       dir,
       root: plan.root,
-      files: plan.files.map((f) => ({ rel: f.rel, hash: applied.get(f.rel)?.hash ?? '' })),
+      files: targets.map((f) => ({ rel: f.rel, hash: applied.get(f.rel)?.hash ?? '' })),
     };
     this.undos.set(undo.id, undo);
     await fs.promises.writeFile(path.join(dir, 'undo.json'), JSON.stringify({ ...undo, createdAt: Date.now() }, null, 2), 'utf8');
     this.plans.delete(plan.id);
 
+    const skipped = [...plan.skipped];
+    if (selected) {
+      for (const f of plan.files) {
+        if (!selected.has(f.rel)) skipped.push({ path: f.rel, reason: '未选择（保留原内容）' });
+      }
+    }
+
     return {
       id: plan.id,
       undoId: undo.id,
-      appliedFiles: plan.files.length,
-      appliedMatches: plan.files.reduce((n, f) => n + f.matches, 0),
-      skipped: plan.skipped,
+      appliedFiles: targets.length,
+      appliedMatches: targets.reduce((n, f) => n + f.matches, 0),
+      skipped,
       backupDir: dir,
     };
   }

@@ -26,6 +26,7 @@ export function SearchPanel() {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<ReplacePreview | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [applied, setApplied] = useState<ReplaceApplyResult | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -96,6 +97,7 @@ export function SearchPanel() {
         headers: { 'content-type': 'application/json' },
       });
       setPreview(p);
+      setSelected(new Set(p.files.map((f) => f.path)));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -103,19 +105,42 @@ export function SearchPanel() {
     }
   };
 
+  const toggleFile = (path: string, checked: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(path);
+      else next.delete(path);
+      return next;
+    });
+  };
+
+  const selectedFiles = preview ? preview.files.filter((f) => selected.has(f.path)) : [];
+  const selectedMatches = selectedFiles.reduce((n, f) => n + f.matches, 0);
+  const allSelected = Boolean(preview && preview.files.length > 0 && selectedFiles.length === preview.files.length);
+
   const doApply = async () => {
     if (!preview) return;
-    if (!window.confirm(`将修改 ${preview.totalFiles} 个文件中的 ${preview.totalMatches} 处命中，并先创建快照。继续？`)) return;
+    if (selectedFiles.length === 0) {
+      notify('请至少勾选一个文件', 'error');
+      return;
+    }
+    if (
+      !window.confirm(
+        `将修改所选 ${selectedFiles.length} 个文件中的 ${selectedMatches} 处命中，并先创建快照。未勾选的文件保持原样。继续？`,
+      )
+    )
+      return;
     setRunning(true);
     try {
       const res = await api<ReplaceApplyResult>('/api/replace/apply', {
         method: 'POST',
-        body: JSON.stringify({ ws: workspaceID, id: preview.id }),
+        body: JSON.stringify({ ws: workspaceID, id: preview.id, paths: selectedFiles.map((f) => f.path) }),
         headers: { 'content-type': 'application/json' },
       });
       setApplied(res);
       setPreview(null);
-      notify(`已替换 ${res.appliedMatches} 处，备份在 ${res.backupDir}`);
+      setSelected(new Set());
+      notify(`已替换 ${res.appliedFiles} 个文件 / ${res.appliedMatches} 处，备份在 ${res.backupDir}`);
       await run(false);
     } catch (err) {
       const e = err as { body?: { conflicts?: Array<{ path: string; reason: string }> }; message?: string };
@@ -200,8 +225,13 @@ export function SearchPanel() {
               <button className="btn" onClick={() => void doPreview()} disabled={!query.trim()}>
                 预览替换
               </button>
-              <button className="btn btn-primary" onClick={() => void doApply()} disabled={!preview}>
-                应用
+              <button
+                className="btn btn-primary"
+                onClick={() => void doApply()}
+                disabled={!preview || selectedFiles.length === 0}
+                title={preview ? `已选 ${selectedFiles.length}/${preview.files.length} 个文件` : ''}
+              >
+                应用所选{selectedFiles.length ? `（${selectedFiles.length} 文件 / ${selectedMatches} 处）` : ''}
               </button>
             </>
           )}
@@ -222,17 +252,42 @@ export function SearchPanel() {
         {preview ? (
           <div className="preview">
             <div className="preview-head">
-              <strong>{preview.totalFiles}</strong> 个文件 / <strong>{preview.totalMatches}</strong> 处命中
+              <label className="preview-select-all">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={(e) => setSelected(e.target.checked ? new Set(preview.files.map((f) => f.path)) : new Set())}
+                />
+                全选
+              </label>
+              <strong>{selectedFiles.length}</strong> / {preview.files.length} 个文件 ·{' '}
+              <strong>{selectedMatches}</strong> / {preview.totalMatches} 处命中
               {preview.skippedFiles ? <span className="muted"> · 跳过 {preview.skippedFiles} 个</span> : null}
               {preview.truncated ? <span className="muted"> · 结果已截断</span> : null}
               <span className="spacer" />
-              <button className="btn btn-small" onClick={() => setPreview(null)}>
+              <button className="btn btn-small" onClick={() => setSelected(new Set())} disabled={!selectedFiles.length}>
+                全不选
+              </button>
+              <button
+                className="btn btn-small"
+                onClick={() => {
+                  setPreview(null);
+                  setSelected(new Set());
+                }}
+              >
                 关闭
               </button>
             </div>
             {preview.files.slice(0, 200).map((f) => (
-              <div className="preview-file" key={f.path}>
+              <div className={`preview-file ${selected.has(f.path) ? '' : 'preview-unselected'}`} key={f.path}>
                 <div className="preview-path">
+                  <label className="preview-check">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(f.path)}
+                      onChange={(e) => toggleFile(f.path, e.target.checked)}
+                    />
+                  </label>
                   <button className="link" onClick={() => requestOpen(f.path, f.sample[0]?.line)}>
                     {f.path}
                   </button>

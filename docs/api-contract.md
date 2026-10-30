@@ -64,6 +64,7 @@
 | M1-004 | 会话隔离   | 会话 A 流式中切到 B 再切回      | 消息不串、状态正确恢复     | PARTIAL（按 sessionID 分桶与事件归约已实现，未做双会话人工压测） |
 | M1-005 | 补帧一致性 | 记录发送前消息数，重连后比对    | 不丢不重（含重复事件去重） | PASS（BFF 环形缓冲 + `since` 回放实测；reducer 幂等单测） |
 | M1-006 | 错误收尾   | 触发上游错误（无效模型/断凭据） | 立即标红并保留已产出内容   | PASS（reducer 单测 + 上游 400 事件样例） |
+| M1-007 | 历史消息加载 | 打开已有会话，检查消息列表 | 不因分页参数超限而 400/空白 | PASS（上游 limit 上限 200；已改为 `limit=200&order=desc` 后在 Playwright 中正常加载） |
 
 故障注入：
 
@@ -83,8 +84,8 @@
 | M2-002 | 乐观锁冲突     | 外部改文件后再保存        | 返回 409 并提示三方合并，不静默覆盖             | PASS（409 返回 currentHash/mtime；GUI 冲突 banner） |
 | M2-003 | EOL/编码保真   | 编辑 CRLF 文件与 GBK 文件 | CRLF 保持；非 UTF-8 默认跳过并提示              | PASS（CRLF 写回/替换均保持；GBK 只读、PUT 返回 415） |
 | M2-004 | 大文件保护     | 打开 >2MB 文件            | 只读 + 虚拟滚动，不卡 UI                        | PASS（API 截断 2MB + readonly；CM 仅加载截断内容） |
-| M2-005 | 搜索流式       | 全仓搜索常见符号          | 首结果 <1.5s、游标分页、可取消                  | PASS（rg NDJSON 流式，首结果 <100ms；支持 cancel/cursor） |
-| M2-006 | 替换事务       | preview → apply → 撤销    | 命中数/样例准确；备份生成；撤销可复原           | PASS（实测 4 处/2 文件，apply 前快照，undo 复原） |
+| M2-005 | 搜索流式       | 全仓搜索常见符号          | 首结果 <1.5s、游标分页、可取消                  | PASS（rg NDJSON 流式，首结果 <100ms；支持 cancel/cursor；点击结果在 Playwright 中跳到 `package.json` 第 2 行） |
+| M2-006 | 替换事务       | preview → apply → 撤销    | 命中数/样例准确；备份生成；撤销可复原           | PASS（文件级勾选，实测只改选中 1/2 文件；apply 前快照；undo 复原；EOL 保持） |
 | M2-007 | 诊断标注       | 保存含类型错误的 .py      | 2s 内行号级诊断，与 pyright CLI 一致            | PASS（a.py 第 2 行 reportAssignmentType，<2s） |
 
 故障注入：
@@ -105,6 +106,7 @@
 | M3-003 | hunk 操作   | 单 hunk 暂存与回滚                      | 仅影响该 hunk，其余不变                    | PASS（stage/unstage/discard 实测；仅目标 hunk 变化） |
 | M3-004 | 影子仓库    | 批量替换前后触发快照 → 对比 → 恢复      | 按项目隔离、可对比任意两点、恢复后内容一致 | PASS（content hash 路径隔离；diff/restore 实测） |
 | M3-005 | 中文路径    | diff 含中文文件名                       | 正常显示（quotepath 已关）                 | PASS（`core.quotePath=false` + diff 单测覆盖中文路径） |
+| M3-006 | 提交与推送  | 修改文件 → 提交（自动暂存）→ 推送       | 本地提交成功，远程分支可见，推送前显示未推送数 | PASS（临时 bare remote 实测 commit/push；本地 `c086d4e` 已推送 origin/main） |
 
 故障注入：
 
@@ -138,7 +140,7 @@
 | ------ | ------------ | --------------------------------------------------------- | --------------------------------------------- | ---- |
 | M4-001 | 打包与单实例 | 安装并二次启动                                            | 正常唤起已有实例、托盘可用                    | BLOCKED（仅有 Tauri 脚手架，未打包） |
 | M4-002 | 退出清理     | 从托盘退出                                                | 无孤儿 opencode / BFF 进程                    | BLOCKED（浏览器版已由 Job Object 保证） |
-| M4-003 | 内存达标     | 固定 20 万行仓库 + 50 条会话，采样 RSS 峰值与 30 分钟驻留 | 壳+前端 < 200MB；BFF < 50MB                   | PARTIAL（BFF 实测约 约 67–69MB，超预算；前端未采） |
+| M4-003 | 内存达标     | 固定 20 万行仓库 + 50 条会话，采样 RSS 峰值与 30 分钟驻留 | 壳+前端 < 200MB；BFF < 50MB                   | PARTIAL（BFF 实测约 67–69MB，超预算；前端未采） |
 | M4-004 | 降级策略     | 人为超内存预算                                            | 提示并释放缓存（关闭非活跃标签/清 diff 缓存） | BLOCKED |
 
 故障注入：
@@ -186,3 +188,48 @@
 | M3     | Git status/log/diff、hunk stage/unstage/discard、commit、四种 DiffSource 归一、影子仓库 | 完成 |
 | M3.5   | 一次性票据、上游 ConPTY 桥、多标签、resize、查找、scrollback | 完成（本地 node-pty 降级） |
 | M4     | Tauri/WebView2 脚手架、打包/托盘/内存压测 | 脚手架 |
+
+---
+
+## 11. 2026-10-30 问题修复记录
+
+| 问题 | 根因 | 修复 | 验证 |
+| ---- | ---- | ---- | ---- |
+| Git 点击提交后远程仓库看不到 | ① 提交只包含已暂存内容，UI 未自动暂存；② 只有 commit，没有 push；③ 面板不显示 ahead/behind | `POST /api/git/commit` 支持 `stageAll`（UI 默认勾选）；新增 `POST /api/git/push`（禁止 force，首次自动 `-u`）；`GET /api/git/info` 返回 `upstream/ahead/behind`；面板显示“未推送 N”和推送按钮 | 临时 bare remote 实测 commit → push → `ahead 0`；本机 `c086d4e v0.0.1` 已推送 `origin/main`（`9be7332..c086d4e`） |
+| 点击搜索结果无法跳到代码 | `EditorPanel` 在首次挂载时执行 `closeAll()`，把搜索刚打开的 tab 立刻关闭；同 line 重复点击也不会重新滚动 | 用 `prevWorkspace` ref 只在 workspace 真正变化时清空 tab；跳转改为 `{line, nonce}`，重复点击也会重新定位并 focus | Playwright：搜索 `opencode` → 点第一条 → 编辑器打开 `package.json`，活动行为第 2 行 |
+| 替换只有“全部应用” | preview 没有选择集，apply 固定处理整个 plan | preview 增加文件级 checkbox / 全选 / 全不选；`POST /api/replace/apply` 接受 `paths`，只校验、备份、写入选中文件，undo 只恢复实际写入的文件 | 两文件 preview，只选 `x.txt` → 仅 x 变为 `HI`，y 保持原样；undo 后 x 复原 |
+| 打开历史会话空白（额外发现） | 消息列表请求 `limit=300`，上游最大 200，返回 400 | 改为 `limit=200&order=desc`，前端 hydrate 时按时间升序 | Playwright 加载会话无 400；M1-007 记录 |
+| 推送后仍显示未同步 | 没有 ahead/behind 数据 | `@{u}...HEAD` 计数并展示 | `git info` 返回 `ahead/behind/upstream` |
+
+> 说明：本轮修复提交仍在工作区，未自动 commit；用户可在 Git 面板用“提交到本地 → 推送”完成上传。
+
+---
+
+## 12. M5–M8 增补范围状态
+
+`docs/acceptance.md` §7.5–§7.11 已并入 M5（编辑器语言/Markdown/SQL）、M6（DB/Redis）、M7（快捷键/主题/Git 命令提示）、M8（通知）用例。当前实现状态：
+
+| 范围 | 状态 | 说明 |
+| ---- | ---- | ---- |
+| M5 编辑器增强 | 未开始 / BLOCKED | 现有 CodeMirror 仅按扩展名静态加载 py/js/ts/json/md；未做语言注册表、懒加载、Markdown 预览、SQL 格式化 |
+| M6 数据源 | 未开始 / BLOCKED | 无 DB/Redis 端点与凭据存储；M6-011/M6-016 的 CI 断言骨架已就绪但默认退出码 2 |
+| M7 交互系统 | 部分 | 已有基础快捷键（Alt+1..6、Ctrl+S）、暗色主题、Git 命令面板雏形；未做命令注册表/命令面板/主题三态/错误规则表 |
+| M8 通知 | 未开始 / BLOCKED | 无原生/应用内通知中心 |
+
+### 12.1 CI 断言骨架
+
+- `scripts/ci-assert.sh`：M6-011（Redis 禁止 KEYS）与 M6-016（凭据不外泄）的可执行骨架，退出码 0/1/2/3。
+- `scripts/fixtures/secrets.example.json`：夹具模板；真实值放 `secrets.local.json`（已 gitignore）。
+- `--self-test` 已验证密钥扫描与 KEYS 检测逻辑；真实用例在 M6 端点落地前记 **BLOCKED**。
+- 详见 `docs/ci-assertions.md`。
+
+### 12.2 ENV-015…020（增补闸门）
+
+| 编号 | 状态 | 说明 |
+| ---- | ---- | ---- |
+| ENV-015 SQL 格式化 | BLOCKED | `sql-formatter` / `sqlparse` 均未安装 |
+| ENV-016 凭据存储 | BLOCKED | 未实现 DPAPI/凭据管理器封装 |
+| ENV-017 原生模块编译链 | WARN | 无 `cl`；`better-sqlite3`/`node-pty` 不可编译，相关功能需显式关闭 |
+| ENV-018 本地测试实例 | PARTIAL | 本机有 `redis-cli`；未确认测试 Redis/SQLite 夹具 |
+| ENV-019 语言包体积审计 | PARTIAL | 当前首屏 JS gzip ≈381KB；懒加载与阈值审计待 M5 |
+| ENV-020 通知能力 | BLOCKED | 浏览器/Tauri 通知均未实现 |

@@ -81,12 +81,27 @@ export async function info(ctx: GitContext): Promise<{
   head?: string;
   detached?: boolean;
   shallow?: boolean;
+  upstream?: string;
+  ahead?: number;
+  behind?: number;
 }> {
   const inside = await ensureGitRepo(ctx);
   if (!inside) return { repo: false };
   const branch = await git(ctx, ['rev-parse', '--abbrev-ref', 'HEAD']);
   const head = await git(ctx, ['rev-parse', 'HEAD']);
   const shallow = await git(ctx, ['rev-parse', '--is-shallow-repository']);
+  const upstreamRes = await git(ctx, ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}']);
+  const upstream = upstreamRes.code === 0 ? upstreamRes.out.trim() : undefined;
+  let ahead = 0;
+  let behind = 0;
+  if (upstream) {
+    const counts = await git(ctx, ['rev-list', '--left-right', '--count', `@{u}...HEAD`]);
+    if (counts.code === 0) {
+      const [behindRaw, aheadRaw] = counts.out.trim().split(/\s+/);
+      behind = Number(behindRaw) || 0;
+      ahead = Number(aheadRaw) || 0;
+    }
+  }
   const name = branch.out.trim();
   return {
     repo: true,
@@ -95,6 +110,9 @@ export async function info(ctx: GitContext): Promise<{
     head: head.code === 0 ? head.out.trim() : undefined,
     detached: name === 'HEAD',
     shallow: shallow.out.trim() === 'true',
+    upstream,
+    ahead,
+    behind,
   };
 }
 
@@ -227,9 +245,49 @@ export async function applyHunk(
   return { ok: true };
 }
 
-export async function commit(ctx: GitContext, message: string): Promise<{ ok: true; out: string }> {
+export async function commit(
+  ctx: GitContext,
+  message: string,
+  stageAll = false,
+): Promise<{ ok: true; out: string }> {
   if (!message.trim()) badRequest('commit message is required');
+  if (stageAll) {
+    const add = await git(ctx, ['add', '-A'], { timeoutMs: 120_000 });
+    if (add.code !== 0) throw new HttpError(409, add.err.trim() || 'git add failed', 'add_failed');
+  }
+  const staged = await git(ctx, ['diff', '--cached', '--name-only']);
+  if (staged.code === 0 && staged.out.trim() === '') {
+    throw new HttpError(409, '没有已暂存的改动。请先暂存文件，或勾选“提交前暂存全部变更”。', 'nothing_staged');
+  }
   const res = await git(ctx, ['commit', '-m', message], { timeoutMs: 120_000 });
   if (res.code !== 0) throw new HttpError(409, res.err.trim() || res.out.trim() || 'git commit failed', 'commit_failed');
   return { ok: true, out: res.out + res.err };
+}
+
+export async function push(
+  ctx: GitContext,
+  input: { remote?: string; branch?: string; setUpstream?: boolean } = {},
+): Promise<{ ok: true; out: string; remote: string; branch: string; setUpstream: boolean }> {
+  const repoInfo = await info(ctx);
+  if (!repoInfo.repo) throw new HttpError(400, 'not a git repository', 'not_repo');
+  if (!repoInfo.branch) throw new HttpError(409, '当前处于 detached HEAD，无法直接推送，请先切换分支', 'detached_head');
+  const branch = (input.branch ?? repoInfo.branch).trim();
+  const remote = (input.remote ?? repoInfo.upstream?.split('/')[0] ?? 'origin').trim();
+  const safeName = /^[A-Za-z0-9._-]+$/;
+  if (!safeName.test(remote)) throw new HttpError(400, 'invalid remote name', 'invalid_remote');
+  if (!/^[A-Za-z0-9._/-]+$/.test(branch) || branch.startsWith('-') || branch.includes('..')) {
+    throw new HttpError(400, 'invalid branch name', 'invalid_branch');
+  }
+  const remotes = await git(ctx, ['remote']);
+  if (remotes.code !== 0) throw new HttpError(500, remotes.err || 'git remote failed', 'git_error');
+  if (!remotes.out.split(/\r?\n/).map((s) => s.trim()).includes(remote)) {
+    throw new HttpError(409, `远程仓库 "${remote}" 不存在；请先配置 git remote`, 'remote_not_found');
+  }
+  const shouldSetUpstream = input.setUpstream ?? !repoInfo.upstream;
+  const args = ['push', ...(shouldSetUpstream ? ['-u'] : []), remote, branch];
+  const res = await git(ctx, args, { timeoutMs: 180_000 });
+  if (res.code !== 0) {
+    throw new HttpError(409, res.err.trim() || res.out.trim() || 'git push failed', 'push_failed');
+  }
+  return { ok: true, out: (res.out + res.err).trim(), remote, branch, setUpstream: shouldSetUpstream };
 }

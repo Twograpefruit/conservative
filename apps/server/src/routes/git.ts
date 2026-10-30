@@ -11,6 +11,7 @@ import {
   execWhitelisted,
   info,
   log,
+  push,
   status,
   type DiffMode,
   type GitContext,
@@ -54,9 +55,23 @@ export async function registerGitRoutes(app: FastifyInstance, ctx: AppContext): 
   });
 
   app.post('/api/git/commit', async (req) => {
-    const body = req.body as { ws?: string; message?: string };
+    const body = req.body as { ws?: string; message?: string; stageAll?: boolean };
     const ws = workspaceOf(ctx, body.ws);
-    return commit(ctxOf(ctx, ws), requireString(body.message, 'message'));
+    const result = await commit(ctxOf(ctx, ws), requireString(body.message, 'message'), body.stageAll !== false);
+    ctx.bus.local('bff.git.changed', { action: 'commit', ws: ws.id });
+    return result;
+  });
+
+  app.post('/api/git/push', async (req) => {
+    const body = req.body as { ws?: string; remote?: string; branch?: string; setUpstream?: boolean };
+    const ws = workspaceOf(ctx, body.ws);
+    const result = await push(ctxOf(ctx, ws), {
+      remote: typeof body.remote === 'string' ? body.remote : undefined,
+      branch: typeof body.branch === 'string' ? body.branch : undefined,
+      setUpstream: typeof body.setUpstream === 'boolean' ? body.setUpstream : undefined,
+    });
+    ctx.bus.local('bff.git.changed', { action: 'push', ws: ws.id });
+    return result;
   });
 
   app.post('/api/git/apply-hunk', async (req) => {

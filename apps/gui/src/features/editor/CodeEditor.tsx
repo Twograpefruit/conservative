@@ -46,7 +46,7 @@ export function CodeEditor({
   onChange: (content: string) => void;
   onSave: () => void;
   onCursor?: (line: number, column: number) => void;
-  jumpLine?: number | null;
+  jumpLine?: { line: number; nonce: number } | null;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
@@ -135,12 +135,13 @@ export function CodeEditor({
   useEffect(() => {
     if (!view.current || !jumpLine) return;
     const doc = view.current.state.doc;
-    const line = doc.line(Math.min(Math.max(1, jumpLine), doc.lines));
+    const line = doc.line(Math.min(Math.max(1, jumpLine.line), doc.lines));
     view.current.dispatch({
       selection: { anchor: line.from },
       effects: EditorView.scrollIntoView(line.from, { y: 'center' }),
     });
-  }, [jumpLine, tab.path]);
+    view.current.focus();
+  }, [jumpLine?.nonce, jumpLine?.line, tab.path]);
 
   return <div className="cm-host" ref={host} />;
 }

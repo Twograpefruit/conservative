@@ -155,7 +155,7 @@ export const useChat = create<ChatStore>((set, get) => ({
   loadMessages: async (id) => {
     try {
       const res = await api<{ data: MessageInfo[] }>(
-        `/api/oc/api/session/${encodeURIComponent(id)}/message${qs({ limit: 300, order: 'asc' })}`,
+        `/api/oc/api/session/${encodeURIComponent(id)}/message${qs({ limit: 200, order: 'desc' })}`,
       );
       const state = hydrateMessages(get().state, id, res.data ?? []);
       set({ state });

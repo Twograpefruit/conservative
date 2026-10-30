@@ -47,10 +47,14 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
 
   const guiDir = process.env.OCG_GUI_DIR ?? path.resolve(process.cwd(), 'apps/gui/dist');
   if (fs.existsSync(guiDir) && fs.existsSync(path.join(guiDir, 'index.html'))) {
-    await app.register(fastifyStatic, { root: guiDir, prefix: '/', wildcard: false });
+    await app.register(fastifyStatic, { root: guiDir, prefix: '/', wildcard: true });
     app.setNotFoundHandler((req, reply) => {
       if (req.url.startsWith('/api/')) {
         reply.code(404).send({ error: 'not_found', message: `no route for ${req.url}` });
+        return;
+      }
+      if (/\.(js|mjs|css|map|png|jpe?g|gif|svg|ico|woff2?|ttf|json)$/i.test((req.url.split('?')[0] ?? ''))) {
+        reply.code(404).type('text/plain').send('asset not found');
         return;
       }
       reply.sendFile('index.html');

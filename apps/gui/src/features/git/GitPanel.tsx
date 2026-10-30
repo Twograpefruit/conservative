@@ -13,6 +13,9 @@ interface GitInfo {
   head?: string;
   detached?: boolean;
   shallow?: boolean;
+  upstream?: string;
+  ahead?: number;
+  behind?: number;
 }
 
 export function GitPanel() {
@@ -30,6 +33,8 @@ export function GitPanel() {
   const [base, setBase] = useState<string | undefined>();
   const [files, setFiles] = useState<FileDiff[]>([]);
   const [message, setMessage] = useState('');
+  const [stageAll, setStageAll] = useState(true);
+  const [pushBusy, setPushBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -117,14 +122,48 @@ export function GitPanel() {
     try {
       await api('/api/git/commit', {
         method: 'POST',
-        body: JSON.stringify({ ws: workspaceID, message }),
+        body: JSON.stringify({ ws: workspaceID, message, stageAll }),
         headers: { 'content-type': 'application/json' },
       });
       setMessage('');
-      notify('提交成功');
+      const ahead = info?.ahead ?? 0;
+      notify(ahead > 0 || info?.upstream ? `已提交到本地，尚有 ${ahead + 1} 个提交未推送` : '已提交到本地');
       await reload();
     } catch (err) {
-      notify(err instanceof Error ? err.message : '提交失败', 'error');
+      const e = err as { message?: string };
+      setError(e.message ?? '提交失败');
+      notify(e.message ?? '提交失败', 'error');
+    }
+  };
+
+  const pushNow = async () => {
+    if (!workspaceID) return;
+    if (info?.ahead === 0 && info?.upstream) {
+      notify('没有需要推送的提交');
+      return;
+    }
+    const target = info?.upstream ?? `${info?.branch ?? '当前分支'} → origin`;
+    if (!window.confirm(`推送 ${target}？这会把本地提交上传到远程仓库（不会强制推送）。`)) return;
+    setPushBusy(true);
+    setError(null);
+    try {
+      const res = await api<{ out: string; remote: string; branch: string; setUpstream: boolean }>('/api/git/push', {
+        method: 'POST',
+        body: JSON.stringify({ ws: workspaceID }),
+        headers: { 'content-type': 'application/json' },
+      });
+      notify(
+        res.out
+          ? `已推送 ${res.remote}/${res.branch}：${res.out.split('\n')[0]}`
+          : `已推送 ${res.remote}/${res.branch}`,
+      );
+      await reload();
+    } catch (err) {
+      const e = err as { message?: string };
+      setError(e.message ?? '推送失败');
+      notify(e.message ?? '推送失败', 'error');
+    } finally {
+      setPushBusy(false);
     }
   };
 
@@ -185,6 +224,16 @@ export function GitPanel() {
         <div className="pane-head">
           <div className="pane-title">
             Git {info?.branch ? <span className="chip">{info.branch}</span> : null}
+            {info?.ahead ? (
+              <span className="badge badge-warn" title={`本地领先 ${info.ahead} 个提交，尚未推送`}>
+                未推送 {info.ahead}
+              </span>
+            ) : null}
+            {info?.behind ? (
+              <span className="badge" title={`远程领先 ${info.behind} 个提交，建议先拉取`}>
+                落后 {info.behind}
+              </span>
+            ) : null}
           </div>
           <div className="pane-actions">
             <button className="icon-btn" title="刷新" onClick={() => void reload()}>
@@ -307,16 +356,32 @@ export function GitPanel() {
           <div className="git-diff-scroll">
             {mode !== 'commit' ? (
               <div className="commit-box">
-                <textarea
-                  className="input"
-                  rows={2}
-                  placeholder="提交说明（仅提交已暂存内容）"
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                />
-                <button className="btn btn-primary" disabled={!message.trim()} onClick={() => void commit()}>
-                  提交
-                </button>
+                <div className="commit-input">
+                  <textarea
+                    className="input"
+                    rows={2}
+                    placeholder="提交说明（默认先暂存全部变更）"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                  />
+                  <label className="commit-option">
+                    <input type="checkbox" checked={stageAll} onChange={(e) => setStageAll(e.target.checked)} />
+                    提交前暂存全部变更
+                  </label>
+                </div>
+                <div className="commit-actions">
+                  <button className="btn btn-primary" disabled={!message.trim()} onClick={() => void commit()}>
+                    提交到本地
+                  </button>
+                  <button
+                    className="btn"
+                    disabled={pushBusy || Boolean(info?.upstream && !info.ahead)}
+                    title={info?.upstream ? `推送到 ${info.upstream}` : '首次推送会自动设置 upstream'}
+                    onClick={() => void pushNow()}
+                  >
+                    {pushBusy ? '推送中…' : info?.upstream ? `推送${info.ahead ? ` (${info.ahead})` : ''}` : '推送并设置 upstream'}
+                  </button>
+                </div>
               </div>
             ) : null}
             <DiffView files={files} actions={actions} />

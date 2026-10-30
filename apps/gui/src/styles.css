@@ -1275,6 +1275,21 @@ textarea.input {
   background: var(--bg-2);
   z-index: 2;
 }
+.preview-select-all,
+.preview-check {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  color: var(--fg-dim);
+  font-size: 11.5px;
+}
+.preview-unselected {
+  opacity: 0.55;
+}
+.preview-unselected .preview-sample {
+  filter: grayscale(0.5);
+}
 .preview-file {
   border-bottom: 1px solid var(--line);
   padding: 6px 14px;
@@ -1446,15 +1461,38 @@ textarea.input {
 }
 .commit-box {
   display: flex;
+  align-items: stretch;
   gap: 8px;
   padding: 10px 12px;
   border-bottom: 1px solid var(--line);
 }
-.commit-box textarea {
+.commit-input {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
 }
-.commit-box .btn {
-  align-self: flex-end;
+.commit-input textarea {
+  width: 100%;
+  resize: vertical;
+}
+.commit-option {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--fg-dim);
+  font-size: 11px;
+  cursor: pointer;
+}
+.commit-actions {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 5px;
+}
+.commit-actions .btn {
+  white-space: nowrap;
 }
 
 /* --------------------------------- diff --------------------------------- */

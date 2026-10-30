@@ -25,7 +25,7 @@ opencode serve v2 (127.0.0.1 only, password held by BFF)
 | M0 | Host abstraction, single-instance lock, port fallback, runtime file, proxy, SSE bus, probe, codegen, bootstrap | Done |
 | M1 | v2 event reducer, replay, streaming chat, tool timeline, permission queues, model/agent switching | Done |
 | M2 | File tree, CodeMirror tabs, optimistic locking, EOL/encoding fidelity, lint, streaming search, transactional replace + undo | Done |
-| M3 | Git status/log/diff, hunk stage/unstage/discard, commit, four diff sources normalized, shadow snapshots | Done |
+| M3 | Git status/log/diff, hunk stage/unstage/discard, commit (auto-stage option), push, four diff sources normalized, shadow snapshots | Done |
 | M3.5 | One-time PTY tickets, ConPTY bridge, tabs, resize, find, scrollback | Done (upstream PTY fallback) |
 | M4 | Tauri/WebView2 packaging, tray, memory soak | Scaffold only |
 
@@ -98,7 +98,7 @@ Runtime data (never inside the repo):
 | Files | `GET /api/fs/tree`, `GET/PUT /api/fs/file`, `POST /api/fs/{rename,delete,mkdir}` |
 | Search | `POST /api/search` (NDJSON stream + cursor) |
 | Replace | `POST /api/replace/preview`, `POST /api/replace/apply`, `POST /api/replace/undo` |
-| Git | `GET /api/git/{info,status,log,diff}`, `POST /api/git/{exec,commit,apply-hunk}` |
+| Git | `GET /api/git/{info,status,log,diff}`, `POST /api/git/{exec,commit,push,apply-hunk}` |
 | Diff | `GET /api/diff/session`, `GET /api/diff/snapshot` |
 | Snapshots | `GET/POST /api/snapshots`, `GET /api/snapshots/diff`, `POST /api/snapshots/restore` |
 | Lint | `POST /api/lint` (pyright + optional ruff) |
@@ -125,6 +125,20 @@ Runtime data (never inside the repo):
 - **Edits preserve bytes.** Files are decoded strictly as UTF-8 (GB18030 is detected for
   read-only display); writes keep BOM/EOL, are hash-checked first (409 on conflict) and are
   written atomically. Files >2 MB are read-only/truncated; replace skips non-UTF-8 files.
+- **Git commit and push are separate, visible steps.** The commit box has a default-on
+  "stage all changes" option and a push button; the header shows `未推送 N` / `落后 N` from
+  `@{u}...HEAD`. Push never uses force flags, and the first push sets upstream automatically.
+- **Replace is selective.** Preview renders a checkbox per file; apply sends only the checked
+  paths. Undo restores only the files that were actually written in that transaction.
+- **Search hits jump to the exact line.** Result clicks carry path + line and the editor uses a
+  nonce so repeated clicks on the same line still scroll/focus.
+
+## CI assertions (M6-011 / M6-016)
+
+`scripts/ci-assert.sh` is the executable skeleton for "Redis browsing must never send KEYS" and
+"credentials never leak". Exit codes are 0 pass / 1 assert fail / 2 blocked / 3 usage. See
+[`docs/ci-assertions.md`](docs/ci-assertions.md). M6 endpoints are not implemented yet, so the
+real assertions currently report **BLOCKED**; `--self-test` validates the detection logic.
 
 ## Known limitations
 
