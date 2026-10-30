@@ -39,6 +39,7 @@ export function NotificationCenter() {
     <div className="notify-wrap" ref={wrap}>
       <button
         className="icon-btn notify-bell"
+        aria-label={unread ? `通知中心，${unread} 条未读` : '通知中心'}
         title={unread ? `${unread} 条未读通知` : '通知中心'}
         onClick={() => setVisible((v) => !v)}
       >

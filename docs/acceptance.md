@@ -1093,3 +1093,19 @@ main "$@"
 | UI-021 | 快捷键布局 | PASS（命令/ID/scope/输入/清除的网格布局，冲突提示与重置） |
 | DESIGN-001 | 基于 skills 的视觉刷新 | PASS（新 topbar、按钮按压、focus ring、popover 动效、tabular numbers、reduced motion） |
 | DOC-001 | README / 归属 | PASS（重写 README，标注 Emil Kowalski skills MIT 与 docs/skills-main/LICENSE） |
+
+
+---
+
+## 7.20 2026-10-30 Apple HIG 前端重构
+
+| 编号 | 用例 | 结果 |
+| ---- | ---- | ---- |
+| HIG-001 | 导航结构 | PASS（左侧一级导航 Sidebar + 当前视图 Toolbar，符合 sidebars/toolbars 指南） |
+| HIG-002 | 工具栏 | PASS（当前视图标题、工作区、外观/主题/通知分组；app 名称不再作为窗口标题） |
+| HIG-003 | 图标一致性 | PASS（7 个内联 SVG 线性图标，18px，统一 stroke 1.7） |
+| HIG-004 | 外观弹层 | PASS（Aa 触发，外观比例/文字比例/重置，top-right transform-origin） |
+| HIG-005 | 大字号适配 | PASS（200% 文本 + 130% UI：侧栏、工具栏、聊天头均自动增高，无重叠） |
+| HIG-006 | 亮/暗外观 | PASS（侧栏、工具栏、卡片、输入框、代码块均使用语义色） |
+| HIG-007 | 可访问性 | PASS（图标按钮 aria-label、focus-visible ring、reduced-motion、可键盘导航） |
+| HIG-008 | 设计归属 | PASS（README 标注 Apple Design Skill 与 Apple HIG 版权归属） |

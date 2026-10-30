@@ -206,20 +206,22 @@ docs/             API contract, acceptance, upstream probe, design references
 
 ## Design references and attribution
 
-The visual refresh in `apps/gui/src/styles-design.css` follows ideas from
-[**Skills For Designers and Engineers**](https://github.com/emilkowalski/skills) by
-**Emil Kowalski**, licensed under the MIT License. In particular:
+The shell follows Apple's Human Interface Guidelines for a macOS-inspired desktop app: a leading
+navigation sidebar, a compact toolbar for the current view, generous hit targets, light/dark
+appearance, clear focus states, and restrained motion.
 
-- `skills/emil-design-eng/SKILL.md` — animation decision framework, easing, press feedback,
-  popover origin, focus and reduced-motion guidance.
-- `ui-cheatsheet.md` — tabular numbers, heading tracking, line length, `:active` feedback.
-- `performance-cheatsheet.md` — transform/opacity animation and virtualization guidance.
+- **Apple Design Skill** by [dickwu](https://github.com/dickwu/apple-design-skill), a review skill
+  built on 123 Apple HIG pages. The reference copy lives under
+  `docs/apple-design-skill-main/`. Consulted pages include `references/hig/layout.md`,
+  `sidebars.md`, `toolbars.md`, `typography.md`, `color.md`, `accessibility.md`, `motion.md`,
+  and `designing-for-macos.md`.
+  The guideline text belongs to **Apple Inc.**, is reproduced from Apple's public Human Interface
+  Guidelines, and this project is not affiliated with or endorsed by Apple.
 
-The downloaded reference copy lives under `docs/skills-main/`; its `LICENSE` (MIT, Copyright © 2026
-Emil Kowalski) is retained there. Conser does not vendor the skills as runtime code; the stylesheet
-implements the principles independently.
+These references are kept for design guidance only; no skill code is executed at runtime.
 
 ## License
 
-Application code in this repository is provided for the project owner. Third-party dependencies and
-the referenced design skills retain their respective licenses (see `docs/skills-main/LICENSE`).
+Application code in this repository is provided for the project owner. Third-party dependencies retain
+their respective licenses. The Apple HIG text under `docs/apple-design-skill-main/` belongs to
+Apple Inc. and is included for design reference only.
