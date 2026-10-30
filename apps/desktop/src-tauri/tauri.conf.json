@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "OpenCode GUI",
+  "productName": "Conser",
   "version": "0.1.0",
   "identifier": "dev.opencode.gui",
   "build": {
@@ -9,7 +9,7 @@
   "app": {
     "windows": [
       {
-        "title": "OpenCode GUI",
+        "title": "Conser",
         "width": 1440,
         "height": 920,
         "minWidth": 900,

@@ -130,15 +130,22 @@ export async function registerFsRoutes(app: FastifyInstance, ctx: AppContext): P
       baseHash?: string;
       expectedMtime?: number;
       eol?: 'auto' | 'lf' | 'crlf';
+      encoding?: 'utf-8' | 'gb18030';
+      bom?: boolean;
     };
     const ws = workspaceOf(ctx, body.ws);
     const rel = requireString(body.path, 'path');
     if (typeof body.content !== 'string') badRequest('content is required');
+    if (body.encoding !== undefined && body.encoding !== 'utf-8' && body.encoding !== 'gb18030') {
+      badRequest('encoding must be utf-8 or gb18030', 'invalid_encoding');
+    }
     const abs = resolveInWorkspace(ws.path, rel);
     const result = await writeTextFileAtomic(abs, body.content, {
       baseHash: typeof body.baseHash === 'string' ? body.baseHash : undefined,
       expectedMtime: typeof body.expectedMtime === 'number' ? body.expectedMtime : undefined,
       eol: body.eol ?? ws.eol,
+      encoding: body.encoding,
+      bom: typeof body.bom === 'boolean' ? body.bom : undefined,
     });
     return result;
   });

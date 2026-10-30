@@ -1,4 +1,4 @@
-# OpenCode GUI
+# Conser
 
 A lightweight peer GUI for the **opencode v2 service**, plus a local BFF that fills the gaps
 opencode does not cover: file editing, search & bulk replace, Git, structured diffs, a shadow
@@ -35,6 +35,8 @@ opencode serve v2 (127.0.0.1 only, password held by BFF)
 
 ### UI & conversation additions (2026-10-30)
 
+- **Conser branding**: the GUI, browser title and Tauri window are named “Conser”; internal
+  package/file names and the local data directory stay unchanged for compatibility.
 - **Original dark theme**: restored the pre-Neumorphism dark palette; CodeMirror uses One Dark,
   xterm uses the dark terminal theme.
 - **Text size**: top-bar `A- / A+`, direct percentage input and Settings slider/number input,
@@ -43,16 +45,24 @@ opencode serve v2 (127.0.0.1 only, password held by BFF)
   50%–250%; the layout re-measures `ResizeObserver` viewport dimensions and uses a compensated
   transform, so it keeps filling the window after every resize (no dead right/bottom area).
 - **Fonts**: Settings can pick a UI/body font, load installed fonts via the Local Font Access API,
-  and reset UI/text/font to defaults from one button.
+  load `.ttf/.otf/.woff/.woff2` files, and reset UI/text/font to defaults from one button.
+- **Adaptive text layout**: controls grow and wrap above 150% text size; settings uses a responsive
+  card grid and the “外观与字体” card groups scale sliders, numeric inputs, font and theme without
+  squeezing labels or borders.
 - **Right-click menus**: file tree (open/rename/delete), session list (archive/rename/delete/mute)
   and editor tabs (close/close others/close all/copy path/reload).
+- **Workspace switcher**: the top-bar dropdown now includes workspace configuration (switch, add
+  path, remove); the duplicate Settings card was removed.
 - **Session archive**: archive/unarchive from the always-visible archive icon or the session
   context menu. Archiving asks for an existing archive name or a new one; archived sessions are
   grouped by name. Backed by opencode's `PATCH /api/session/{id} {archived}` plus local grouping.
 - **In-conversation navigation**: `↑`/`↓` (also `Alt+↑/↓`) jump between messages, `⇣` returns to
   the latest, and `Ctrl+F` opens in-conversation keyword search with snippets and jump targets.
   The query/results survive jumping and switching views (sessionStorage), and entering a session
-  always scrolls to the newest message.
+  always scrolls to the newest message. File search and in-conversation search keep their results
+  and recent-query history across navigation.
+- **Drafts**: unsent composer text, image attachments and `@` files are persisted per session and
+  restored after switching sessions, view changes, crashes or a page reload.
 - **Conversation tools**: every user/assistant message has copy, quote and branch actions, with a
   timestamp. Quote inserts a block-quote reference into the composer; branch calls opencode's
   `POST /api/session/{id}/fork {before}` and opens the new independent session.
@@ -65,7 +75,8 @@ opencode serve v2 (127.0.0.1 only, password held by BFF)
 - **M5 editor**: language registry with dynamic imports (py/js/ts/go/rust/java/cpp/php/
   sql/yaml/xml/html/css/md/nginx/toml/ini/shell/docker), Markdown source/split/preview with
   DOMPurify + task-list writeback, and SQL dialect highlighting plus `sql-formatter` preview →
-  apply → undo (full file) and selection formatting.
+  apply → undo (full file) and selection formatting. The toolbar encoding selector converts
+  UTF-8 ↔ GB18030 in place and subsequent saves preserve the selected encoding.
 - **M6 data**: SQLite (built-in `node:sqlite`, worker-isolated with timeout/row-limit), MySQL
   (`mysql2`, information_schema metadata, session timeouts, read-only guard, virtualized 10k-row
   result grid, true streaming CSV/JSON export) and Redis (ioredis, SCAN-only key browser,
@@ -74,6 +85,9 @@ opencode serve v2 (127.0.0.1 only, password held by BFF)
   in a `.sql` file sends the selection/file to the Data panel.
 - **CI assertions**: `M6-011` (no `KEYS`) and `M6-016` (no credential leakage) now run against
   the real endpoints; both pass locally.
+- **Capability install**: missing `pty/lint/vcs/snapshots` capabilities in Settings show an install
+  button (rebuild `node-pty`, install `pyright`, or install Git via winget) with a live progress
+  bar and command output, then automatically re-probe.
 - **M7 interaction**: command registry + `Ctrl+Shift+P` palette, user keybinding overrides with
   conflict detection, dark/light/system themes (CodeMirror One Dark ↔ light), and a Git command
   catalog with argv preview, danger confirmation + pre-command shadow snapshot, redacted
@@ -206,9 +220,10 @@ Runtime data (never inside the repo):
 - **Diffs & snapshots are pure/structural.** `packages/diff` parses unified diffs, applies and
   reverses hunks, preserves CRLF, and rebuilds `git apply` patches. Snapshots use a bare shadow
   repo per project under `%LOCALAPPDATA%`, so the user's repo is never polluted.
-- **Edits preserve bytes.** Files are decoded strictly as UTF-8 (GB18030 is detected for
-  read-only display); writes keep BOM/EOL, are hash-checked first (409 on conflict) and are
-  written atomically. Files >2 MB are read-only/truncated; replace skips non-UTF-8 files.
+- **Edits preserve bytes.** Files are decoded strictly as UTF-8 (GB18030 is detected and can be
+  converted in place from the editor toolbar); writes keep BOM/EOL, are hash-checked first
+  (409 on conflict) and are written atomically. Files >2 MB are read-only/truncated; replace
+  skips non-UTF-8 files.
 - **Git commit and push are separate, visible steps.** The commit box has a default-on
   "stage all changes" option and a push button; the header shows `未推送 N` / `落后 N` from
   `@{u}...HEAD`. Push never uses force flags, and the first push sets upstream automatically.

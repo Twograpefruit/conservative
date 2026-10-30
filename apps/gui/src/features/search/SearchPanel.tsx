@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type {
   ReplaceApplyResult,
   ReplacePreview,
@@ -8,6 +8,45 @@ import type {
 } from '@ocg/protocol';
 import { api, streamNdjson } from '../../api/client.js';
 import { useApp } from '../../store/appStore.js';
+
+const HISTORY_KEY = 'ocg.searchHistory';
+const CACHE: {
+  ws?: string;
+  mode: 'search' | 'replace';
+  query: string;
+  replacement: string;
+  regex: boolean;
+  caseSensitive: boolean;
+  wholeWord: boolean;
+  glob: string;
+  results: Record<string, SearchFileResult>;
+  order: string[];
+  stats: { files: number; matches: number; truncated: boolean; cursor: string };
+  preview: ReplacePreview | null;
+  applied: ReplaceApplyResult | null;
+} = {
+  mode: 'search',
+  query: '',
+  replacement: '',
+  regex: false,
+  caseSensitive: false,
+  wholeWord: false,
+  glob: '',
+  results: {},
+  order: [],
+  stats: { files: 0, matches: 0, truncated: false, cursor: '' },
+  preview: null,
+  applied: null,
+};
+
+function loadHistory(): string[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(HISTORY_KEY) ?? '[]') as string[];
+    return Array.isArray(raw) ? raw.filter((x) => typeof x === 'string').slice(0, 20) : [];
+  } catch {
+    return [];
+  }
+}
 
 export function SearchPanel() {
   const workspaceID = useApp((s) => s.workspaceID);
@@ -28,11 +67,68 @@ export function SearchPanel() {
   const [preview, setPreview] = useState<ReplacePreview | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [applied, setApplied] = useState<ReplaceApplyResult | null>(null);
+  const [history, setHistory] = useState<string[]>(() => loadHistory());
   const abortRef = useRef<AbortController | null>(null);
 
-  const options = (): SearchOptions => ({
+  useEffect(() => {
+    if (CACHE.ws !== workspaceID) {
+      CACHE.ws = workspaceID ?? undefined;
+      CACHE.results = {};
+      CACHE.order = [];
+      CACHE.stats = { files: 0, matches: 0, truncated: false, cursor: '' };
+      CACHE.preview = null;
+      CACHE.applied = null;
+      setResults({});
+      setOrder([]);
+      setStats({ files: 0, matches: 0, truncated: false, cursor: '' });
+      setPreview(null);
+      setApplied(null);
+      return;
+    }
+    setMode(CACHE.mode);
+    setQuery(CACHE.query);
+    setReplacement(CACHE.replacement);
+    setRegex(CACHE.regex);
+    setCaseSensitive(CACHE.caseSensitive);
+    setWholeWord(CACHE.wholeWord);
+    setGlob(CACHE.glob);
+    setResults(CACHE.results);
+    setOrder(CACHE.order);
+    setStats(CACHE.stats);
+    setPreview(CACHE.preview);
+    setApplied(CACHE.applied);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspaceID]);
+
+  useEffect(() => {
+    if (CACHE.ws !== workspaceID) return;
+    Object.assign(CACHE, {
+      mode,
+      query,
+      replacement,
+      regex,
+      caseSensitive,
+      wholeWord,
+      glob,
+      results,
+      order,
+      stats,
+      preview,
+      applied,
+    });
+  }, [workspaceID, mode, query, replacement, regex, caseSensitive, wholeWord, glob, results, order, stats, preview, applied]);
+
+  const remember = (value: string) => {
+    const q = value.trim();
+    if (!q) return;
+    const next = [q, ...history.filter((x) => x !== q)].slice(0, 20);
+    setHistory(next);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+  };
+
+  const options = (searchQuery = query): SearchOptions => ({
     ws: workspaceID ?? '',
-    query,
+    query: searchQuery,
     regex,
     caseSensitive,
     wholeWord,
@@ -40,8 +136,10 @@ export function SearchPanel() {
     maxResults: 2000,
   });
 
-  const run = async (append = false) => {
-    if (!workspaceID || !query.trim()) return;
+  const run = async (append = false, overrideQuery?: string) => {
+    const q = (overrideQuery ?? query).trim();
+    if (!workspaceID || !q) return;
+    remember(q);
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
@@ -55,7 +153,7 @@ export function SearchPanel() {
     try {
       await streamNdjson<SearchStreamMessage>(
         '/api/search',
-        { ...options(), cursor: append ? stats.cursor : undefined },
+        { ...options(q), cursor: append ? stats.cursor : undefined },
         (msg) => {
           if (msg.type === 'file') {
             setResults((prev) => ({ ...prev, [msg.file.path]: msg.file }));
@@ -201,6 +299,34 @@ export function SearchPanel() {
           ) : null}
           <input className="input glob" placeholder="glob，例如 *.py" value={glob} onChange={(e) => setGlob(e.target.value)} />
         </div>
+        {history.length ? (
+          <div className="search-history">
+            <span className="muted small">历史</span>
+            {history.slice(0, 10).map((h) => (
+              <button
+                key={h}
+                className="history-chip"
+                title={h}
+                onClick={() => {
+                  setQuery(h);
+                  void run(false, h);
+                }}
+              >
+                {h}
+              </button>
+            ))}
+            <button
+              className="icon-btn"
+              title="清空搜索历史"
+              onClick={() => {
+                setHistory([]);
+                localStorage.removeItem(HISTORY_KEY);
+              }}
+            >
+              ×
+            </button>
+          </div>
+        ) : null}
         <div className="search-toggles">
           <label>
             <input type="checkbox" checked={regex} onChange={(e) => setRegex(e.target.checked)} /> 正则

@@ -12,6 +12,7 @@ import { CommandPalette } from './components/CommandPalette.js';
 import { COMMANDS, comboFromEvent, getBindings, runCommand } from './commands/registry.js';
 import { NotificationCenter } from './features/notify/NotificationCenter.js';
 import type { AppNotification } from './features/notify/notificationStore.js';
+import { WorkspaceMenu } from './components/WorkspaceMenu.js';
 
 const NAV: Array<{ id: View; label: string; icon: string }> = [
   { id: 'chat', label: '对话', icon: '◍' },
@@ -28,7 +29,6 @@ export function App() {
   const setView = useApp((s) => s.setView);
   const workspaces = useApp((s) => s.workspaces);
   const workspaceID = useApp((s) => s.workspaceID);
-  const setWorkspace = useApp((s) => s.setWorkspace);
   const health = useApp((s) => s.health);
   const toast = useApp((s) => s.toast);
   const uiScale = useApp((s) => s.uiScale);
@@ -98,6 +98,7 @@ export function App() {
       fontFamily || "-apple-system, 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif",
     );
     document.documentElement.dataset.theme = resolvedTheme;
+    document.documentElement.dataset.textScale = textScale > 2 ? 'xxl' : textScale > 1.5 ? 'xl' : 'normal';
   }, [uiScale, textScale, fontFamily, resolvedTheme]);
 
   useEffect(() => {
@@ -169,16 +170,10 @@ export function App() {
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark">⌬</span>
-          <span className="brand-name">OpenCode GUI</span>
+          <span className="brand-name">Conser</span>
           <span className="brand-ver">{health ? `v${health.bff.version}` : ''}</span>
         </div>
-        <select className="workspace-select" value={workspaceID ?? ''} onChange={(e) => setWorkspace(e.target.value)} title="切换工作区">
-          {workspaces.map((w) => (
-            <option key={w.id} value={w.id}>
-              {w.label} — {w.path}
-            </option>
-          ))}
-        </select>
+        <WorkspaceMenu />
         <nav className="nav">
           {NAV.map((item, i) => (
             <button

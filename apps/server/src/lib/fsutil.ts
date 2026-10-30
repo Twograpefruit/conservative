@@ -126,7 +126,7 @@ export async function readTextFile(abs: string, opts: ReadOptions): Promise<File
     size: stat.size,
     mtime: stat.mtimeMs,
     binary: false,
-    readonly: stat.size > opts.maxBytes || decoded.encoding !== 'utf-8',
+    readonly: stat.size > opts.maxBytes,
     truncated: stat.size > opts.maxBytes,
     bom: decoded.bom,
   };
@@ -145,6 +145,8 @@ export interface WriteOptions {
   baseHash?: string;
   expectedMtime?: number;
   eol?: 'auto' | 'lf' | 'crlf';
+  encoding?: 'utf-8' | 'gb18030';
+  bom?: boolean;
   createDirs?: boolean;
 }
 
@@ -153,6 +155,7 @@ export interface WriteResult {
   size: number;
   mtime: number;
   eol: 'lf' | 'crlf' | 'mixed';
+  encoding: 'utf-8' | 'gb18030';
 }
 
 export async function writeTextFileAtomic(abs: string, content: string, opts: WriteOptions = {}): Promise<WriteResult> {
@@ -192,8 +195,8 @@ export async function writeTextFileAtomic(abs: string, content: string, opts: Wr
       });
     }
   }
-  if (previous && previousEncoding !== 'utf-8') {
-    throw new HttpError(415, `refusing to write ${previousEncoding} file; convert it to UTF-8 first`, 'non_utf8');
+  if (previous && previousEncoding !== 'utf-8' && !opts.encoding) {
+    throw new HttpError(415, `refusing to write ${previousEncoding} file; pass encoding to convert`, 'non_utf8');
   }
 
   const targetEol: 'lf' | 'crlf' =
@@ -204,7 +207,9 @@ export async function writeTextFileAtomic(abs: string, content: string, opts: Wr
         : previousEol === 'mixed'
           ? 'lf'
           : 'lf';
-  const body = encodeText(applyEol(content, targetEol), 'utf-8', previousBom);
+  const targetEncoding = opts.encoding ?? previousEncoding;
+  const targetBom = targetEncoding === 'utf-8' ? (opts.bom ?? previousBom) : false;
+  const body = encodeText(applyEol(content, targetEol), targetEncoding, targetBom);
 
   if (opts.createDirs !== false) await fs.promises.mkdir(path.dirname(abs), { recursive: true });
   const tmp = path.join(path.dirname(abs), `.ocg-${process.pid}-${randomBytes(4).toString('hex')}.tmp`);
@@ -221,6 +226,7 @@ export async function writeTextFileAtomic(abs: string, content: string, opts: Wr
     size: newStat.size,
     mtime: newStat.mtimeMs,
     eol: targetEol,
+    encoding: targetEncoding,
   };
 }
 

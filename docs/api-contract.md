@@ -423,3 +423,20 @@
 - MySQL 导出改为流式响应（CSV/JSON），不再聚合成数组；SQLite 仍为缓冲导出。
 - PostgreSQL 按用户要求不处理；Redis 10 万键压测跳过。
 - 通知新增标题闪烁：失焦时显示未读计数，聚焦、全部已读或清空后恢复标题。
+
+
+---
+
+## 19. 2026-10-30 增量接口（Conser）
+
+- `POST /api/system/install` body `{action:'node-pty'|'pyright'|'git'}` → `{id,action,label}`；
+  `GET /api/system/install/:id` → `{status,percent,output,code}`。命令在工作区根目录执行，
+  输出保留最后 300 行，完成后设置页自动重新探测能力。
+- `PUT /api/fs/file` 新增 `encoding?: 'utf-8'|'gb18030'` 与 `bom?`；显式编码即可转换
+  GB18030 文件，返回值新增 `encoding`。读取 GB18030 文件不再强制只读。
+- 编辑器工具栏编码下拉：UTF-8 ↔ GB18030 立即转换保存；后续保存沿用当前编码。
+- 搜索：文件搜索面板在组件卸载后保留查询/结果（模块级缓存），文件搜索与会话搜索各有
+  localStorage 历史（最近 20 条，可清空）。
+- 草稿：`localStorage['ocg.draft.<sessionID>']` 保存未发送文本、图片和 @ 文件。
+- 顶栏工作区下拉包含切换/添加/移除；设置页不再有工作区配置卡片。
+- 产品名统一为 Conser（标题、品牌、Tauri productName/window title）。

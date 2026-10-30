@@ -1582,3 +1582,422 @@
 .git-profile-form .git-output {
   max-height: 140px;
 }
+
+/* workspace menu */
+.workspace-menu {
+  position: relative;
+  min-width: 0;
+}
+.workspace-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 380px;
+  min-width: 0;
+  color: var(--fg);
+  font: inherit;
+}
+.workspace-current {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.workspace-caret {
+  color: var(--fg-dim);
+  font-size: 9px;
+}
+.workspace-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: min(480px, 86vw);
+  background: var(--bg-2);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.6);
+  z-index: 150;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.workspace-popover-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.workspace-popover-list {
+  max-height: 240px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.workspace-popover-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+.workspace-popover-row:hover,
+.workspace-popover-row.active {
+  background: var(--bg-3);
+  border-color: var(--line);
+}
+.workspace-pick {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 6px 8px;
+  color: var(--fg);
+}
+.workspace-label {
+  font-size: 12px;
+  font-weight: 600;
+}
+.workspace-path {
+  font-size: 10px;
+  color: var(--fg-dim);
+  font-family: var(--mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.workspace-add {
+  display: flex;
+  gap: 6px;
+}
+.workspace-add .input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* settings: notification + appearance */
+.settings-group-title {
+  margin: 10px 0 6px;
+  color: var(--fg-dim);
+  font-size: 10px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+.switch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 6px;
+}
+.switch-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+}
+.switch-row input {
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
+.switch-row span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.switch-row strong {
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.switch-row small {
+  color: var(--fg-dim);
+  font-size: 9.5px;
+}
+.switch-row.compact {
+  align-items: center;
+  padding: 4px 7px;
+}
+.quiet-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.quiet-times {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mute-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 8px;
+}
+.mute-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-size: 10.5px;
+  color: var(--fg-dim);
+}
+.mute-chip.active {
+  border-color: var(--red);
+  color: var(--red);
+}
+.mute-chip input {
+  display: none;
+}
+.appearance-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+}
+.appearance-row:last-of-type {
+  border-bottom: none;
+}
+.appearance-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 150px;
+  flex: 1 1 160px;
+}
+.appearance-label strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+.appearance-label small {
+  color: var(--fg-dim);
+  font-size: 9.5px;
+}
+.appearance-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  flex: 2 1 300px;
+  min-width: 0;
+}
+.appearance-control input[type='range'] {
+  flex: 1 1 120px;
+  min-width: 90px;
+}
+.scale-box {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.scale-box .scale-number {
+  width: 62px;
+}
+.font-control select {
+  flex: 1 1 180px;
+  min-width: 140px;
+}
+
+/* capability install */
+.caps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 5px;
+}
+.cap-item {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 5px 7px;
+  font-size: 10.5px;
+}
+.cap-name {
+  font-family: var(--mono);
+}
+.cap-item.cap-ok {
+  color: var(--green);
+  border-color: #26503a;
+  background: #14251c;
+}
+.cap-item.cap-no {
+  color: var(--red);
+  border-color: #6a3037;
+  background: #2b171a;
+}
+.cap-item .btn {
+  margin-left: auto;
+}
+.install-progress {
+  margin: 8px 0;
+}
+.install-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 10.5px;
+  margin-bottom: 4px;
+}
+.progress-track {
+  height: 6px;
+  background: var(--bg-4);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 300ms ease;
+}
+.install-log {
+  margin-top: 6px;
+  max-height: 120px;
+}
+
+/* search history */
+.search-history,
+.chat-search-history {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+}
+.chat-search-history {
+  padding: 0 14px 8px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-2);
+}
+.history-chip {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 2px 8px;
+  color: var(--fg-dim);
+  font-size: 10px;
+}
+.history-chip:hover {
+  color: var(--fg);
+  border-color: var(--line-2);
+}
+
+/* settings responsive base */
+.settings-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+}
+.settings-card {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+/* settings text scales with the text-size control */
+.settings-card h3 {
+  font-size: calc(13px * var(--font-scale, 1));
+}
+.settings-card .switch-row strong,
+.settings-card .appearance-label strong {
+  font-size: calc(11.5px * var(--font-scale, 1));
+}
+.settings-card .switch-row small,
+.settings-card .appearance-label small,
+.settings-card .settings-group-title,
+.settings-card .cap-item,
+.settings-card .keybinding-title {
+  font-size: calc(10px * var(--font-scale, 1));
+}
+html[data-text-scale='xl'] .keybinding-input {
+  width: min(340px, 50vw);
+  min-width: 200px;
+}
+html[data-text-scale='xl'] .notify-time {
+  width: auto;
+  min-width: 122px;
+}
+html[data-text-scale='xl'] .keybinding-title {
+  white-space: normal;
+}
+html[data-text-scale='xl'] .switch-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+}
+html[data-text-scale='xxl'] .switch-grid {
+  grid-template-columns: 1fr;
+}
+
+/* large text: controls grow and wrap instead of clipping */
+html[data-text-scale='xl'] .btn,
+html[data-text-scale='xl'] .icon-btn,
+html[data-text-scale='xl'] .input,
+html[data-text-scale='xl'] select {
+  min-height: 30px;
+  height: auto;
+}
+html[data-text-scale='xl'] .topbar {
+  height: auto;
+  min-height: 44px;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+html[data-text-scale='xl'] .tabs {
+  min-height: 34px;
+}
+html[data-text-scale='xl'] .tab,
+html[data-text-scale='xl'] .nav-item,
+html[data-text-scale='xl'] .tree-row,
+html[data-text-scale='xl'] .session-item,
+html[data-text-scale='xl'] .settings-grid,
+html[data-text-scale='xl'] .search-form,
+html[data-text-scale='xl'] .search-toggles,
+html[data-text-scale='xl'] .composer-actions,
+html[data-text-scale='xl'] .composer-selects,
+html[data-text-scale='xl'] .sql-actions,
+html[data-text-scale='xl'] .row,
+html[data-text-scale='xl'] .git-toolbar,
+html[data-text-scale='xl'] .git-diff-head,
+html[data-text-scale='xl'] .connection-form {
+  flex-wrap: wrap;
+}
+html[data-text-scale='xl'] .tab {
+  min-height: 34px;
+  height: auto;
+}
+html[data-text-scale='xl'] .session-item-title,
+html[data-text-scale='xl'] .tree-row,
+html[data-text-scale='xl'] .settings-card,
+html[data-text-scale='xl'] .result-table td,
+html[data-text-scale='xl'] .result-table th {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+html[data-text-scale='xl'] .settings-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+html[data-text-scale='xl'] .session-item {
+  align-items: flex-start;
+}
+html[data-text-scale='xxl'] .topbar {
+  min-height: 52px;
+}
+html[data-text-scale='xxl'] .session-item-title {
+  white-space: normal;
+}
+html[data-text-scale='xxl'] .segmented button {
+  flex: 1 1 auto;
+}

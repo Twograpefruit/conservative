@@ -200,3 +200,33 @@ html[data-theme='light'] .git-profile {
 html[data-theme='light'] .quote-chip {
   background: #eef2f8;
 }
+html[data-theme='light'] .cap-item.cap-ok {
+  background: #e8f6ee;
+  border-color: #a9e6c1;
+  color: #067647;
+}
+html[data-theme='light'] .cap-item.cap-no {
+  background: #fdecee;
+  border-color: #f5b7bd;
+  color: #b42318;
+}
+html[data-theme='light'] .log-tail,
+html[data-theme='light'] .install-log {
+  background: #f6f8fb;
+  color: #1f2937;
+}
+html[data-theme='light'] .workspace-popover {
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.22);
+}
+html[data-theme='light'] .switch-row,
+html[data-theme='light'] .mute-chip,
+html[data-theme='light'] .history-chip {
+  background: #f6f8fb;
+}
+html[data-theme='light'] .progress-track {
+  background: #e3e8f1;
+}
+html[data-theme='light'] .probe-meta,
+html[data-theme='light'] .settings-card .muted {
+  color: #667085;
+}

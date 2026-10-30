@@ -36,6 +36,7 @@ interface EditorStore {
   update: (path: string, content: string) => void;
   setLanguage: (path: string, language: string | null) => void;
   setSqlDialect: (path: string, dialect: SqlDialect) => void;
+  setEncoding: (path: string, encoding: 'utf-8' | 'gb18030') => Promise<void>;
   save: (path: string) => Promise<void>;
   reload: (path: string) => Promise<void>;
   consumeLine: (path: string) => number | null;
@@ -143,6 +144,46 @@ export const useEditor = create<EditorStore>((set, get) => ({
     set({ tabs: get().tabs.map((t) => (t.path === path ? { ...t, sqlDialect: dialect } : t)) });
   },
 
+  setEncoding: async (path, encoding) => {
+    const tab = get().tabs.find((t) => t.path === path);
+    if (!tab || tab.binary) return;
+    if (tab.encoding === encoding) return;
+    try {
+      const res = await api<WriteFileResult>('/api/fs/file', {
+        method: 'PUT',
+        body: JSON.stringify({
+          ws: ws(),
+          path,
+          content: tab.content,
+          baseHash: tab.hash,
+          expectedMtime: tab.mtime,
+          encoding,
+        }),
+        headers: { 'content-type': 'application/json' },
+      });
+      set({
+        tabs: get().tabs.map((t) =>
+          t.path === path
+            ? {
+                ...t,
+                original: t.content,
+                encoding,
+                readonly: false,
+                hash: res.hash,
+                mtime: res.mtime,
+                eol: res.eol,
+                size: res.size,
+                conflict: null,
+              }
+            : t,
+        ),
+      });
+      useApp.getState().notify(`已转换为 ${encoding.toUpperCase()} 并保存 ${tab.name}`);
+    } catch (err) {
+      useApp.getState().notify(err instanceof Error ? err.message : '编码转换失败', 'error');
+    }
+  },
+
   save: async (path) => {
     const tab = get().tabs.find((t) => t.path === path);
     if (!tab || tab.readonly || tab.binary) return;
@@ -155,6 +196,7 @@ export const useEditor = create<EditorStore>((set, get) => ({
           content: tab.content,
           baseHash: tab.hash,
           expectedMtime: tab.mtime,
+          ...(tab.encoding === 'gb18030' ? { encoding: 'gb18030' } : {}),
         }),
         headers: { 'content-type': 'application/json' },
       });

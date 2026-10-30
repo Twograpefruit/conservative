@@ -43,6 +43,7 @@ export function EditorPanel() {
   const closeAll = useEditor((s) => s.closeAll);
   const setLanguage = useEditor((s) => s.setLanguage);
   const setSqlDialect = useEditor((s) => s.setSqlDialect);
+  const setEncoding = useEditor((s) => s.setEncoding);
   const [cursor, setCursor] = useState({ line: 1, column: 1 });
   const [jump, setJump] = useState<{ line: number; nonce: number } | null>(null);
   const [mdMode, setMdMode] = useState<MarkdownMode>('source');
@@ -425,7 +426,18 @@ export function EditorPanel() {
                     </button>
                   </div>
                 ) : null}
-                <span className="chip">{tab.encoding}</span>
+                <select
+                  className="editor-language"
+                  value={tab.encoding}
+                  onChange={(e) => {
+                    const next = e.target.value as 'utf-8' | 'gb18030';
+                    if (next !== tab.encoding) void setEncoding(tab.path, next);
+                  }}
+                  title="文件编码（修改后立即转换并保存）"
+                >
+                  <option value="utf-8">UTF-8</option>
+                  <option value="gb18030">GB18030</option>
+                </select>
                 <span className="chip">{tab.eol.toUpperCase()}</span>
                 <button className="btn btn-small" onClick={() => void reload(tab.path)}>
                   重新加载

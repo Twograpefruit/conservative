@@ -90,7 +90,7 @@ function stopTitleFlash(): void {
   if (!flashTimer) return;
   clearInterval(flashTimer);
   flashTimer = null;
-  document.title = flashBase || 'OpenCode GUI';
+  document.title = flashBase || 'Conser';
 }
 
 if (typeof window !== 'undefined') {

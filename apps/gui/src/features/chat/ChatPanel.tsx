@@ -323,6 +323,55 @@ function Composer({
   const [mentionIndex, setMentionIndex] = useState(0);
   const [selectedFiles, setSelectedFiles] = useState<FileEntry[]>([]);
   const workspacePath = workspaces.find((w) => w.id === workspaceID)?.path;
+  const draftKey = session ? `ocg.draft.${session.id}` : '';
+  const draftLoaded = useRef(false);
+  const skipNextDraftSave = useRef(false);
+
+  useEffect(() => {
+    draftLoaded.current = false;
+    if (!draftKey) {
+      setText('');
+      setImages([]);
+      setSelectedFiles([]);
+      return;
+    }
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (raw) {
+        const draft = JSON.parse(raw) as {
+          text?: string;
+          images?: ChatImage[];
+          files?: FileEntry[];
+        };
+        setText(draft.text ?? '');
+        setImages(Array.isArray(draft.images) ? draft.images : []);
+        setSelectedFiles(Array.isArray(draft.files) ? draft.files : []);
+        skipNextDraftSave.current = true;
+      } else {
+        setText('');
+        setImages([]);
+        setSelectedFiles([]);
+        skipNextDraftSave.current = true;
+      }
+    } catch {
+      /* ignore corrupt draft */
+    }
+    draftLoaded.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey]);
+
+  useEffect(() => {
+    if (!draftKey || !draftLoaded.current) return;
+    if (skipNextDraftSave.current) {
+      skipNextDraftSave.current = false;
+      return;
+    }
+    try {
+      localStorage.setItem(draftKey, JSON.stringify({ text, images, files: selectedFiles, at: Date.now() }));
+    } catch {
+      /* storage full */
+    }
+  }, [draftKey, text, images, selectedFiles]);
 
   useEffect(() => {
     if (!mentionOpen || !workspaceID) {
@@ -433,6 +482,7 @@ function Composer({
     setMentionOpen(false);
     onClearQuote();
     await sendPrompt(`${quoted}${value}`, files);
+    if (draftKey) localStorage.removeItem(draftKey);
     ta.current?.focus();
   };
 
@@ -649,6 +699,14 @@ export function ChatPanel() {
   const [quote, setQuote] = useState<QuoteRef | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<SessionInfo | null>(null);
   const [archiveName, setArchiveName] = useState('');
+  const [chatHistory, setChatHistory] = useState<string[]>(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem('ocg.chatSearchHistory') ?? '[]') as string[];
+      return Array.isArray(raw) ? raw.slice(0, 20) : [];
+    } catch {
+      return [];
+    }
+  });
   const archiveGroups = useApp((s) => s.archiveGroups);
   const setArchiveGroup = useApp((s) => s.setArchiveGroup);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -728,6 +786,14 @@ export function ChatPanel() {
     flashTimer.current = setTimeout(() => setFlashID(null), 1400);
     const idx = messages.findIndex((m) => m.id === id);
     if (idx >= 0) setJumpIndex(idx);
+  };
+
+  const rememberChatSearch = (value: string) => {
+    const q = value.trim();
+    if (!q) return;
+    const next = [q, ...chatHistory.filter((x) => x !== q)].slice(0, 20);
+    setChatHistory(next);
+    localStorage.setItem('ocg.chatSearchHistory', JSON.stringify(next));
   };
 
   const jumpBy = (delta: number) => {
@@ -985,11 +1051,42 @@ export function ChatPanel() {
                   onChange={(e) => setChatQuery(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Escape') setChatSearchOpen(false);
-                    if (e.key === 'Enter' && searchMatches[0]) jumpToId(searchMatches[0].id);
+                    if (e.key === 'Enter') {
+                      rememberChatSearch(chatQuery);
+                      if (searchMatches[0]) jumpToId(searchMatches[0].id);
+                    }
                   }}
                 />
                 <span className="muted">{chatQuery.trim() ? `${searchMatches.length} 条` : ''}</span>
                 <button className="icon-btn" title="关闭" onClick={() => setChatSearchOpen(false)}>
+                  ×
+                </button>
+              </div>
+            ) : null}
+            {chatSearchOpen && chatHistory.length ? (
+              <div className="chat-search-history">
+                <span className="muted small">历史</span>
+                {chatHistory.slice(0, 10).map((h) => (
+                  <button
+                    key={h}
+                    className="history-chip"
+                    title={h}
+                    onClick={() => {
+                      setChatQuery(h);
+                      rememberChatSearch(h);
+                    }}
+                  >
+                    {h}
+                  </button>
+                ))}
+                <button
+                  className="icon-btn"
+                  title="清空会话搜索历史"
+                  onClick={() => {
+                    setChatHistory([]);
+                    localStorage.removeItem('ocg.chatSearchHistory');
+                  }}
+                >
                   ×
                 </button>
               </div>
@@ -1000,7 +1097,14 @@ export function ChatPanel() {
                   <div className="empty-hint">没有匹配的消息</div>
                 ) : (
                   searchMatches.map((m) => (
-                    <button key={m.id} className="chat-search-hit" onClick={() => jumpToId(m.id)}>
+                    <button
+                      key={m.id}
+                      className="chat-search-hit"
+                      onClick={() => {
+                        rememberChatSearch(chatQuery);
+                        jumpToId(m.id);
+                      }}
+                    >
                       <span className="chat-search-type">{m.type === 'user' ? '你' : 'AI'}</span>
                       <span className="chat-search-text">{m.text}</span>
                     </button>

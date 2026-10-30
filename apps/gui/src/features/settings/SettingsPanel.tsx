@@ -1,19 +1,31 @@
 import React, { useEffect, useRef, useState } from 'react';
-import type { ProbeResult, WorkspaceInfo } from '@ocg/protocol';
+import type { ProbeResult } from '@ocg/protocol';
 import { api } from '../../api/client.js';
 import { useApp } from '../../store/appStore.js';
 import { useNotify, type NotificationSource } from '../notify/notificationStore.js';
 import { COMMANDS, bindingConflicts, getBindings, resetBindings, setBinding } from '../../commands/registry.js';
 
+const CAP_INSTALL: Record<string, { action: string; label: string }> = {
+  pty: { action: 'node-pty', label: '重建 node-pty' },
+  lint: { action: 'pyright', label: '安装 pyright' },
+  vcs: { action: 'git', label: '安装 Git' },
+  snapshots: { action: 'git', label: '安装 Git' },
+};
+
+interface InstallJob {
+  id: string;
+  action: string;
+  status: 'running' | 'done' | 'failed';
+  percent: number;
+  output: string[];
+  code?: number;
+}
+
 export function SettingsPanel() {
   const health = useApp((s) => s.health);
   const probe = useApp((s) => s.probe);
-  const workspaces = useApp((s) => s.workspaces);
-  const workspaceID = useApp((s) => s.workspaceID);
   const loadProbe = useApp((s) => s.loadProbe);
-  const loadWorkspaces = useApp((s) => s.loadWorkspaces);
   const loadHealth = useApp((s) => s.loadHealth);
-  const setWorkspace = useApp((s) => s.setWorkspace);
   const uiScale = useApp((s) => s.uiScale);
   const setUiScale = useApp((s) => s.setUiScale);
   const textScale = useApp((s) => s.textScale);
@@ -28,13 +40,13 @@ export function SettingsPanel() {
   const setNotifySettings = useNotify((s) => s.setSettings);
   const requestNative = useNotify((s) => s.requestNative);
   const [logs, setLogs] = useState<string[]>([]);
-  const [newPath, setNewPath] = useState('');
   const [lintEnabled, setLintEnabled] = useState(true);
   const [refreshBusy, setRefreshBusy] = useState(false);
   const [bindings, setBindings] = useState<Record<string, string[]>>(() => getBindings());
   const [conflicts, setConflicts] = useState(() => bindingConflicts());
   const [fontOptions, setFontOptions] = useState<string[]>(['Cascadia Code', 'Consolas', 'Microsoft YaHei', 'Segoe UI', 'SimSun', 'KaiTi']);
   const [fontBusy, setFontBusy] = useState(false);
+  const [installJob, setInstallJob] = useState<InstallJob | null>(null);
   const fontFile = useRef<HTMLInputElement | null>(null);
 
   const loadFontFile = async (file: File) => {
@@ -86,30 +98,49 @@ export function SettingsPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const addWorkspace = async () => {
-    if (!newPath.trim()) return;
+  const pollInstall = async (id: string) => {
     try {
-      const ws = await api<WorkspaceInfo>('/api/workspaces', {
-        method: 'POST',
-        body: JSON.stringify({ path: newPath.trim() }),
-        headers: { 'content-type': 'application/json' },
-      });
-      setNewPath('');
-      await loadWorkspaces();
-      setWorkspace(ws.id);
-      notify(`已添加工作区 ${ws.label}`);
+      const job = await api<InstallJob>(`/api/system/install/${id}`);
+      setInstallJob(job);
+      if (job.status === 'running') {
+        window.setTimeout(() => void pollInstall(id), 900);
+      } else {
+        setRefreshBusy(true);
+        try {
+          await loadProbe(true);
+          await loadHealth();
+        } finally {
+          setRefreshBusy(false);
+        }
+        notify(job.status === 'done' ? '安装完成，能力已重新探测' : '安装失败，请查看输出', job.status === 'done' ? 'info' : 'error');
+      }
     } catch (err) {
-      notify(err instanceof Error ? err.message : '添加失败', 'error');
+      notify(err instanceof Error ? err.message : '安装状态获取失败', 'error');
     }
   };
 
-  const removeWorkspace = async (id: string) => {
-    if (!window.confirm('移除该工作区（不会删除磁盘文件）？')) return;
+  const startInstall = async (capKey: string) => {
+    const target = CAP_INSTALL[capKey];
+    if (!target) return;
+    setRefreshBusy(true);
     try {
-      await api(`/api/workspaces/${id}`, { method: 'DELETE' });
-      await loadWorkspaces();
+      const res = await api<{ id: string; label: string }>('/api/system/install', {
+        method: 'POST',
+        body: JSON.stringify({ action: target.action }),
+        headers: { 'content-type': 'application/json' },
+      });
+      setInstallJob({
+        id: res.id,
+        action: target.action,
+        status: 'running',
+        percent: 5,
+        output: [`开始：${res.label}`],
+      });
+      void pollInstall(res.id);
     } catch (err) {
-      notify(err instanceof Error ? err.message : '移除失败', 'error');
+      notify(err instanceof Error ? err.message : '安装启动失败', 'error');
+    } finally {
+      setRefreshBusy(false);
     }
   };
 
@@ -133,77 +164,98 @@ export function SettingsPanel() {
   return (
     <div className="settings-layout">
       <div className="settings-grid">
-        <section className="settings-card">
+        <section className="settings-card notify-settings">
           <h3>通知</h3>
-          <label className="checkbox-row">
-            <input
-              type="checkbox"
-              checked={notifySettings.enabled}
-              onChange={(e) => setNotifySettings({ enabled: e.target.checked })}
-            />
-            启用通知（关闭后不再产生新通知）
-          </label>
-          <label className="checkbox-row">
-            <input
-              type="checkbox"
-              checked={notifySettings.native}
-              onChange={(e) => {
-                if (e.target.checked) void requestNative();
-                else setNotifySettings({ native: false });
-              }}
-            />
-            Windows / 浏览器系统通知（窗口失焦时）
-          </label>
-          <label className="checkbox-row">
-            <input
-              type="checkbox"
-              checked={notifySettings.flashTitle}
-              onChange={(e) => setNotifySettings({ flashTitle: e.target.checked })}
-            />
-            窗口失焦时闪烁标题（新通知计数）
-          </label>
-          <label className="checkbox-row">
-            <input
-              type="checkbox"
-              checked={notifySettings.privacy}
-              onChange={(e) => setNotifySettings({ privacy: e.target.checked })}
-            />
-            隐私模式：通知正文隐藏，仅显示“有一条新通知”
-          </label>
-          <div className="checkbox-row">
-            <input
-              id="quiet-hours"
-              type="checkbox"
-              checked={notifySettings.quietHours.enabled}
-              onChange={(e) =>
-                setNotifySettings({
-                  quietHours: { ...notifySettings.quietHours, enabled: e.target.checked },
-                })
-              }
-            />
-            <label htmlFor="quiet-hours">免打扰时段</label>
-            <input
-              className="input notify-time"
-              type="time"
-              value={notifySettings.quietHours.start}
-              onChange={(e) =>
-                setNotifySettings({ quietHours: { ...notifySettings.quietHours, start: e.target.value } })
-              }
-            />
-            <span className="muted small">至</span>
-            <input
-              className="input notify-time"
-              type="time"
-              value={notifySettings.quietHours.end}
-              onChange={(e) =>
-                setNotifySettings({ quietHours: { ...notifySettings.quietHours, end: e.target.value } })
-              }
-            />
+          <div className="settings-group-title">通道</div>
+          <div className="switch-grid">
+            <label className="switch-row">
+              <input
+                type="checkbox"
+                checked={notifySettings.enabled}
+                onChange={(e) => setNotifySettings({ enabled: e.target.checked })}
+              />
+              <span>
+                <strong>启用通知</strong>
+                <small>关闭后不再产生新通知</small>
+              </span>
+            </label>
+            <label className="switch-row">
+              <input
+                type="checkbox"
+                checked={notifySettings.native}
+                onChange={(e) => {
+                  if (e.target.checked) void requestNative();
+                  else setNotifySettings({ native: false });
+                }}
+              />
+              <span>
+                <strong>系统通知</strong>
+                <small>窗口失焦时使用 Windows/浏览器通知</small>
+              </span>
+            </label>
+            <label className="switch-row">
+              <input
+                type="checkbox"
+                checked={notifySettings.flashTitle}
+                onChange={(e) => setNotifySettings({ flashTitle: e.target.checked })}
+              />
+              <span>
+                <strong>标题闪烁</strong>
+                <small>失焦时在标题显示未读计数</small>
+              </span>
+            </label>
+            <label className="switch-row">
+              <input
+                type="checkbox"
+                checked={notifySettings.privacy}
+                onChange={(e) => setNotifySettings({ privacy: e.target.checked })}
+              />
+              <span>
+                <strong>隐私模式</strong>
+                <small>隐藏通知正文，只显示类型</small>
+              </span>
+            </label>
           </div>
-          <div className="row wrap">
-            <span className="muted small">静音来源</span>
+
+          <div className="settings-group-title">免打扰</div>
+          <div className="quiet-row">
+            <label className="switch-row compact">
+              <input
+                type="checkbox"
+                checked={notifySettings.quietHours.enabled}
+                onChange={(e) =>
+                  setNotifySettings({
+                    quietHours: { ...notifySettings.quietHours, enabled: e.target.checked },
+                  })
+                }
+              />
+              <span>启用时段</span>
+            </label>
+            <div className="quiet-times">
+              <input
+                className="input notify-time"
+                type="time"
+                value={notifySettings.quietHours.start}
+                onChange={(e) =>
+                  setNotifySettings({ quietHours: { ...notifySettings.quietHours, start: e.target.value } })
+                }
+              />
+              <span className="muted">至</span>
+              <input
+                className="input notify-time"
+                type="time"
+                value={notifySettings.quietHours.end}
+                onChange={(e) =>
+                  setNotifySettings({ quietHours: { ...notifySettings.quietHours, end: e.target.value } })
+                }
+              />
+            </div>
+          </div>
+
+          <div className="settings-group-title">静音来源</div>
+          <div className="mute-chips">
             {(['chat', 'git', 'data', 'terminal', 'system'] as NotificationSource[]).map((source) => (
-              <label className="checkbox-row" key={source}>
+              <label className={`mute-chip ${notifySettings.muteSources.includes(source) ? 'active' : ''}`} key={source}>
                 <input
                   type="checkbox"
                   checked={notifySettings.muteSources.includes(source)}
@@ -293,12 +345,36 @@ export function SettingsPanel() {
           <div className="caps">
             {caps
               ? Object.entries(caps).map(([k, v]) => (
-                  <span key={k} className={`cap ${v ? 'cap-ok' : 'cap-no'}`}>
-                    {k}: {v ? '可用' : '缺失'}
-                  </span>
+                  <div key={k} className={`cap-item ${v ? 'cap-ok' : 'cap-no'}`}>
+                    <span className="cap-name">{k}</span>
+                    <span>{v ? '可用' : '缺失'}</span>
+                    {CAP_INSTALL[k] ? (
+                      <button
+                        className={`btn btn-tiny ${v ? '' : 'btn-primary'}`}
+                        disabled={refreshBusy || installJob?.status === 'running'}
+                        onClick={() => void startInstall(k)}
+                        title={v ? `重新执行：${CAP_INSTALL[k].label}` : CAP_INSTALL[k].label}
+                      >
+                        {v ? '重装' : CAP_INSTALL[k].label}
+                      </button>
+                    ) : null}
+                  </div>
                 ))
               : null}
           </div>
+          {installJob ? (
+            <div className="install-progress">
+              <div className="install-head">
+                <span>{installJob.action}</span>
+                <span>{installJob.percent}%</span>
+                <span className={installJob.status === 'failed' ? 'text-error' : 'muted'}>{installJob.status}</span>
+              </div>
+              <div className="progress-track">
+                <div className="progress-fill" style={{ width: `${installJob.percent}%` }} />
+              </div>
+              <pre className="log-tail install-log">{installJob.output.slice(-8).join('\n')}</pre>
+            </div>
+          ) : null}
           {probe?.hints.length ? (
             <ul className="hints">
               {probe.hints.map((h, i) => (
@@ -330,136 +406,137 @@ export function SettingsPanel() {
           </button>
         </section>
 
-        <section className="settings-card">
-          <h3>工作区</h3>
-          <div className="workspace-list">
-            {workspaces.map((w) => (
-              <div key={w.id} className={`workspace-row ${w.id === workspaceID ? 'active' : ''}`}>
-                <button className="workspace-main" onClick={() => setWorkspace(w.id)}>
-                  <span className="workspace-label">{w.label}</span>
-                  <span className="workspace-path">{w.path}</span>
-                  <span className="muted">{w.venv ? `venv: ${w.venv}` : '未检测到 venv'}</span>
-                </button>
-                <button className="btn btn-tiny btn-danger" onClick={() => void removeWorkspace(w.id)}>
-                  移除
-                </button>
+        <section className="settings-card appearance-settings">
+          <h3>外观与字体</h3>
+          <div className="appearance-row">
+            <div className="appearance-label">
+              <strong>界面大小</strong>
+              <small>整体布局，50–250%</small>
+            </div>
+            <div className="appearance-control">
+              <button className="btn btn-small" onClick={() => setUiScale(uiScale - 0.05)} disabled={uiScale <= 0.5}>
+                UI-
+              </button>
+              <input
+                type="range"
+                min={0.5}
+                max={2.5}
+                step={0.05}
+                value={uiScale}
+                onChange={(e) => setUiScale(Number(e.target.value))}
+              />
+              <button className="btn btn-small" onClick={() => setUiScale(uiScale + 0.05)} disabled={uiScale >= 2.5}>
+                UI+
+              </button>
+              <div className="scale-box">
+                <input
+                  className="input scale-number"
+                  type="number"
+                  min={50}
+                  max={250}
+                  step={5}
+                  value={Math.round(uiScale * 100)}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    if (Number.isFinite(v)) setUiScale(v / 100);
+                  }}
+                />
+                <span>%</span>
               </div>
-            ))}
+            </div>
           </div>
-          <div className="row">
-            <input className="input grow" placeholder="C:\\path\\to\\project" value={newPath} onChange={(e) => setNewPath(e.target.value)} />
-            <button className="btn btn-small btn-primary" onClick={() => void addWorkspace()}>
-              添加
-            </button>
-          </div>
-        </section>
 
-        <section className="settings-card">
-          <h3>界面大小与文字大小</h3>
-          <div className="font-scale-row">
-            <span className="muted small">界面</span>
-            <button className="btn btn-small" onClick={() => setUiScale(uiScale - 0.05)} disabled={uiScale <= 0.5}>
-              UI-
-            </button>
-            <input
-              type="range"
-              min={0.5}
-              max={2.5}
-              step={0.05}
-              value={uiScale}
-              onChange={(e) => setUiScale(Number(e.target.value))}
-            />
-            <input
-              className="input scale-number"
-              type="number"
-              min={50}
-              max={250}
-              step={5}
-              value={Math.round(uiScale * 100)}
-              onChange={(e) => {
-                const v = Number(e.target.value);
-                if (Number.isFinite(v)) setUiScale(v / 100);
-              }}
-            />
-            <span className="muted small">%</span>
-            <button className="btn btn-small" onClick={() => setUiScale(uiScale + 0.05)} disabled={uiScale >= 2.5}>
-              UI+
-            </button>
+          <div className="appearance-row">
+            <div className="appearance-label">
+              <strong>文字大小</strong>
+              <small>正文/编辑器/终端，60–300%</small>
+            </div>
+            <div className="appearance-control">
+              <button className="btn btn-small" onClick={() => setTextScale(textScale - 0.05)} disabled={textScale <= 0.6}>
+                A-
+              </button>
+              <input
+                type="range"
+                min={0.6}
+                max={3}
+                step={0.05}
+                value={textScale}
+                onChange={(e) => setTextScale(Number(e.target.value))}
+              />
+              <button className="btn btn-small" onClick={() => setTextScale(textScale + 0.05)} disabled={textScale >= 3}>
+                A+
+              </button>
+              <div className="scale-box">
+                <input
+                  className="input scale-number"
+                  type="number"
+                  min={60}
+                  max={300}
+                  step={5}
+                  value={Math.round(textScale * 100)}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    if (Number.isFinite(v)) setTextScale(v / 100);
+                  }}
+                />
+                <span>%</span>
+              </div>
+            </div>
           </div>
-          <div className="font-scale-row">
-            <span className="muted small">文字</span>
-            <button className="btn btn-small" onClick={() => setTextScale(textScale - 0.05)} disabled={textScale <= 0.6}>
-              A-
-            </button>
-            <input
-              type="range"
-              min={0.6}
-              max={3}
-              step={0.05}
-              value={textScale}
-              onChange={(e) => setTextScale(Number(e.target.value))}
-            />
-            <input
-              className="input scale-number"
-              type="number"
-              min={60}
-              max={300}
-              step={5}
-              value={Math.round(textScale * 100)}
-              onChange={(e) => {
-                const v = Number(e.target.value);
-                if (Number.isFinite(v)) setTextScale(v / 100);
-              }}
-            />
-            <span className="muted small">%</span>
-            <button className="btn btn-small" onClick={() => setTextScale(textScale + 0.05)} disabled={textScale >= 3}>
-              A+
-            </button>
+
+          <div className="appearance-row">
+            <div className="appearance-label">
+              <strong>字体</strong>
+              <small>界面与正文优先字体</small>
+            </div>
+            <div className="appearance-control font-control">
+              <select
+                className="input grow"
+                value={fontFamily}
+                onChange={(e) => setFontFamily(e.target.value)}
+                title="界面与正文优先使用的字体"
+              >
+                <option value="">默认（Segoe UI / 微软雅黑）</option>
+                {fontOptions.map((f) => (
+                  <option key={f} value={`"${f}", "Microsoft YaHei", sans-serif`}>
+                    {f}
+                  </option>
+                ))}
+              </select>
+              <button className="btn btn-small" onClick={() => void loadLocalFonts()} disabled={fontBusy}>
+                {fontBusy ? '加载中…' : '加载本机字体'}
+              </button>
+              <input
+                ref={fontFile}
+                type="file"
+                accept=".ttf,.otf,.woff,.woff2"
+                hidden
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void loadFontFile(file);
+                  e.target.value = '';
+                }}
+              />
+              <button className="btn btn-small" onClick={() => fontFile.current?.click()} disabled={fontBusy}>
+                加载字体文件
+              </button>
+              <button
+                className="btn btn-small"
+                onClick={() => {
+                  resetAppearance();
+                  notify('已重置界面、文字与字体为默认');
+                }}
+              >
+                重置默认
+              </button>
+            </div>
           </div>
-          <div className="font-scale-row">
-            <span className="muted small">字体</span>
-            <select
-              className="input grow"
-              value={fontFamily}
-              onChange={(e) => setFontFamily(e.target.value)}
-              title="界面与正文优先使用的字体"
-            >
-              <option value="">默认（Segoe UI / 微软雅黑）</option>
-              {fontOptions.map((f) => (
-                <option key={f} value={`"${f}", "Microsoft YaHei", sans-serif`}>
-                  {f}
-                </option>
-              ))}
-            </select>
-            <button className="btn btn-small" onClick={() => void loadLocalFonts()} disabled={fontBusy}>
-              {fontBusy ? '加载中…' : '加载本机字体'}
-            </button>
-            <input
-              ref={fontFile}
-              type="file"
-              accept=".ttf,.otf,.woff,.woff2"
-              hidden
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void loadFontFile(file);
-                e.target.value = '';
-              }}
-            />
-            <button className="btn btn-small" onClick={() => fontFile.current?.click()} disabled={fontBusy}>
-              加载字体文件
-            </button>
-            <button
-              className="btn btn-small"
-              onClick={() => {
-                resetAppearance();
-                notify('已重置界面、文字与字体为默认');
-              }}
-            >
-              重置默认
-            </button>
-          </div>
-          <div className="row">
-            <span className="muted small">主题</span>
+
+          <div className="appearance-row">
+            <div className="appearance-label">
+              <strong>主题</strong>
+              <small>暗色 / 亮色 / 跟随系统</small>
+            </div>
             <div className="segmented">
               <button className={themeMode === 'dark' ? 'active' : ''} onClick={() => setThemeMode('dark')}>
                 暗色
@@ -472,9 +549,7 @@ export function SettingsPanel() {
               </button>
             </div>
           </div>
-          <div className="muted small">
-            界面大小实时跟随窗口可视区域缩放；文字大小只调整正文、编辑器与终端字号（60–300%）。偏好保存在本机浏览器。
-          </div>
+          <div className="muted small">界面大小实时跟随窗口可视区域缩放；文字放大时控件会自动换行和增高，不再挤压边框。</div>
         </section>
 
         <section className="settings-card">
@@ -484,7 +559,7 @@ export function SettingsPanel() {
             pyright / ruff
           </label>
           <div className="muted small">
-            诊断来自本机 pyright CLI；opencode 侧 LSP 诊断不经过本 GUI。非 UTF-8 文件默认只读，替换时跳过。
+            诊断来自本机 pyright CLI；opencode 侧 LSP 诊断不经过本 GUI。GB18030 文件可在编辑器工具栏转换为 UTF-8，替换时跳过非 UTF-8 文件。
           </div>
           <div className="kv">
             <span>上游模式</span>
