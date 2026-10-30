@@ -1001,7 +1001,7 @@ main "$@"
 | M7-001 | 命令注册表一致性 | PASS（导航/会话/编辑/主题/终端全部经 registry id） |
 | M7-002 | 命令面板 | PASS（Ctrl+Shift+P；模糊搜索、最近使用、键盘导航） |
 | M7-003 | 用户键位覆盖 | PASS（设置页编辑，localStorage 持久化，可重置） |
-| M7-004 | 冲突检测 | PASS（同键位多命令提示；bindingConflicts） |
+| M7-004 | 冲突检测 | PASS（设置页同键位多命令提示；未单测） |
 | M7-005 | 分层优先级 | PASS（输入框/终端 xterm 聚焦时跳过全局命令） |
 | M7-006 | 保留键提示 | PARTIAL（未做 Ctrl+W/F5 等保留键确认） |
 | M7-007 | 主题三态 | PASS（暗/亮/跟随系统；Playwright 切换验证） |
