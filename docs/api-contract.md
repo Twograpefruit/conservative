@@ -213,7 +213,7 @@
 | ---- | ---- | ---- |
 | M5 编辑器增强 | 已实现（核心） | 语言注册表 + 动态 import；Markdown 源码/分屏/预览（DOMPurify、任务回写、图片经 `/api/fs/raw`）；SQL 方言高亮 + 格式化预览/应用/撤销；选区格式化为 PARTIAL |
 | M6 数据源 | 已实现（SQLite/Redis） | SQLite `node:sqlite` worker + Redis `ioredis`；DPAPI 凭据、只读 SQL 守卫、SCAN 键浏览、只读命令台、订阅、导出；PostgreSQL/MySQL 未启用 |
-| M7 交互系统 | 部分 | 已有基础快捷键（Alt+1..6、Ctrl+S）、Neumorphism 主题、Git 命令面板雏形；未做命令注册表/命令面板/主题三态/错误规则表 |
+| M7 交互系统 | 已实现（核心） | 命令注册表 + Ctrl+Shift+P 面板、键位覆盖/冲突检测、暗/亮/跟随系统主题、Git 命令目录 + argv 预览 + 危险确认 + 快照 + 错误提示 + 历史；保留键提示待补 |
 | M8 通知 | 未开始 / BLOCKED | 无原生/应用内通知中心 |
 
 ### 12.1 CI 断言骨架
@@ -241,7 +241,7 @@
 
 | 能力 | 实现 | 验证 |
 | ---- | ---- | ---- |
-| Neumorphism 主题 | `apps/gui/src/styles.css` 全量替换为浅色 Soft UI：`#e0e5ec`、双光源阴影、12–24px 圆角、inset 输入、无硬边框；CodeMirror/xterm 同步浅色 | Playwright 计算样式：body `rgb(224,229,236)`，面板/按钮双阴影，过渡 300ms |
+| 原版暗色主题 | 恢复 Neumorphism 之前的 `apps/gui/src/styles.css`；CodeMirror One Dark、xterm 深色主题 | 深色背景/面板/语法高亮恢复；新功能样式集中在 `styles-extra.css` |
 | 字号调节 | 顶栏 A-/A+ 与设置页滑杆，80%–130%，localStorage 持久化；`.app` 使用 layout-compensated zoom | 1.05/1.30 下 `scrollWidth == innerWidth`、`scrollHeight == innerHeight`，无溢出 |
 | 会话归档 | 列表归档/取消归档、显示归档分区；`PATCH /api/session/{id} {archived}` | API 归档→出现在 `archived=true`→取消→回到 active；UI 归档后从活动列表消失，归档区显示 |
 | 对话内关键词搜索 | `Ctrl+F` 打开搜索条，匹配消息正文/工具输入输出，显示片段，点击跳转并闪烁定位 | 200 条消息中搜索 `opencode` 得到 42 条；点击后 `msg-flash` 命中 |
@@ -323,3 +323,40 @@
 - 只读 SQL 守卫在 BFF；多语句/非法 PRAGMA 在 SQL 层拒绝。
 - Redis 网络层不发送 `KEYS`；命令台仅白名单。
 - SQLite 查询在 worker 中执行，可超时终止；行数上限防止一次性拉全表。
+
+
+---
+
+## 16. M7 交互系统（已实现 / 核心）
+
+| 编号 | 能力 | 实现 | 验证 |
+| ---- | ---- | ---- | ---- |
+| M7-001 | 命令注册表 | `apps/gui/src/commands/registry.ts` 统一 id/title/scope/默认键/处理函数 | 导航、会话、编辑、主题、终端、Git 命令均由注册表驱动 |
+| M7-002 | 命令面板 | Ctrl+Shift+P，模糊搜索 + 最近使用 + 键盘上下/Enter/Esc | Playwright 打开面板并搜索 git |
+| M7-003 | 用户键位覆盖 | localStorage `ocg.keybindings`；设置页逐条编辑 | 输入框保存后生效，可重置默认 |
+| M7-004 | 冲突检测 | 同键位多命令高亮告警 | `bindingConflicts()` 单测 + 设置页提示 |
+| M7-005 | 分层优先级 | 输入框/textarea/contenteditable/xterm 聚焦时跳过全局命令（命令面板除外） | 代码逻辑；终端不吞全局快捷键 |
+| M7-006 | 保留键提示 | 未实现 | PARTIAL（README 已记录风险） |
+| M7-007 | 主题三态 | 暗色 / 亮色 / 跟随系统；localStorage + `prefers-color-scheme` 监听 | Playwright：暗色 rgb(15,17,22) → 亮色 rgb(246,247,251) |
+| M7-008 | 无首帧闪烁 | index.html 首帧前内联脚本设置 `data-theme` | 冷启动脚本先于 React 执行 |
+| M7-009 | 主题联动 | UI CSS 变量 + 独立亮色覆盖；CodeMirror One Dark ↔ 默认亮色；xterm 主题同步 | 编辑器/终端按主题切换 |
+| M7-010 | 切换不重建 | 编辑器使用 Compartment 重配主题扩展 | 不销毁 EditorView |
+| M7-011 | Git 命令目录 | `GIT_CATALOG`（read/write/danger）+ argv 预览 + 复制 | Git 面板“命令”页 13 条命令 |
+| M7-012 | 安全分级 | danger 需输入 CONFIRM；执行前创建影子快照，快照失败则中止 | `reset --hard/clean -fd/push --force-with-lease` |
+| M7-013 | 结果面板 | stdout/stderr 分栏、退出码、耗时、可折叠、可复制命令 | Playwright 运行 `git status` 返回 exit 0 |
+| M7-014 | 结构化解析 | status/log/diff 沿用现有结构化面板 | 原 Git 面板 |
+| M7-015 | 错误提示规则 | non-fast-forward/no upstream/index.lock/not repo/auth/local changes → 人话 + 动作 | `hintsFor` 单测 |
+| M7-016 | 历史回放 | 每 workspace 最近 50 条，持久化到 cache；可点击回看 | `GitCommandService` 文件持久化 |
+| M7-017 | 输出脱敏 | token/password 正则打码，界面标记“已脱敏” | `redactSecrets` 单测 |
+
+### 16.1 新增接口
+
+- `GET /api/git/catalog`
+- `GET /api/git/history?ws=&limit=`
+- `POST /api/git/run` body `{ws,id,args?,confirm?}`；danger 命令必须 `confirm:"CONFIRM"`
+
+### 16.2 说明
+
+- 主题已恢复原版暗色，Neumorphism 代码与 `docs/neumorphism.md` 已删除。
+- 亮色主题是平面浅色 token，不是 Neumorphism。
+- 危险命令快照依赖 M3 影子仓库；若快照失败则拒绝执行。

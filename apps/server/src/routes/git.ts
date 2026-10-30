@@ -27,6 +27,34 @@ export async function registerGitRoutes(app: FastifyInstance, ctx: AppContext): 
     return info(ctxOf(ctx, workspaceOf(ctx, query.ws)));
   });
 
+  app.get('/api/git/catalog', async () => ctx.gitCommands.catalog());
+
+  app.get('/api/git/history', async (req) => {
+    const query = req.query as { ws?: string; limit?: string };
+    const ws = workspaceOf(ctx, query.ws);
+    return ctx.gitCommands.listHistory(ws, Number(query.limit ?? 30) || 30);
+  });
+
+  app.post('/api/git/run', async (req) => {
+    const body = req.body as { ws?: string; id?: string; args?: unknown; confirm?: string };
+    const ws = workspaceOf(ctx, body.ws);
+    const result = await ctx.gitCommands.run(
+      ws,
+      { id: body.id, args: body.args, confirm: body.confirm },
+      async (reason) => {
+        try {
+          const snap = await ctx.snapshots.create(ws, reason);
+          ctx.bus.local('bff.snapshot.created', snap);
+          return snap.id;
+        } catch {
+          return null;
+        }
+      },
+    );
+    ctx.bus.local('bff.git.changed', { action: body.id, ws: ws.id });
+    return result;
+  });
+
   app.get('/api/git/status', async (req) => {
     const query = req.query as { ws?: string };
     return status(ctxOf(ctx, workspaceOf(ctx, query.ws)));

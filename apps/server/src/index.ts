@@ -14,6 +14,7 @@ import { CredentialStore } from './lib/credentials.js';
 import { ConnectionStore } from './lib/connections.js';
 import { SqliteService } from './lib/sqlite.js';
 import { RedisService } from './lib/redis.js';
+import { GitCommandService } from './lib/gitCatalog.js';
 import { PtyService } from './lib/pty.js';
 import { resolveRg, type SearchContext } from './lib/search.js';
 import { findFreePort } from './lib/net.js';
@@ -93,6 +94,7 @@ async function main(): Promise<void> {
   const connections = new ConnectionStore(credentials);
   const sqlite = new SqliteService();
   const redis = new RedisService();
+  const gitCommands = new GitCommandService(host);
   const pty = new PtyService(upstream, host);
 
   const ctx: AppContext = {
@@ -111,6 +113,7 @@ async function main(): Promise<void> {
     credentials,
     sqlite,
     redis,
+    gitCommands,
     pty,
     search,
     probe: loadCachedProbe(),

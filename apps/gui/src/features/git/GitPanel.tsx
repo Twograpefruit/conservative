@@ -4,8 +4,9 @@ import type { GitLogEntry, GitStatusEntry, SnapshotInfo } from '@ocg/protocol';
 import { api, qs } from '../../api/client.js';
 import { useApp } from '../../store/appStore.js';
 import { DiffView, type HunkAction } from '../diff/DiffView.js';
+import { GitCommands } from './GitCommands.js';
 
-type Tab = 'changes' | 'log' | 'snapshots';
+type Tab = 'changes' | 'log' | 'snapshots' | 'commands';
 
 interface GitInfo {
   repo: boolean;
@@ -251,6 +252,9 @@ export function GitPanel() {
           <button className={tab === 'snapshots' ? 'active' : ''} onClick={() => setTab('snapshots')}>
             快照
           </button>
+          <button className={tab === 'commands' ? 'active' : ''} onClick={() => setTab('commands')}>
+            命令
+          </button>
         </div>
 
         {tab === 'changes' ? (
@@ -335,6 +339,10 @@ export function GitPanel() {
       </aside>
 
       <section className="git-main">
+        {tab === 'commands' ? (
+          <GitCommands workspaceID={workspaceID} onChanged={() => void reload()} />
+        ) : (
+          <>
         <div className="git-diff-head">
           <div className="segmented">
             <button className={mode === 'working' ? 'active' : ''} onClick={() => void switchMode('working')}>
@@ -394,6 +402,8 @@ export function GitPanel() {
           <div className="git-diff-scroll">
             <DiffView files={files} emptyText={mode === 'commit' ? '选择一条提交查看差异' : '没有差异'} />
           </div>
+        )}
+          </>
         )}
       </section>
     </div>

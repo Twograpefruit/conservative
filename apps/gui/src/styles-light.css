@@ -1,0 +1,169 @@
+/* Flat light theme (not Neumorphism). Toggled via html[data-theme="light"]. */
+html[data-theme='light'] {
+  --bg: #f6f7fb;
+  --bg-2: #ffffff;
+  --bg-3: #eef1f6;
+  --bg-4: #e3e8f1;
+  --line: #d9dfe9;
+  --line-2: #c3cbd9;
+  --fg: #1f2937;
+  --fg-dim: #667085;
+  --accent: #2563eb;
+  --accent-2: #1d4ed8;
+  --green: #15803d;
+  --red: #dc2626;
+  --yellow: #b45309;
+  --purple: #7c3aed;
+  color-scheme: light;
+}
+
+html[data-theme='light'] body {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+html[data-theme='light'] .code-block,
+html[data-theme='light'] .tool-pre,
+html[data-theme='light'] .redis-value-pre {
+  background: #f1f4f9;
+  color: #1f2937;
+}
+
+html[data-theme='light'] .markdown code,
+html[data-theme='light'] .markdown-preview code {
+  background: #eef1f6;
+  color: #1f2937;
+}
+
+html[data-theme='light'] .markdown-preview {
+  background: var(--bg-2);
+  color: var(--fg);
+}
+html[data-theme='light'] .markdown-preview h1,
+html[data-theme='light'] .markdown-preview h2,
+html[data-theme='light'] .markdown-preview h3,
+html[data-theme='light'] .markdown-preview h4 {
+  color: #111827;
+}
+html[data-theme='light'] .markdown-preview pre.hljs {
+  background: #f1f4f9;
+  border-color: var(--line);
+}
+html[data-theme='light'] .markdown-preview blockquote {
+  background: #f1f4f9;
+  color: var(--fg-dim);
+}
+html[data-theme='light'] .markdown-preview th {
+  background: #eef1f6;
+}
+html[data-theme='light'] .markdown-preview .hljs-comment {
+  color: #8a94a6;
+}
+html[data-theme='light'] .markdown-preview .hljs-keyword,
+html[data-theme='light'] .markdown-preview .hljs-selector-tag {
+  color: #7c3aed;
+}
+html[data-theme='light'] .markdown-preview .hljs-string,
+html[data-theme='light'] .markdown-preview .hljs-attr {
+  color: #15803d;
+}
+html[data-theme='light'] .markdown-preview .hljs-number,
+html[data-theme='light'] .markdown-preview .hljs-literal {
+  color: #b45309;
+}
+html[data-theme='light'] .markdown-preview .hljs-title,
+html[data-theme='light'] .markdown-preview .hljs-function {
+  color: #1d4ed8;
+}
+
+html[data-theme='light'] .msg.user .bubble {
+  background: #e0ebff;
+  border-color: #b9d0f5;
+  color: #1f2937;
+}
+html[data-theme='light'] .mention-chip {
+  background: #e0ebff;
+  border-color: #b9d0f5;
+  color: #1d4ed8;
+}
+html[data-theme='light'] .mention-chip button {
+  color: #1d4ed8;
+}
+html[data-theme='light'] .mention-popup {
+  background: var(--bg-2);
+  border-color: var(--line-2);
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.2);
+}
+html[data-theme='light'] .conn-kind {
+  background: #e0ebff;
+  color: #1d4ed8;
+}
+html[data-theme='light'] .kind-redis {
+  background: #fde8ea;
+  color: #b42318;
+}
+html[data-theme='light'] .diff-line.diff-add {
+  background: #e8f6ee;
+}
+html[data-theme='light'] .diff-line.diff-add .sign,
+html[data-theme='light'] .diff-line.diff-add .code {
+  color: #146c43;
+}
+html[data-theme='light'] .diff-line.diff-del {
+  background: #fdecee;
+}
+html[data-theme='light'] .diff-line.diff-del .sign,
+html[data-theme='light'] .diff-line.diff-del .code {
+  color: #b42318;
+}
+html[data-theme='light'] .hunk-head {
+  background: #eef2f8;
+  color: #35507a;
+}
+html[data-theme='light'] .diff-line .ln {
+  color: #8a94a6;
+  background: #f3f5f9;
+}
+html[data-theme='light'] .search-hit mark {
+  background: #fde68a;
+  color: #713f12;
+}
+html[data-theme='light'] .toast {
+  background: #ffffff;
+  border-color: var(--line-2);
+  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.18);
+}
+html[data-theme='light'] .format-overlay {
+  background: rgba(15, 23, 42, 0.28);
+}
+html[data-theme='light'] .format-dialog,
+html[data-theme='light'] .connection-dialog {
+  background: var(--bg-2);
+  border-color: var(--line-2);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.25);
+}
+html[data-theme='light'] ::selection {
+  background: #bfdbfe;
+}
+html[data-theme='light'] ::-webkit-scrollbar-thumb {
+  background: #c3cbd9;
+}
+html[data-theme='light'] .brand-mark {
+  text-shadow: none;
+}
+html[data-theme='light'] .palette-overlay {
+  background: rgba(15, 23, 42, 0.28);
+}
+html[data-theme='light'] .palette {
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.22);
+}
+html[data-theme='light'] .git-argv,
+html[data-theme='light'] .git-output {
+  background: #f1f4f9;
+}
+html[data-theme='light'] .safety-danger,
+html[data-theme='light'] .git-hints {
+  background: #fef3c7;
+  border-color: #fcd34d;
+  color: #92400e;
+}

@@ -16,6 +16,7 @@ interface Tab {
 export function TerminalPanel() {
   const workspaceID = useApp((s) => s.workspaceID);
   const notify = useApp((s) => s.notify);
+  const resolvedTheme = useApp((s) => s.resolvedTheme);
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [active, setActive] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -49,6 +50,13 @@ export function TerminalPanel() {
       method: 'DELETE',
     }).catch(() => undefined);
   };
+
+  useEffect(() => {
+    const onNew = () => void createTab();
+    window.addEventListener('ocg:terminal-new', onNew);
+    return () => window.removeEventListener('ocg:terminal-new', onNew);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspaceID, tabs.length]);
 
   useEffect(() => {
     if (!active && tabs.length) setActive(tabs[0].id);
@@ -123,6 +131,7 @@ export function TerminalPanel() {
             key={tab.id}
             tab={tab}
             visible={active === tab.id}
+            theme={resolvedTheme}
             onAddon={(addon) => addons.current.set(tab.id, addon)}
             onExit={() => notify(`${tab.title} 已退出`, 'error')}
           />
@@ -135,11 +144,13 @@ export function TerminalPanel() {
 function TerminalTab({
   tab,
   visible,
+  theme,
   onAddon,
   onExit,
 }: {
   tab: Tab;
   visible: boolean;
+  theme: 'dark' | 'light';
   onAddon: (addon: SearchAddon) => void;
   onExit: () => void;
 }) {
@@ -153,20 +164,9 @@ function TerminalTab({
       scrollback: 5000,
       fontSize: 12,
       fontFamily: "'Cascadia Code', Consolas, monospace",
-      theme: {
-        background: '#e0e5ec',
-        foreground: '#333333',
-        cursor: '#6d5dfc',
-        selectionBackground: '#c9d4f5',
-        black: '#333333',
-        red: '#c0505c',
-        green: '#2f8f6b',
-        yellow: '#a8791f',
-        blue: '#5b6fd6',
-        magenta: '#8a63c9',
-        cyan: '#3a8f9c',
-        white: '#f0f0f3',
-      },
+      theme: theme === 'light'
+        ? { background: '#f6f7fb', foreground: '#1f2937', cursor: '#2563eb', selectionBackground: '#bfdbfe' }
+        : { background: '#111318', foreground: '#d7dae0', cursor: '#7aa2f7' },
       convertEol: false,
       allowProposedApi: true,
     });
@@ -240,6 +240,14 @@ function TerminalTab({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab.id]);
+
+  useEffect(() => {
+    if (!termRef.current) return;
+    termRef.current.options.theme =
+      theme === 'light'
+        ? { background: '#f6f7fb', foreground: '#1f2937', cursor: '#2563eb', selectionBackground: '#bfdbfe' }
+        : { background: '#111318', foreground: '#d7dae0', cursor: '#7aa2f7' };
+  }, [theme]);
 
   useEffect(() => {
     if (visible) {

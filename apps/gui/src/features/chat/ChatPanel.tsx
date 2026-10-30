@@ -452,6 +452,12 @@ export function ChatPanel() {
       .map((m) => ({ id: m.message.id, type: (m.message as { type?: string }).type ?? 'event', text: snippet(m.text, q) }));
   }, [messages, chatQuery]);
 
+  useEffect(() => {
+    const onSearch = () => setChatSearchOpen(true);
+    window.addEventListener('ocg:chat-search', onSearch);
+    return () => window.removeEventListener('ocg:chat-search', onSearch);
+  }, []);
+
   const jumpToId = (id: string) => {
     const el = anchors.current.get(id);
     if (!el) return;

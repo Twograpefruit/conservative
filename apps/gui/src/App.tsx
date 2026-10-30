@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp, type View } from './store/appStore.js';
 import { useChat } from './store/chatStore.js';
 import { ChatPanel } from './features/chat/ChatPanel.js';
@@ -8,6 +8,8 @@ import { GitPanel } from './features/git/GitPanel.js';
 import { TerminalPanel } from './features/terminal/TerminalPanel.js';
 import { DataPanel } from './features/data/DataPanel.js';
 import { SettingsPanel } from './features/settings/SettingsPanel.js';
+import { CommandPalette } from './components/CommandPalette.js';
+import { COMMANDS, comboFromEvent, getBindings, runCommand } from './commands/registry.js';
 
 const NAV: Array<{ id: View; label: string; icon: string }> = [
   { id: 'chat', label: '对话', icon: '◍' },
@@ -29,6 +31,10 @@ export function App() {
   const toast = useApp((s) => s.toast);
   const uiScale = useApp((s) => s.uiScale);
   const setUiScale = useApp((s) => s.setUiScale);
+  const themeMode = useApp((s) => s.themeMode);
+  const resolvedTheme = useApp((s) => s.resolvedTheme);
+  const setThemeMode = useApp((s) => s.setThemeMode);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const loadWorkspaces = useApp((s) => s.loadWorkspaces);
   const startHealthPolling = useApp((s) => s.startHealthPolling);
   const loadProbe = useApp((s) => s.loadProbe);
@@ -64,20 +70,57 @@ export function App() {
 
   useEffect(() => {
     document.documentElement.style.setProperty('--ui-scale', String(uiScale));
-  }, [uiScale]);
+    document.documentElement.dataset.theme = resolvedTheme;
+  }, [uiScale, resolvedTheme]);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = () => {
+      if (themeMode === 'system') setThemeMode('system');
+    };
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, [themeMode, setThemeMode]);
+
+  useEffect(() => {
+    const onPalette = () => setPaletteOpen(true);
+    const onChatSearch = () => {
+      setView('chat');
+      window.dispatchEvent(new CustomEvent('ocg:chat-search'));
+    };
+    window.addEventListener('ocg:palette-open', onPalette);
+    window.addEventListener('ocg:chat-search', onChatSearch);
+    return () => {
+      window.removeEventListener('ocg:palette-open', onPalette);
+      window.removeEventListener('ocg:chat-search', onChatSearch);
+    };
+  }, [setView]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!e.altKey) return;
-      const idx = Number(e.key) - 1;
-      if (idx >= 0 && idx < NAV.length) {
+      if (paletteOpen) return;
+      const target = e.target as HTMLElement | null;
+      const editable =
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA' ||
+        target?.tagName === 'SELECT' ||
+        target?.isContentEditable === true;
+      const combo = comboFromEvent(e);
+      if (combo === 'Ctrl+Shift+P') {
         e.preventDefault();
-        setView(NAV[idx].id);
+        setPaletteOpen(true);
+        return;
       }
+      if (editable) return;
+      const bindings = getBindings();
+      const cmd = COMMANDS.find((c) => bindings[c.id]?.includes(combo));
+      if (!cmd) return;
+      e.preventDefault();
+      runCommand(cmd.id);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [setView]);
+  }, [paletteOpen, setView]);
 
   return (
     <div className="app">
@@ -117,6 +160,13 @@ export function App() {
               A+
             </button>
           </div>
+          <button
+            className="icon-btn"
+            title={`主题：${themeMode === 'system' ? `跟随系统（${resolvedTheme}）` : themeMode}`}
+            onClick={() => setThemeMode(themeMode === 'dark' ? 'light' : themeMode === 'light' ? 'system' : 'dark')}
+          >
+            {themeMode === 'system' ? '◐' : resolvedTheme === 'dark' ? '☾' : '☀'}
+          </button>
           {permissionCount > 0 ? <span className="badge badge-warn">{permissionCount} 待授权</span> : null}
           <span className={`conn ${connected ? 'ok' : 'bad'}`} title={lastError ?? ''}>
             <span className={`dot ${connected ? 'dot-idle' : 'dot-error'}`} />
@@ -149,6 +199,7 @@ export function App() {
       </main>
 
       {toast ? <div className={`toast toast-${toast.kind}`}>{toast.message}</div> : null}
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
     </div>
   );
 }

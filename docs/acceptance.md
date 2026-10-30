@@ -192,7 +192,7 @@ v2 的 API 前缀是 **`/api`**，不是 v1 文档中的 `/global/*`。
 | ---------- | ------------- | -------------------------------------------------------------- | ------------ | ---------- |
 | 2026-10-29 | 2.2.1         | 首次探测；v2 `/api/*` 契约、SSE envelope、PTY 票据、事件清单回填 | 基线         | M0–M3.5    |
 | 2026-10-30 | 2.2.1         | 修复 Git 提交/推送、搜索结果跳转、替换按文件勾选；修复消息分页 400；新增 CI 断言骨架 | 无 | M1–M3 |
-| 2026-10-30 | 2.2.1         | UI：字号调节、会话归档、对话内搜索、上下条跳转、连续 @ 文件引用、Neumorphism 主题 | 无 | M1–M3 / M7 部分 |
+| 2026-10-30 | 2.2.1         | UI：字号调节、会话归档、对话内搜索、上下条跳转、连续 @ 文件引用、原版暗色主题 | 无 | M1–M3 / M7 部分 |
 
 ---
 
@@ -930,7 +930,7 @@ main "$@"
 | UI-003 | 对话内搜索 | Ctrl+F 搜索关键词，点击结果 | 命中消息片段并可跳转定位 | PASS（200 条消息中命中 42 条，点击后消息闪烁定位） |
 | UI-004 | 上下条跳转 | 顶栏 ↑/↓ 或 Alt+↑/↓ | 在消息间移动并显示序号 | PASS（1/200 → 2/200） |
 | UI-005 | 连续 @ 引用 | 输入 @pack 选中，再继续输入 @docs 选中 | 两个 mention chip；发送文件附件 | PASS（请求体含两个 file:/// URI 与 mention 偏移；真实模型读取附件内容） |
-| UI-006 | Neumorphism | 检查背景、面板、按钮、输入框 | #e0e5ec、双光源阴影、圆角、inset 输入、无硬边框 | PASS（计算样式 + 截图走查） |
+| UI-006 | 原版暗色主题 | 检查背景、面板、按钮、输入框 | 恢复 Neumorphism 之前的深色主题 | PASS（原版 styles.css + 深色 CodeMirror/xterm） |
 
 > 说明：@ 附件使用 file:/// URI；opencode 2.2.1 实测可读取附件内容（探针返回 ATTACH-OK-731）。字号缩放同时作用于 CodeMirror 与 xterm，不需要重新创建编辑器实例。
 
@@ -990,3 +990,30 @@ main "$@"
 - FI-M6-D 凭据存储不可用：**PASS**（DPAPI 失败返回明确错误，不回退明文）。
 
 > 本轮 M6 以 SQLite/Redis 首发；PostgreSQL/MySQL 驱动未启用。测试用的 6380/6381 Redis 实例与临时 SQLite 文件已清理。
+
+
+---
+
+## 7.16 2026-10-30 M7 交互系统验收
+
+| 编号 | 用例 | 结果 |
+| ---- | ---- | ---- |
+| M7-001 | 命令注册表一致性 | PASS（导航/会话/编辑/主题/终端全部经 registry id） |
+| M7-002 | 命令面板 | PASS（Ctrl+Shift+P；模糊搜索、最近使用、键盘导航） |
+| M7-003 | 用户键位覆盖 | PASS（设置页编辑，localStorage 持久化，可重置） |
+| M7-004 | 冲突检测 | PASS（同键位多命令提示；bindingConflicts） |
+| M7-005 | 分层优先级 | PASS（输入框/终端 xterm 聚焦时跳过全局命令） |
+| M7-006 | 保留键提示 | PARTIAL（未做 Ctrl+W/F5 等保留键确认） |
+| M7-007 | 主题三态 | PASS（暗/亮/跟随系统；Playwright 切换验证） |
+| M7-008 | 无首帧闪烁 | PASS（index.html 首帧内联脚本设置 data-theme） |
+| M7-009 | 主题联动 | PASS（UI + CodeMirror + xterm 同步） |
+| M7-010 | 切换不重建 | PASS（Compartment 重配主题，EditorView 不销毁） |
+| M7-011 | Git 命令目录/argv | PASS（13 条命令；argv 预览/复制） |
+| M7-012 | 安全分级确认 | PASS（danger 需 CONFIRM + 执行前影子快照） |
+| M7-013 | 结果面板 | PASS（stdout/stderr、exit code、耗时；Playwright git status） |
+| M7-014 | 结构化解析 | PASS（沿用 Git status/log/diff 面板） |
+| M7-015 | 错误提示规则 | PASS（non-fast-forward/no upstream/index.lock 等单测） |
+| M7-016 | 历史与回放 | PASS（每 workspace 50 条，持久化到 cache） |
+| M7-017 | 输出脱敏 | PASS（token/password 正则打码；单测） |
+
+> 说明：已移除 Neumorphism 风格代码与 `docs/neumorphism.md`，恢复原版暗色 UI；亮色主题为普通平面主题。M7-006 保留键提示仍为 PARTIAL。

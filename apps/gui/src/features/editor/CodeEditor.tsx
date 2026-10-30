@@ -3,6 +3,7 @@ import { basicSetup } from 'codemirror';
 import { EditorState, Compartment } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
 import { defaultKeymap, historyKeymap } from '@codemirror/commands';
+import { oneDark } from '@codemirror/theme-one-dark';
 import { lintGutter, setDiagnostics, type Diagnostic } from '@codemirror/lint';
 import type { LintDiagnostic } from '@ocg/protocol';
 import type { EditorTab } from '../../store/editorStore.js';
@@ -20,6 +21,7 @@ export function CodeEditor({
   jumpLine,
   languageOverride,
   sqlDialect,
+  theme = 'dark',
 }: {
   tab: EditorTab;
   diagnostics: LintDiagnostic[];
@@ -32,10 +34,12 @@ export function CodeEditor({
   jumpLine?: { line: number; nonce: number } | null;
   languageOverride?: string | null;
   sqlDialect?: SqlDialect;
+  theme?: 'dark' | 'light';
 }) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   const languageCompartment = useRef(new Compartment());
+  const themeCompartment = useRef(new Compartment());
   const saveRef = useRef(onSave);
   const changeRef = useRef(onChange);
   const cursorRef = useRef(onCursor);
@@ -55,6 +59,7 @@ export function CodeEditor({
       doc: tab.content,
       extensions: [
         basicSetup,
+        themeCompartment.current.of(theme === 'dark' ? oneDark : []),
         lintGutter(),
         EditorState.readOnly.of(tab.readonly),
         languageCompartment.current.of([]),
@@ -87,13 +92,8 @@ export function CodeEditor({
           }
         }),
         EditorView.theme({
-          '&': { height: '100%', fontSize: '13px', backgroundColor: 'transparent', color: '#333333' },
+          '&': { height: '100%', fontSize: '13px' },
           '.cm-scroller': { fontFamily: "'Cascadia Code', Consolas, monospace" },
-          '.cm-gutters': { backgroundColor: 'transparent', color: '#8b93a7', border: 'none' },
-          '.cm-activeLine': { backgroundColor: '#d9e0ea' },
-          '.cm-activeLineGutter': { backgroundColor: '#d9e0ea' },
-          '.cm-selectionBackground, ::selection': { backgroundColor: '#c9d4f5 !important' },
-          '.cm-cursor': { borderLeftColor: '#6d5dfc' },
         }),
       ],
     });
@@ -126,6 +126,13 @@ export function CodeEditor({
       cancelled = true;
     };
   }, [tab.path, languageOverride, sqlDialect]);
+
+  useEffect(() => {
+    if (!view.current) return;
+    view.current.dispatch({
+      effects: themeCompartment.current.reconfigure(theme === 'dark' ? oneDark : []),
+    });
+  }, [theme]);
 
   useEffect(() => {
     if (!view.current) return;

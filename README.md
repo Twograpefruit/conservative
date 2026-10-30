@@ -30,14 +30,12 @@ opencode serve v2 (127.0.0.1 only, password held by BFF)
 | M4 | Tauri/WebView2 packaging, tray, memory soak | Scaffold only |
 | M5 | Language registry with lazy loading, Markdown source/preview, SQL dialect highlighting + format preview/apply/undo | Done (core; selection format partial) |
 | M6 | SQLite + Redis connections, DPAPI credentials, read-only SQL guard, query/export, SCAN key browser, read-only command console, pub/sub | Done (SQLite/Redis; PostgreSQL/MySQL not enabled) |
+| M7 | Command registry + palette, keybinding overrides/conflict detection, dark/light/system themes, Git command catalog with argv preview, safety confirm, output/hints/history | Done (core; reserved-key warnings pending) |
 
 ### UI & conversation additions (2026-10-30)
 
-The visual system follows [`docs/neumorphism.md`](docs/neumorphism.md): `#e0e5ec` surfaces,
-dual light/dark shadows, 12–24px radii, inset inputs and no hard borders.
-
-- **Neumorphism / Soft UI** theme: `#e0e5ec` surfaces, dual light/dark shadows, 12–24px radii,
-  inset inputs, no hard borders; CodeMirror and xterm use the light palette too.
+- **Original dark theme**: restored the pre-Neumorphism dark palette; CodeMirror uses One Dark,
+  xterm uses the dark terminal theme.
 - **Text size**: top-bar `A- / A+` and Settings slider, 80%–130%, persisted locally; zoom is
   layout-compensated so the app still fills the viewport without scrollbars.
 - **Session archive**: archive/unarchive from the session list, optional archived section,
@@ -58,6 +56,10 @@ dual light/dark shadows, 12–24px radii, inset inputs and no hard borders.
   multi-statement SQL. Ctrl+Enter in a `.sql` file sends the selection/file to the Data panel.
 - **CI assertions**: `M6-011` (no `KEYS`) and `M6-016` (no credential leakage) now run against
   the real endpoints; both pass locally.
+- **M7 interaction**: command registry + `Ctrl+Shift+P` palette, user keybinding overrides with
+  conflict detection, dark/light/system themes (CodeMirror One Dark ↔ light), and a Git command
+  catalog with argv preview, danger confirmation + pre-command shadow snapshot, redacted
+  stdout/stderr, actionable error hints and persistent history.
 
 See [`docs/api-contract.md`](docs/api-contract.md) for the acceptance checklist and
 [`docs/acceptance.md`](docs/acceptance.md) for the probed opencode 2.2.1 contract.
@@ -130,7 +132,7 @@ Runtime data (never inside the repo):
 | Data | `GET/POST/PUT/DELETE /api/connections`, `POST /api/connections/test`, `POST /api/db/query`, `GET /api/db/metadata`, `POST /api/db/export`, `POST /api/redis/{scan,command}`, `GET /api/redis/value`, `GET /api/redis/subscribe` |
 | Search | `POST /api/search` (NDJSON stream + cursor) |
 | Replace | `POST /api/replace/preview`, `POST /api/replace/apply`, `POST /api/replace/undo` |
-| Git | `GET /api/git/{info,status,log,diff}`, `POST /api/git/{exec,commit,push,apply-hunk}` |
+| Git | `GET /api/git/{info,status,log,diff,catalog,history}`, `POST /api/git/{exec,commit,push,run,apply-hunk}` |
 | Diff | `GET /api/diff/session`, `GET /api/diff/snapshot` |
 | Snapshots | `GET/POST /api/snapshots`, `GET /api/snapshots/diff`, `POST /api/snapshots/restore` |
 | Lint | `POST /api/lint` (pyright + optional ruff) |
@@ -190,6 +192,8 @@ real assertions currently report **BLOCKED**; `--self-test` validates the detect
   before writing.
 - **Redis command console is read-only.** `KEYS`, `FLUSHALL`, `CONFIG`, `SHUTDOWN`, `EVAL`, etc.
   are hard-blocked; key navigation always uses `SCAN` cursors.
+- **M7 reserved-key warnings** are not implemented yet; binding `Ctrl+W/F5` etc. may still be
+  intercepted by the browser/WebView2.
 - No login/multi-user/remote/TLS by design; the BFF binds `127.0.0.1` only.
 - Long Windows paths are not enabled on this machine (`LongPathsEnabled=0`); the host normalises
   paths but very deep trees may still hit OS limits.

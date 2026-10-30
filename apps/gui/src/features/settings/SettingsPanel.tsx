@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import type { ProbeResult, WorkspaceInfo } from '@ocg/protocol';
 import { api } from '../../api/client.js';
 import { useApp } from '../../store/appStore.js';
+import { COMMANDS, bindingConflicts, getBindings, resetBindings, setBinding } from '../../commands/registry.js';
 
 export function SettingsPanel() {
   const health = useApp((s) => s.health);
@@ -14,11 +15,15 @@ export function SettingsPanel() {
   const setWorkspace = useApp((s) => s.setWorkspace);
   const uiScale = useApp((s) => s.uiScale);
   const setUiScale = useApp((s) => s.setUiScale);
+  const themeMode = useApp((s) => s.themeMode);
+  const setThemeMode = useApp((s) => s.setThemeMode);
   const notify = useApp((s) => s.notify);
   const [logs, setLogs] = useState<string[]>([]);
   const [newPath, setNewPath] = useState('');
   const [lintEnabled, setLintEnabled] = useState(true);
   const [refreshBusy, setRefreshBusy] = useState(false);
+  const [bindings, setBindings] = useState<Record<string, string[]>>(() => getBindings());
+  const [conflicts, setConflicts] = useState(() => bindingConflicts());
 
   useEffect(() => {
     void loadHealth();
@@ -76,6 +81,47 @@ export function SettingsPanel() {
   return (
     <div className="settings-layout">
       <div className="settings-grid">
+        <section className="settings-card">
+          <h3>快捷键</h3>
+          <div className="keybinding-list">
+            {COMMANDS.map((cmd) => (
+              <div className="keybinding-row" key={cmd.id}>
+                <span className="keybinding-title" title={cmd.id}>
+                  {cmd.title}
+                </span>
+                <input
+                  className="input keybinding-input"
+                  value={(bindings[cmd.id] ?? []).join(', ')}
+                  onChange={(e) => setBindings({ ...bindings, [cmd.id]: e.target.value.split(',').map((s) => s.trim()) })}
+                  onBlur={() => {
+                    const keys = (bindings[cmd.id] ?? []).filter(Boolean);
+                    setBinding(cmd.id, keys);
+                    setConflicts(bindingConflicts());
+                  }}
+                  placeholder="例如 Ctrl+Shift+P"
+                />
+              </div>
+            ))}
+          </div>
+          {conflicts.length ? (
+            <div className="banner banner-warn">
+              键位冲突：
+              {conflicts.map((c) => `${c.key} → ${c.commands.join(' / ')}`).join('；')}
+            </div>
+          ) : null}
+          <button
+            className="btn btn-small"
+            onClick={() => {
+              resetBindings();
+              setBindings(getBindings());
+              setConflicts(bindingConflicts());
+              notify('已重置快捷键');
+            }}
+          >
+            重置为默认
+          </button>
+        </section>
+
         <section className="settings-card">
           <h3>运行状态</h3>
           <div className="kv">
@@ -168,7 +214,7 @@ export function SettingsPanel() {
         </section>
 
         <section className="settings-card">
-          <h3>界面字号</h3>
+          <h3>界面字号与主题</h3>
           <div className="font-scale-row">
             <button className="btn btn-small" onClick={() => setUiScale(uiScale - 0.05)} disabled={uiScale <= 0.8}>
               A-
@@ -186,7 +232,21 @@ export function SettingsPanel() {
             </button>
             <span className="badge">{Math.round(uiScale * 100)}%</span>
           </div>
-          <div className="muted small">只影响界面缩放，不改变文件内容；偏好保存在本机浏览器。</div>
+          <div className="row">
+            <span className="muted small">主题</span>
+            <div className="segmented">
+              <button className={themeMode === 'dark' ? 'active' : ''} onClick={() => setThemeMode('dark')}>
+                暗色
+              </button>
+              <button className={themeMode === 'light' ? 'active' : ''} onClick={() => setThemeMode('light')}>
+                亮色
+              </button>
+              <button className={themeMode === 'system' ? 'active' : ''} onClick={() => setThemeMode('system')}>
+                跟随系统
+              </button>
+            </div>
+          </div>
+          <div className="muted small">只影响界面与语法配色，不改变文件内容；偏好保存在本机浏览器。</div>
         </section>
 
         <section className="settings-card">

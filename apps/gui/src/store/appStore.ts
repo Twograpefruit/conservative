@@ -3,6 +3,7 @@ import type { HealthResponse, ProbeResult, WorkspaceInfo } from '@ocg/protocol';
 import { api } from '../api/client.js';
 
 export type View = 'chat' | 'editor' | 'search' | 'git' | 'terminal' | 'data' | 'settings';
+export type ThemeMode = 'dark' | 'light' | 'system';
 
 interface OpenRequest {
   path: string;
@@ -20,9 +21,12 @@ interface AppState {
   pendingSql: { sql: string; nonce: number } | null;
   toast: { id: number; message: string; kind: 'info' | 'error' } | null;
   uiScale: number;
+  themeMode: ThemeMode;
+  resolvedTheme: 'dark' | 'light';
   setView: (view: View) => void;
   setWorkspace: (id: string) => void;
   setUiScale: (scale: number) => void;
+  setThemeMode: (mode: ThemeMode) => void;
   loadWorkspaces: () => Promise<void>;
   loadHealth: () => Promise<void>;
   loadProbe: (refresh?: boolean) => Promise<void>;
@@ -38,6 +42,10 @@ const savedView = (localStorage.getItem('ocg.view') as View) || 'chat';
 const savedWorkspace = localStorage.getItem('ocg.workspace');
 const savedScale = Number(localStorage.getItem('ocg.uiScale') ?? '1');
 const initialScale = Number.isFinite(savedScale) ? Math.min(1.3, Math.max(0.8, savedScale)) : 1;
+const savedTheme = (localStorage.getItem('ocg.theme') as ThemeMode) || 'dark';
+const systemDark = typeof window !== 'undefined' ? window.matchMedia('(prefers-color-scheme: dark)').matches : true;
+const resolve = (mode: ThemeMode): 'dark' | 'light' =>
+  mode === 'system' ? (systemDark ? 'dark' : 'light') : mode;
 
 export const useApp = create<AppState>((set, get) => ({
   view: savedView,
@@ -49,6 +57,8 @@ export const useApp = create<AppState>((set, get) => ({
   pendingSql: null,
   toast: null,
   uiScale: initialScale,
+  themeMode: savedTheme,
+  resolvedTheme: resolve(savedTheme),
 
   setView: (view) => {
     localStorage.setItem('ocg.view', view);
@@ -64,6 +74,18 @@ export const useApp = create<AppState>((set, get) => ({
     const clamped = Math.min(1.3, Math.max(0.8, Math.round(scale * 100) / 100));
     localStorage.setItem('ocg.uiScale', String(clamped));
     set({ uiScale: clamped });
+  },
+
+  setThemeMode: (mode) => {
+    localStorage.setItem('ocg.theme', mode);
+    const resolved =
+      mode === 'system'
+        ? window.matchMedia('(prefers-color-scheme: dark)').matches
+          ? 'dark'
+          : 'light'
+        : mode;
+    document.documentElement.dataset.theme = resolved;
+    set({ themeMode: mode, resolvedTheme: resolved });
   },
 
   loadWorkspaces: async () => {

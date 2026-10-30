@@ -28,6 +28,7 @@ export function EditorPanel() {
   const consumeOpen = useApp((s) => s.consumeOpen);
   const notify = useApp((s) => s.notify);
   const requestSql = useApp((s) => s.requestSql);
+  const resolvedTheme = useApp((s) => s.resolvedTheme);
   const tabs = useEditor((s) => s.tabs);
   const active = useEditor((s) => s.active);
   const diagnostics = useEditor((s) => s.diagnostics);
@@ -115,6 +116,13 @@ export function EditorPanel() {
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, save, selection, requestSql, isSql]);
+
+  useEffect(() => {
+    const onFormat = () => void formatFull();
+    window.addEventListener('ocg:editor-format', onFormat);
+    return () => window.removeEventListener('ocg:editor-format', onFormat);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab?.path, isSql, formatBusy]);
 
   const onSourceScroll = (ratio: number) => {
     if (scrollFrame.current != null) return;
@@ -434,6 +442,7 @@ export function EditorPanel() {
                       jumpLine={jump}
                       languageOverride={tab.language}
                       sqlDialect={tab.sqlDialect}
+                      theme={resolvedTheme}
                     />
                   </div>
                   {isMarkdown && mdMode !== 'source' ? (
