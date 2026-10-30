@@ -915,4 +915,4 @@ main "$@"
 | 历史会话空白 | 请求 `limit=300` 超过上游上限 200，返回 400 | 改为 `limit=200&order=desc`；M1-007 记录 |
 | Git 推送状态不可见 | `/api/git/info` 无 upstream/ahead/behind | 增加 `@{u}...HEAD` 计数并在面板展示 |
 
-> 本轮修复尚未自动 commit；可在 Git 面板执行“提交到本地 → 推送”。M5–M8 的验收结果仍为空/BLOCKED，未在本轮声称完成。
+> 本轮修复已提交为 `486a91d` 并推送 `origin/main`；M5–M8 的验收结果仍为空/BLOCKED，未在本轮声称完成。

@@ -201,7 +201,7 @@
 | 打开历史会话空白（额外发现） | 消息列表请求 `limit=300`，上游最大 200，返回 400 | 改为 `limit=200&order=desc`，前端 hydrate 时按时间升序 | Playwright 加载会话无 400；M1-007 记录 |
 | 推送后仍显示未同步 | 没有 ahead/behind 数据 | `@{u}...HEAD` 计数并展示 | `git info` 返回 `ahead/behind/upstream` |
 
-> 说明：本轮修复提交仍在工作区，未自动 commit；用户可在 Git 面板用“提交到本地 → 推送”完成上传。
+> 说明：本轮修复已提交为 `486a91d` 并推送 `origin/main`；`c086d4e` 也已在远程可见。
 
 ---
 
