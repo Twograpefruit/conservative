@@ -221,6 +221,7 @@
 - `scripts/ci-assert.sh`：M6-011（Redis 禁止 KEYS）与 M6-016（凭据不外泄）的可执行骨架，退出码 0/1/2/3。
 - `scripts/fixtures/secrets.example.json`：夹具模板；真实值放 `secrets.local.json`（已 gitignore）。
 - `--self-test` 已验证密钥扫描与 KEYS 检测逻辑；真实用例在 M6 端点落地前记 **BLOCKED**。
+- 本机 2026-10-30：`bash -n` 通过，`--self-test` 退出 0；默认运行因缺少 `jq` 退出 2（BLOCKED）。
 - 详见 `docs/ci-assertions.md`。
 
 ### 12.2 ENV-015…020（增补闸门）

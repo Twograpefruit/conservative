@@ -17,6 +17,7 @@
 
 - 脚本骨架与断言逻辑已落地，`--self-test` 可在无 BFF/Redis 的情况下验证“密钥扫描”和“KEYS 检测”本身有效。
 - **M6-011 / M6-016 的实际用例仍为 BLOCKED**：M6 的 `/api/redis/*`、`/api/db/*`、`/api/connections` 尚未实现，默认运行会以退出码 2 明确报告。
+- 本机 2026-10-30 实测：`bash -n` 语法通过；`--self-test` 退出码 0（3 项 PASS）；默认运行因缺少 `jq` 退出码 2（BLOCKED）。
 - M6 落地后只需替换 `drive_redis_scan` / `drive_secret_scenarios` 两个函数，断言与退出码不变。
 
 ## 运行
