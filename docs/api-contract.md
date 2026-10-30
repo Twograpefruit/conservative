@@ -440,3 +440,18 @@
 - 草稿：`localStorage['ocg.draft.<sessionID>']` 保存未发送文本、图片和 @ 文件。
 - 顶栏工作区下拉包含切换/添加/移除；设置页不再有工作区配置卡片。
 - 产品名统一为 Conser（标题、品牌、Tauri productName/window title）。
+
+
+---
+
+## 20. 2026-10-30 增量接口（Conser 设计刷新）
+
+- `POST /api/system/pick-folder`：Windows PowerShell FolderBrowserDialog，返回 `{path,canceled,code}`；
+  顶栏“＋”直接唤醒，选择后填入工作区路径。
+- `GET /api/opencode/config`：代理 `/api/config`，返回 `{document:{path,info}, entries}`。
+- `PUT /api/opencode/config` body `{info}`：写回真实 opencode.json，写前复制
+  `opencode.json.ocg-backup-<timestamp>`；用于 providers、其他 API、MCP、agents、plugins。
+- 插件：沿用 opencode `GET /api/plugin`、`POST /api/plugin/check`、`POST /api/plugin/update`。
+- 聊天 Markdown：markdown-it + DOMPurify + highlight.js；支持标题/列表/表格/引用/任务列表/代码块。
+- Emoji：输入框 Emoji 面板，按 textarea 光标位置插入。
+- 设计：新增 `apps/gui/src/styles-design.css`，参考 Emil Kowalski skills（MIT），详见 README 归属章节。

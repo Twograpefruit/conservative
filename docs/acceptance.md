@@ -1074,3 +1074,22 @@ main "$@"
 | DRAFT-001 | 未发送草稿 | PASS（按会话保存 text/images/@files，切换视图/会话/刷新后恢复） |
 | ENC-001 | 编码转换 | PASS（GB18030→UTF-8→GB18030，API 与编辑器下拉均验证，字节正确） |
 | CAP-001 | 能力安装 | PASS（node-pty 重建任务：进度 5→100，输出可见，完成后重新探测） |
+
+
+---
+
+## 7.19 2026-10-30 增量验收（Conser UI / Markdown / OpenCode 配置）
+
+| 编号 | 用例 | 结果 |
+| ---- | ---- | ---- |
+| UI-018 | 顶部添加项目文件选择器 | PASS（POST /api/system/pick-folder 调 Windows FolderBrowserDialog；顶栏＋按钮唤醒） |
+| UI-019 | 文件树文件夹图标 | PASS（目录使用大号 📁，tree-icon 14px） |
+| CHAT-008 | Emoji 输入 | PASS（36 个常用 Emoji 面板，按光标插入；面板随输入框定位） |
+| CHAT-009 | Markdown 渲染 | PASS（markdown-it + DOMPurify，标题/列表/表格/引用/任务列表/代码高亮；实测 14 个标题、29 个列表） |
+| UI-020 | 亮色 Markdown 对比度 | PASS（strong/code/quote/table/code block 在亮色下使用深色文字） |
+| CHAT-010 | 输入区简化 | PASS（移除独立 @ 提示；图片按钮改为 🖼 图标） |
+| OC-001 | 其他 API / OpenCode 配置 | PASS（读写真实 opencode.json，支持 providers/plugins/MCP/agents） |
+| OC-002 | OpenCode v2 插件 | PASS（列出 90 个插件、检查更新、按插件更新） |
+| UI-021 | 快捷键布局 | PASS（命令/ID/scope/输入/清除的网格布局，冲突提示与重置） |
+| DESIGN-001 | 基于 skills 的视觉刷新 | PASS（新 topbar、按钮按压、focus ring、popover 动效、tabular numbers、reduced motion） |
+| DOC-001 | README / 归属 | PASS（重写 README，标注 Emil Kowalski skills MIT 与 docs/skills-main/LICENSE） |

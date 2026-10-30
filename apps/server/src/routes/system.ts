@@ -3,6 +3,7 @@ import type { AppContext } from '../context.js';
 import { HttpError, requireString } from '../lib/http.js';
 import { persistProbe, runProbe } from '../probe.js';
 import fs from 'node:fs';
+import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { paths } from '@ocg/config';
@@ -123,6 +124,73 @@ export async function registerSystemRoutes(app: FastifyInstance, ctx: AppContext
   app.get('/api/system/install/actions', async () =>
     Object.entries(INSTALL_ACTIONS).map(([id, action]) => ({ id, label: action.label })),
   );
+
+  app.get('/api/opencode/config', async () => {
+    const res = await ctx.upstream.fetch('/api/config');
+    if (!res.ok) throw new HttpError(502, `upstream config failed: ${res.status}`, 'upstream_unavailable');
+    const json = (await res.json()) as
+      | Array<{ type?: string; path?: string; info?: Record<string, unknown> }>
+      | { data?: Array<{ type?: string; path?: string; info?: Record<string, unknown> }> };
+    const entries = Array.isArray(json) ? json : json.data ?? [];
+    const document = entries.find((e) => e.type === 'document');
+    return {
+      document: document ? { path: document.path, info: document.info ?? {} } : null,
+      entries: entries.map((e) => ({ type: e.type, path: e.path })),
+    };
+  });
+
+  app.put('/api/opencode/config', async (req) => {
+    const body = req.body as { info?: unknown };
+    if (!body.info || typeof body.info !== 'object' || Array.isArray(body.info)) {
+      throw new HttpError(400, 'info must be a JSON object', 'invalid_config');
+    }
+    const res = await ctx.upstream.fetch('/api/config');
+    if (!res.ok) throw new HttpError(502, `upstream config failed: ${res.status}`, 'upstream_unavailable');
+    const json = (await res.json()) as
+      | Array<{ type?: string; path?: string }>
+      | { data?: Array<{ type?: string; path?: string }> };
+    const entries = Array.isArray(json) ? json : json.data ?? [];
+    const document = entries.find((e) => e.type === 'document');
+    if (!document?.path) throw new HttpError(404, 'opencode config document not found', 'config_not_found');
+    const target = document.path;
+    const backup = `${target}.ocg-backup-${Date.now()}`;
+    if (fs.existsSync(target)) fs.copyFileSync(target, backup);
+    fs.writeFileSync(target, JSON.stringify(body.info, null, 2), 'utf8');
+    return { ok: true, path: target, backup };
+  });
+
+  app.post('/api/system/pick-folder', async () => {
+    if (process.platform !== 'win32') {
+      throw new HttpError(501, 'native folder picker is only available on Windows', 'unsupported_platform');
+    }
+    const script = path.join(process.env.TEMP ?? process.cwd(), `ocg-pick-folder-${Date.now()}.ps1`);
+    fs.writeFileSync(
+      script,
+      [
+        'Add-Type -AssemblyName System.Windows.Forms',
+        '$dialog = New-Object System.Windows.Forms.FolderBrowserDialog',
+        "$dialog.Description = '选择项目文件夹'",
+        '$dialog.ShowNewFolderButton = $true',
+        'if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { Write-Output $dialog.SelectedPath }',
+      ].join('\r\n'),
+      'utf8',
+    );
+    try {
+      const res = await ctx.host.exec(
+        'powershell.exe',
+        ['-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-File', script],
+        { timeoutMs: 180_000 },
+      );
+      const folder = res.out.split(/\r?\n/).map((s) => s.trim()).filter(Boolean).pop() ?? '';
+      return { path: folder, canceled: !folder, code: res.code };
+    } finally {
+      try {
+        fs.unlinkSync(script);
+      } catch {
+        /* best effort */
+      }
+    }
+  });
 
   app.post('/api/system/install', async (req) => {
     const body = req.body as { action?: string };

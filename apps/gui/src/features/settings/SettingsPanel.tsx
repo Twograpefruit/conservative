@@ -47,6 +47,10 @@ export function SettingsPanel() {
   const [fontOptions, setFontOptions] = useState<string[]>(['Cascadia Code', 'Consolas', 'Microsoft YaHei', 'Segoe UI', 'SimSun', 'KaiTi']);
   const [fontBusy, setFontBusy] = useState(false);
   const [installJob, setInstallJob] = useState<InstallJob | null>(null);
+  const [ocConfigPath, setOcConfigPath] = useState('');
+  const [ocJson, setOcJson] = useState('');
+  const [ocBusy, setOcBusy] = useState(false);
+  const [ocPlugins, setOcPlugins] = useState<Array<{ id: string; source?: { type?: string; target?: string; path?: string }; state?: { status?: string; error?: string } }>>([]);
   const fontFile = useRef<HTMLInputElement | null>(null);
 
   const loadFontFile = async (file: File) => {
@@ -95,8 +99,62 @@ export function SettingsPanel() {
     void api<{ lines: string[] }>('/api/logs/upstream')
       .then((r) => setLogs(r.lines))
       .catch(() => undefined);
+    void loadOpenCode();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const loadOpenCode = async () => {
+    try {
+      const cfg = await api<{ document: { path?: string; info: Record<string, unknown> } | null }>('/api/opencode/config');
+      if (cfg.document) {
+        setOcConfigPath(cfg.document.path ?? '');
+        setOcJson(JSON.stringify(cfg.document.info ?? {}, null, 2));
+      }
+      const plugins = await api<{ data: typeof ocPlugins }>('/api/oc/api/plugin');
+      setOcPlugins(plugins.data ?? []);
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'OpenCode 配置加载失败', 'error');
+    }
+  };
+
+  const saveOpenCode = async () => {
+    setOcBusy(true);
+    try {
+      const info = JSON.parse(ocJson) as Record<string, unknown>;
+      await api('/api/opencode/config', {
+        method: 'PUT',
+        body: JSON.stringify({ info }),
+        headers: { 'content-type': 'application/json' },
+      });
+      notify('OpenCode 配置已保存；重启 opencode 后生效');
+    } catch (err) {
+      notify(err instanceof Error ? err.message : 'OpenCode 配置保存失败（JSON 格式？）', 'error');
+    } finally {
+      setOcBusy(false);
+    }
+  };
+
+  const pluginAction = async (kind: 'check' | 'update', id?: string) => {
+    setOcBusy(true);
+    try {
+      if (kind === 'check') {
+        await api('/api/oc/api/plugin/check', { method: 'POST' });
+        notify('插件更新检查完成');
+      } else if (id) {
+        await api('/api/oc/api/plugin/update', {
+          method: 'POST',
+          body: JSON.stringify({ targets: [id] }),
+          headers: { 'content-type': 'application/json' },
+        });
+        notify(`已更新插件 ${id}`);
+      }
+      await loadOpenCode();
+    } catch (err) {
+      notify(err instanceof Error ? err.message : '插件操作失败', 'error');
+    } finally {
+      setOcBusy(false);
+    }
+  };
 
   const pollInstall = async (id: string) => {
     try {
@@ -279,13 +337,18 @@ export function SettingsPanel() {
           <div className="keybinding-list">
             {COMMANDS.map((cmd) => (
               <div className="keybinding-row" key={cmd.id}>
-                <span className="keybinding-title" title={cmd.id}>
-                  {cmd.title}
-                </span>
+                <div className="keybinding-info">
+                  <span className="keybinding-title">{cmd.title}</span>
+                  <span className="keybinding-id">
+                    {cmd.id} · {cmd.scope}
+                  </span>
+                </div>
                 <input
                   className="input keybinding-input"
                   value={(bindings[cmd.id] ?? []).join(', ')}
-                  onChange={(e) => setBindings({ ...bindings, [cmd.id]: e.target.value.split(',').map((s) => s.trim()) })}
+                  onChange={(e) =>
+                    setBindings({ ...bindings, [cmd.id]: e.target.value.split(',').map((s) => s.trim()) })
+                  }
                   onBlur={() => {
                     const keys = (bindings[cmd.id] ?? []).filter(Boolean);
                     setBinding(cmd.id, keys);
@@ -293,6 +356,17 @@ export function SettingsPanel() {
                   }}
                   placeholder="例如 Ctrl+Shift+P"
                 />
+                <button
+                  className="icon-btn"
+                  title="清除该快捷键"
+                  onClick={() => {
+                    setBinding(cmd.id, []);
+                    setBindings(getBindings());
+                    setConflicts(bindingConflicts());
+                  }}
+                >
+                  ×
+                </button>
               </div>
             ))}
           </div>
@@ -302,17 +376,21 @@ export function SettingsPanel() {
               {conflicts.map((c) => `${c.key} → ${c.commands.join(' / ')}`).join('；')}
             </div>
           ) : null}
-          <button
-            className="btn btn-small"
-            onClick={() => {
-              resetBindings();
-              setBindings(getBindings());
-              setConflicts(bindingConflicts());
-              notify('已重置快捷键');
-            }}
-          >
-            重置为默认
-          </button>
+          <div className="row">
+            <span className="muted small">修改后失去焦点即保存；多个键位用逗号分隔。</span>
+            <span className="spacer" />
+            <button
+              className="btn btn-small"
+              onClick={() => {
+                resetBindings();
+                setBindings(getBindings());
+                setConflicts(bindingConflicts());
+                notify('已重置快捷键');
+              }}
+            >
+              重置为默认
+            </button>
+          </div>
         </section>
 
         <section className="settings-card">
@@ -404,6 +482,54 @@ export function SettingsPanel() {
           >
             重新探测
           </button>
+        </section>
+
+        <section className="settings-card settings-wide oc-config">
+          <h3>OpenCode v2 配置 / 其他 API / 插件</h3>
+          <div className="oc-config-head">
+            <span className="muted small">{ocConfigPath || '未找到 opencode.json 配置文档'}</span>
+            <span className="spacer" />
+            <button className="btn btn-small" onClick={() => void loadOpenCode()} disabled={ocBusy}>
+              重新加载
+            </button>
+            <button className="btn btn-small" onClick={() => void pluginAction('check')} disabled={ocBusy || !ocConfigPath}>
+              检查插件更新
+            </button>
+            <button className="btn btn-small btn-primary" onClick={() => void saveOpenCode()} disabled={ocBusy || !ocConfigPath}>
+              保存到 opencode.json
+            </button>
+          </div>
+          <div className="oc-plugins">
+            {ocPlugins.length === 0 ? <span className="muted small">没有已加载插件</span> : null}
+            {ocPlugins.map((plugin) => {
+              const outdated = (plugin.source as { outdated?: boolean })?.outdated;
+              return (
+                <div className="oc-plugin" key={plugin.id}>
+                  <span className="chip">{plugin.source?.type ?? 'plugin'}</span>
+                  <span className="oc-plugin-name">{plugin.id}</span>
+                  <span className={plugin.state?.status === 'active' ? 'text-ok' : 'text-error'}>
+                    {plugin.state?.status ?? 'unknown'}
+                  </span>
+                  {outdated ? (
+                    <button className="btn btn-tiny btn-primary" onClick={() => void pluginAction('update', plugin.id)} disabled={ocBusy}>
+                      更新
+                    </button>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+          <textarea
+            className="input oc-json"
+            spellCheck={false}
+            value={ocJson}
+            onChange={(e) => setOcJson(e.target.value)}
+            placeholder='{ "providers": [...], "plugins": [...] }'
+          />
+          <div className="muted small">
+            这里直接读写 opencode v2 的配置文件（含 providers、其他 API、MCP、插件、agents 等）。保存前自动备份为
+            <code> .ocg-backup-时间戳</code>，重启 opencode 后生效。
+          </div>
         </section>
 
         <section className="settings-card appearance-settings">

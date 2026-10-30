@@ -1,58 +1,77 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import MarkdownIt from 'markdown-it';
+import taskLists from 'markdown-it-task-lists';
+import DOMPurify from 'dompurify';
+import hljs from 'highlight.js/lib/core';
+import javascript from 'highlight.js/lib/languages/javascript';
+import typescript from 'highlight.js/lib/languages/typescript';
+import python from 'highlight.js/lib/languages/python';
+import json from 'highlight.js/lib/languages/json';
+import sql from 'highlight.js/lib/languages/sql';
+import bash from 'highlight.js/lib/languages/bash';
+import css from 'highlight.js/lib/languages/css';
+import xml from 'highlight.js/lib/languages/xml';
+import yaml from 'highlight.js/lib/languages/yaml';
+import markdownLang from 'highlight.js/lib/languages/markdown';
 
-function inline(text: string, keyPrefix: string): React.ReactNode[] {
-  const nodes: React.ReactNode[] = [];
-  const re = /(`[^`]+`)|(\*\*[^*]+\*\*)|(https?:\/\/[^\s)]+)/g;
-  let last = 0;
-  let m: RegExpExecArray | null;
-  let i = 0;
-  while ((m = re.exec(text)) !== null) {
-    if (m.index > last) nodes.push(text.slice(last, m.index));
-    if (m[1]) nodes.push(<code key={`${keyPrefix}-c${i++}`}>{m[1].slice(1, -1)}</code>);
-    else if (m[2]) nodes.push(<strong key={`${keyPrefix}-b${i++}`}>{m[2].slice(2, -2)}</strong>);
-    else if (m[3]) {
-      nodes.push(
-        <a key={`${keyPrefix}-a${i++}`} href={m[3]} target="_blank" rel="noreferrer">
-          {m[3]}
-        </a>,
-      );
+hljs.registerLanguage('javascript', javascript);
+hljs.registerLanguage('js', javascript);
+hljs.registerLanguage('typescript', typescript);
+hljs.registerLanguage('ts', typescript);
+hljs.registerLanguage('python', python);
+hljs.registerLanguage('py', python);
+hljs.registerLanguage('json', json);
+hljs.registerLanguage('sql', sql);
+hljs.registerLanguage('bash', bash);
+hljs.registerLanguage('sh', bash);
+hljs.registerLanguage('shell', bash);
+hljs.registerLanguage('css', css);
+hljs.registerLanguage('xml', xml);
+hljs.registerLanguage('html', xml);
+hljs.registerLanguage('yaml', yaml);
+hljs.registerLanguage('yml', yaml);
+hljs.registerLanguage('markdown', markdownLang);
+hljs.registerLanguage('md', markdownLang);
+
+const escapeHtml = new MarkdownIt().utils.escapeHtml;
+
+function highlight(code: string, lang: string): string {
+  if (lang && hljs.getLanguage(lang)) {
+    try {
+      return `<pre class="code-block hljs" data-lang="${lang}"><code>${hljs.highlight(code, { language: lang, ignoreIllegals: true }).value}</code></pre>`;
+    } catch {
+      /* fall through */
     }
-    last = m.index + m[0].length;
   }
-  if (last < text.length) nodes.push(text.slice(last));
-  return nodes;
+  return `<pre class="code-block hljs"><code>${escapeHtml(code)}</code></pre>`;
 }
 
-export function Markdown({ text }: { text: string }) {
+const md = new MarkdownIt({
+  html: false,
+  linkify: true,
+  breaks: true,
+  typographer: true,
+  highlight,
+});
+md.use(taskLists as never, { enabled: true, label: false });
+md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
+  const href = String(tokens[idx].attrGet('href') ?? '');
+  if (/^https?:/i.test(href)) {
+    tokens[idx].attrSet('target', '_blank');
+    tokens[idx].attrSet('rel', 'noreferrer noopener');
+  }
+  return self.renderToken(tokens, idx, options);
+};
+
+export function Markdown({ text, className = '' }: { text: string; className?: string }) {
+  const html = useMemo(() => {
+    if (!text) return '';
+    const raw = md.render(text);
+    return DOMPurify.sanitize(raw, {
+      ADD_TAGS: ['input'],
+      ADD_ATTR: ['target', 'rel', 'checked', 'disabled', 'type', 'loading', 'data-lang'],
+    });
+  }, [text]);
   if (!text) return null;
-  const blocks: React.ReactNode[] = [];
-  const parts = text.split(/```/);
-  parts.forEach((part, index) => {
-    if (index % 2 === 1) {
-      const nl = part.indexOf('\n');
-      const lang = nl > 0 ? part.slice(0, nl).trim() : '';
-      const code = nl >= 0 ? part.slice(nl + 1) : part;
-      blocks.push(
-        <pre className="code-block" key={`code-${index}`} data-lang={lang}>
-          <code>{code.replace(/\n$/, '')}</code>
-        </pre>,
-      );
-    } else if (part.trim()) {
-      const paragraphs = part.split(/\n{2,}/);
-      paragraphs.forEach((para, pi) => {
-        const lines = para.split('\n');
-        blocks.push(
-          <p key={`p-${index}-${pi}`} className="md-p">
-            {lines.map((line, li) => (
-              <React.Fragment key={li}>
-                {inline(line, `${index}-${pi}-${li}`)}
-                {li < lines.length - 1 ? <br /> : null}
-              </React.Fragment>
-            ))}
-          </p>,
-        );
-      });
-    }
-  });
-  return <div className="markdown">{blocks}</div>;
+  return <div className={`markdown ${className}`.trim()} dangerouslySetInnerHTML={{ __html: html }} />;
 }

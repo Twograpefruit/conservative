@@ -138,7 +138,7 @@ export function FileTree({ workspaceID, onOpen }: { workspaceID: string | null; 
           <span className="tree-caret">
             {entry.type === 'dir' ? (expanded.has(entry.path) ? '▾' : '▸') : ''}
           </span>
-          <span className="tree-icon">{entry.type === 'dir' ? '▣' : fileIcon(entry.name)}</span>
+          <span className="tree-icon">{entry.type === 'dir' ? '📁' : fileIcon(entry.name)}</span>
           <span className="tree-name">{entry.name}</span>
           {loading.has(entry.path) ? <span className="tree-loading">…</span> : null}
         </div>

@@ -1,156 +1,122 @@
 # Conser
 
-A lightweight peer GUI for the **opencode v2 service**, plus a local BFF that fills the gaps
-opencode does not cover: file editing, search & bulk replace, Git, structured diffs, a shadow
-snapshot repository, lint diagnostics and a terminal. Browser-first (`127.0.0.1`), with a Tauri
-shell scaffold for later desktop packaging.
+Conser is a lightweight browser GUI and local BFF for **opencode v2**. It adds a desktop-style
+workspace around the opencode service: conversations and branches, a code editor, search/replace,
+Git, a terminal, SQLite/MySQL/Redis tools, notifications, and a configurable local runtime.
+
+The BFF binds to `127.0.0.1` only. It proxies opencode's HTTP API, multiplexes its SSE stream, and
+fills in capabilities the upstream service does not expose directly.
 
 ```
-Browser / Tauri (WebView2)
-        |  same-origin http://127.0.0.1:<BFF>
-        v
+Browser (Conser UI)
+        │  same-origin http://127.0.0.1:<BFF>
+        ▼
 BFF (Node 20+, Fastify, single process)
-        +- managed opencode serve child (Job Object watchdog)
-        +- /api/oc/*      same-origin reverse proxy (Basic Auth injected)
-        +- /api/events    aggregated SSE + replay ring
-        +- /api/fs|search|replace|git|snapshots|pty|lint
-        v
-opencode serve v2 (127.0.0.1 only, password held by BFF)
+        ├── opencode v2 HTTP API + SSE
+        ├── file system / search / replace / lint
+        ├── Git / snapshots / PTY
+        └── SQLite / MySQL / Redis
 ```
 
-## Status
+## Feature overview
 
-| Milestone | Scope | Status |
-| --- | --- | --- |
-| M0 | Host abstraction, single-instance lock, port fallback, runtime file, proxy, SSE bus, probe, codegen, bootstrap | Done |
-| M1 | v2 event reducer, replay, streaming chat, tool timeline, permission queues, model/agent switching | Done |
-| M2 | File tree, CodeMirror tabs, optimistic locking, EOL/encoding fidelity, lint, streaming search, transactional replace + undo | Done |
-| M3 | Git status/log/diff, hunk stage/unstage/discard, commit (auto-stage option), push, four diff sources normalized, shadow snapshots | Done |
-| M3.5 | One-time PTY tickets, ConPTY bridge, tabs, resize, find, scrollback | Done (upstream PTY fallback) |
-| M4 | Tauri/WebView2 packaging, tray, memory soak | Scaffold only |
-| M5 | Language registry with lazy loading, Markdown source/preview, SQL dialect highlighting + format preview/apply/undo | Done (core; selection format partial) |
-| M6 | SQLite + MySQL + Redis connections, DPAPI credentials, read-only SQL guard, query/export, SCAN key browser, read-only command console, pub/sub | Done (SQLite/MySQL/Redis; PostgreSQL not enabled) |
-| M7 | Command registry + palette, keybinding overrides/conflict detection, dark/light/system themes, Git command catalog with argv preview, safety confirm, output/hints/history | Done (core; reserved-key warnings pending) |
-| M8 | In-app notification center, focused/blurred routing, native Notification API, title flashing, 3s dedupe, quiet hours, privacy mode, mute by source/session, deep links | Done (core; Tauri native + workspace mute partial) |
+### Conversations
 
-### UI & conversation additions (2026-10-30)
+- Streaming assistant messages with rich Markdown (headings, lists, tables, task lists, links,
+  highlighted code blocks).
+- Copy, quote and branch actions on every message; branch uses opencode's native session fork
+  (`POST /api/session/{id}/fork`).
+- Image attachments from the file picker or clipboard, plus an Emoji picker.
+- Per-session draft persistence (text, images, `@` file references) across session switches,
+  view changes, crashes and page reloads.
+- In-conversation search with snippets, jump targets, result retention and search history.
+- Session archive with user-defined archive names/groups, mute notifications per session, and
+  automatic scroll-to-bottom when entering a session.
 
-- **Conser branding**: the GUI, browser title and Tauri window are named “Conser”; internal
-  package/file names and the local data directory stay unchanged for compatibility.
-- **Original dark theme**: restored the pre-Neumorphism dark palette; CodeMirror uses One Dark,
-  xterm uses the dark terminal theme.
-- **Text size**: top-bar `A- / A+`, direct percentage input and Settings slider/number input,
-  60%–300%, persisted locally; only text (chat, editor, terminal, tables) scales.
-- **UI size**: separate top-bar `UI- / UI+`, direct percentage input and Settings controls,
-  50%–250%; the layout re-measures `ResizeObserver` viewport dimensions and uses a compensated
-  transform, so it keeps filling the window after every resize (no dead right/bottom area).
-- **Fonts**: Settings can pick a UI/body font, load installed fonts via the Local Font Access API,
-  load `.ttf/.otf/.woff/.woff2` files, and reset UI/text/font to defaults from one button.
-- **Adaptive text layout**: controls grow and wrap above 150% text size; settings uses a responsive
-  card grid and the “外观与字体” card groups scale sliders, numeric inputs, font and theme without
-  squeezing labels or borders.
-- **Right-click menus**: file tree (open/rename/delete), session list (archive/rename/delete/mute)
-  and editor tabs (close/close others/close all/copy path/reload).
-- **Workspace switcher**: the top-bar dropdown now includes workspace configuration (switch, add
-  path, remove); the duplicate Settings card was removed.
-- **Session archive**: archive/unarchive from the always-visible archive icon or the session
-  context menu. Archiving asks for an existing archive name or a new one; archived sessions are
-  grouped by name. Backed by opencode's `PATCH /api/session/{id} {archived}` plus local grouping.
-- **In-conversation navigation**: `↑`/`↓` (also `Alt+↑/↓`) jump between messages, `⇣` returns to
-  the latest, and `Ctrl+F` opens in-conversation keyword search with snippets and jump targets.
-  The query/results survive jumping and switching views (sessionStorage), and entering a session
-  always scrolls to the newest message. File search and in-conversation search keep their results
-  and recent-query history across navigation.
-- **Drafts**: unsent composer text, image attachments and `@` files are persisted per session and
-  restored after switching sessions, view changes, crashes or a page reload.
-- **Conversation tools**: every user/assistant message has copy, quote and branch actions, with a
-  timestamp. Quote inserts a block-quote reference into the composer; branch calls opencode's
-  `POST /api/session/{id}/fork {before}` and opens the new independent session.
-- **Images**: send images from the file picker or paste clipboard images; files are stored under
-  `%APPDATA%\opencode-gui\attachments` and attached as `PromptInput.FileAttachment` URIs.
-- **Continuous `@` mentions**: typing `@` (at start or after whitespace, repeatedly) opens a
-  searchable file picker backed by `GET /api/fs/find`; multiple files can be referenced in one
-  message and are sent as `PromptInput.FileAttachment` entries with `file:///` URIs and
-  `mention` offsets. Verified against opencode: the model received the attached file content.
-- **M5 editor**: language registry with dynamic imports (py/js/ts/go/rust/java/cpp/php/
-  sql/yaml/xml/html/css/md/nginx/toml/ini/shell/docker), Markdown source/split/preview with
-  DOMPurify + task-list writeback, and SQL dialect highlighting plus `sql-formatter` preview →
-  apply → undo (full file) and selection formatting. The toolbar encoding selector converts
-  UTF-8 ↔ GB18030 in place and subsequent saves preserve the selected encoding.
-- **M6 data**: SQLite (built-in `node:sqlite`, worker-isolated with timeout/row-limit), MySQL
-  (`mysql2`, information_schema metadata, session timeouts, read-only guard, virtualized 10k-row
-  result grid, true streaming CSV/JSON export) and Redis (ioredis, SCAN-only key browser,
-  read-only command whitelist, pub/sub). Passwords go to Windows DPAPI; `connections.json`
-  contains only an `authRef`. Read-only profiles reject writes and multi-statement SQL. Ctrl+Enter
-  in a `.sql` file sends the selection/file to the Data panel.
-- **CI assertions**: `M6-011` (no `KEYS`) and `M6-016` (no credential leakage) now run against
-  the real endpoints; both pass locally.
-- **Capability install**: missing `pty/lint/vcs/snapshots` capabilities in Settings show an install
-  button (rebuild `node-pty`, install `pyright`, or install Git via winget) with a live progress
-  bar and command output, then automatically re-probe.
-- **M7 interaction**: command registry + `Ctrl+Shift+P` palette, user keybinding overrides with
-  conflict detection, dark/light/system themes (CodeMirror One Dark ↔ light), and a Git command
-  catalog with argv preview, danger confirmation + pre-command shadow snapshot, redacted
-  stdout/stderr, actionable error hints and persistent history.
-- **Git remotes / Gitee**: the Git panel has a “远端” tab for custom Gitee/GitHub/generic Git
-  profiles (remote URL, username, token). Tokens live in DPAPI; “设为 origin” updates the remote,
-  “测试” uses a temporary askpass helper and never writes the token into `.git/config`.
-- **PyCharm-style diff**: side-by-side old/new view with per-line checkboxes. Selected added lines
-  are removed and selected deleted lines are restored directly in the working file
-  (`POST /api/git/overwrite-lines`), independent of hunk-level stage/unstage/discard.
-- **M8 notifications**: notification center in the top bar (unread badge, mark all read, clear),
-  source-aware app toasts, native `Notification` when the window is blurred (permission-based),
-  flashing document title with the unread count, 3-second dedupe/aggregation, source and
-  per-session mute, quiet hours, privacy mode, and click-through deep links to the session/view.
-  Chat completion/failure/permission, Git command results, DB queries and terminal exits are wired in.
+### Editor
 
-See [`docs/api-contract.md`](docs/api-contract.md) for the acceptance checklist and
-[`docs/acceptance.md`](docs/acceptance.md) for the probed opencode 2.2.1 contract.
+- CodeMirror 6 with lazy language loading, One Dark / light themes, diagnostics and format preview.
+- File tree with large folder icons and context menus (open, rename, delete, refresh).
+- UTF-8 ↔ GB18030 encoding conversion directly from the editor toolbar.
+- Markdown source/split/preview and SQL dialect highlighting + `sql-formatter`.
+
+### Search
+
+- Streaming workspace search with regex, case, whole-word and glob filters.
+- Search results survive jumping to the editor; recent-query history is stored locally.
+- Replace preview with per-file confirmation, snapshot + undo.
+
+### Git
+
+- Status, log, structured diffs and shadow snapshots.
+- PyCharm-style side-by-side diff with per-line/block checkboxes and “overwrite selected” from the
+  original version (`POST /api/git/overwrite-lines`).
+- Custom Gitee/GitHub/generic Git remote profiles; tokens stay in Windows DPAPI and are never
+  written into `.git/config`.
+- Git command catalog with argv preview, danger confirmation, output redaction, hints and history.
+
+### Data
+
+- SQLite (`node:sqlite`) with worker isolation, timeout and row limits.
+- MySQL (`mysql2`) metadata, queries, virtualized result grid and true streaming CSV/JSON export.
+- Redis key browsing via `SCAN` only, typed value viewer, read-only command whitelist and pub/sub.
+- Local defaults from `config/local.json`; passwords are sealed with Windows DPAPI.
+
+### Notifications
+
+- In-app notification center with unread badge, mark-all-read and clear.
+- Focused: toast. Blurred: native Notification when permitted.
+- 3-second dedupe/aggregation, source/session mute, quiet hours, privacy mode, deep links, and
+  flashing document title.
+- Event sources: chat completion/failure/permission, Git commands, DB queries, terminal exits.
+
+### Settings
+
+- “外观与字体”: independent UI scale (50–250%) and text scale (60–300%), direct numeric inputs,
+  local/system/custom font loading, reset, and theme (dark/light/system).
+- Adaptive layout above 150% text size: controls grow and wrap instead of clipping borders.
+- Workspace configuration lives in the top-bar workspace menu (switch, add via native folder
+  picker, remove).
+- Capability probe with one-click install (`node-pty`, `pyright`, Git) and live progress.
+- OpenCode v2 configuration editor: reads/writes the real `opencode.json`, lists plugins, checks
+  and applies plugin updates, and exposes providers/other APIs/MCP/agents as JSON.
+- Keybinding editor with per-command clearing, conflict detection and reset.
 
 ## Quick start (Windows)
 
-```powershell
-# 1) prerequisites (Node 20+, git, opencode 2.x, pyright; rg is bundled)
-npm run bootstrap
+Requirements: Node.js 20+, opencode v2 installed, Git (optional but recommended).
 
-# 2) dependencies
+```powershell
 npm install
 
-# 3a) development: BFF + Vite (two processes)
+# development: BFF + Vite
 npm run dev
-#     open http://127.0.0.1:5173
+# open http://127.0.0.1:5173
 
-# 3b) production-style: build the SPA, then let the BFF serve it
+# production-style: build the SPA and serve it from the BFF
 npm run build
 npm start
-#     open http://127.0.0.1:4311 (or the port printed in the console)
+# open the printed URL, usually http://127.0.0.1:4310
 
-# 3c) open the running GUI in your default browser
+# open the running GUI in the default browser
 npm run gui
 ```
 
-`npm start` prints the actual BFF port. If the preferred port (`4310`) is busy the BFF picks the
-next free one, writes it to `%LOCALAPPDATA%\opencode-gui\runtime.json`, and the Vite dev proxy
-resolves that file per request.
-
-### Tests & checks
-
-```powershell
-npm run typecheck        # all workspaces
-npm test                 # reducer + diff pure-function tests
-node scripts/probe.mjs   # refresh docs/upstream/probe.json
-node scripts/codegen.mjs # regenerate protocol types from the live spec
-node scripts/memtest.mjs --seconds 30
-```
+The BFF chooses the configured port or the next free one, then writes it to
+`%LOCALAPPDATA%\opencode-gui\runtime.json`. `npm run gui` reads that file.
 
 ## Configuration
 
-Settings live in `%APPDATA%\opencode-gui\settings.json`; workspaces in `workspaces.json`.
+- Settings: `%APPDATA%\opencode-gui\settings.json`
+- Workspaces: `%APPDATA%\opencode-gui\workspaces.json`
+- Runtime/lock/cache/logs: `%LOCALAPPDATA%\opencode-gui\`
+- Attachment uploads: `%APPDATA%\opencode-gui\attachments\`
+- Git remote profiles: `%APPDATA%\opencode-gui\git-profiles.json` (tokens in DPAPI)
+- Database connections: `%APPDATA%\opencode-gui\connections.json` (only `authRef`, no passwords)
 
 ### Local Redis / MySQL defaults
 
-`config/local.example.json` is committed and documents the shape. Copy it to
-`config/local.json` (gitignored) and put real credentials there:
+`config/local.example.json` documents the shape. Copy it to `config/local.json` (gitignored):
 
 ```json
 {
@@ -159,121 +125,101 @@ Settings live in `%APPDATA%\opencode-gui\settings.json`; workspaces in `workspac
 }
 ```
 
-On startup the BFF seeds/updates two read-only profiles, **Local Redis** and **Local MySQL**, from
-this file. Host/port/database are stored in `connections.json`; passwords are moved into Windows
-DPAPI immediately and never written to `connections.json` or git. Override the file location with
-`OCG_LOCAL_CONFIG`.
+On startup the BFF creates/updates read-only `Local Redis` and `Local MySQL` profiles from this
+file. Passwords go directly into Windows DPAPI. Override the path with `OCG_LOCAL_CONFIG`.
 
-Environment overrides:
+### Environment variables
 
-| Variable | Purpose |
+| Variable | Meaning |
 | --- | --- |
-| `OCG_WORKSPACE` | Default workspace root (defaults to `INIT_CWD` / cwd) |
-| `OCG_PORT` | Preferred BFF port (default 4310) |
-| `OCG_OC_MODE` | `managed` (spawn `opencode serve`) or `attach` (use a running service) |
-| `OCG_OC_URL` | Attach URL, e.g. `http://127.0.0.1:28894` (implies attach mode) |
-| `OCG_OC_PASSWORD` | Attach password (otherwise read from `~/.config/opencode/service.json`) |
-| `OCG_OPENCODE_BIN` | Explicit path to `opencode.exe` |
-| `OCG_GUI_DIR` | Directory containing the built SPA (`apps/gui/dist` by default) |
-| `OCG_BFF` | Vite dev proxy target override |
+| `OCG_HOST` / `OCG_PORT` | BFF bind host/port |
+| `OCG_WORKSPACE` | Initial workspace |
+| `OCG_OC_URL` | Attach to an existing opencode URL (implies attach mode) |
+| `OCG_OC_BIN` | opencode executable |
+| `OCG_GUI_DIR` | Built SPA directory |
+| `OCG_LOCAL_CONFIG` | Alternative `config/local.json` |
 
-Runtime data (never inside the repo):
+## Scripts
 
-- `%APPDATA%\opencode-gui\` - settings, workspaces
-- `%LOCALAPPDATA%\opencode-gui\` - `runtime.json`, `instance.lock`, logs, `cache/probe.json`,
-  `snapshots\<projectHash>\` (bare shadow repos), `backups\` (replace/restore backups)
+```powershell
+npm run typecheck        # all workspaces
+npm test                 # unit tests
+npm run build            # GUI + server
+npm start                # production BFF
+npm run gui              # open the running BFF in the browser
+node scripts/probe.mjs   # refresh docs/upstream/probe.json
+```
 
-## BFF API (frontend depends only on this)
+## API summary
 
-| Group | Endpoints |
+| Area | Endpoints |
 | --- | --- |
-| System | `GET /api/health`, `GET /api/probe`, `GET /api/settings`, `GET/POST/PATCH/DELETE /api/workspaces` |
-| Contract | `GET /api/oc/spec` |
-| Proxy | `ALL /api/oc/*` to upstream, Basic Auth injected, SSE unbuffered |
-| Events | `GET /api/events?since=<seq>` (SSE, `id:` = BFF seq, 5000-event ring) |
-| Files | `GET /api/fs/tree`, `GET /api/fs/find`, `GET /api/fs/file`, `GET /api/fs/raw`, `PUT /api/fs/file`, `POST /api/fs/{rename,delete,mkdir}` |
-| Format | `POST /api/format/preview`, `POST /api/format/apply`, `POST /api/format/undo`, `POST /api/format/text` |
-| Data | `GET/POST/PUT/DELETE /api/connections`, `POST /api/connections/test`, `POST /api/db/query`, `GET /api/db/metadata`, `POST /api/db/export`, `POST /api/redis/{scan,command}`, `GET /api/redis/value`, `GET /api/redis/subscribe` |
-| Search | `POST /api/search` (NDJSON stream + cursor) |
-| Replace | `POST /api/replace/preview`, `POST /api/replace/apply`, `POST /api/replace/undo` |
-| Git | `GET /api/git/{info,status,log,diff,catalog,history}`, `POST /api/git/{exec,commit,push,run,apply-hunk}` |
-| Diff | `GET /api/diff/session`, `GET /api/diff/snapshot` |
-| Snapshots | `GET/POST /api/snapshots`, `GET /api/snapshots/diff`, `POST /api/snapshots/restore` |
-| Lint | `POST /api/lint` (pyright + optional ruff) |
-| Terminal | `POST /api/pty/token` then `WS /api/pty?ticket=...`; `GET /api/pty/list`, `POST /api/pty/resize`, `DELETE /api/pty/:id` |
+| System | `GET /api/health`, `GET /api/probe`, `GET/PUT /api/settings` |
+| Workspaces | `GET/POST /api/workspaces`, `PATCH/DELETE /api/workspaces/:id` |
+| Files | `GET /api/fs/tree|find|file|raw`, `PUT /api/fs/file`, rename/delete/mkdir |
+| Chat attachments | `POST/GET /api/chat/attachment` |
+| Search | `POST /api/search`, replace preview/apply/undo |
+| Git | status/log/diff/exec/commit/push/apply-hunk/overwrite-lines, command catalog/history |
+| Git profiles | `GET/POST /api/git/profiles`, `PUT/DELETE /api/git/profiles/:id`, apply/test |
+| Data | connections, `POST /api/db/query`, metadata, export, Redis SCAN/value/command/subscribe |
+| OpenCode | `ANY /api/oc/*` proxy; `GET/PUT /api/opencode/config` |
+| Install | `POST /api/system/install`, `GET /api/system/install/:id`, `POST /api/system/pick-folder` |
+| Events | `GET /api/events` (SSE multiplex) |
 
-## Design notes
+See [`docs/api-contract.md`](docs/api-contract.md) and [`docs/acceptance.md`](docs/acceptance.md)
+for the detailed contract and verification records.
 
-- **Only the BFF talks to opencode.** Credentials never reach the browser; CORS is unnecessary.
-- **v2 event model.** opencode 2.x streams turn-level events (`session.text.started/delta/ended`,
-  `session.tool.*`, `session.step.*`, `session.execution.*`), not v1 `message.part.updated`.
-  `packages/protocol` implements the v2 reducer with v1 fallbacks and tests for duplicates,
-  out-of-order deltas, final-text override, permission bucketing and session deletion.
-- **Event replay.** The BFF assigns a monotonic `seq`, keeps a ring buffer and serves
-  `GET /api/events?since=`; if the gap is older than the ring it emits `bff.resync` so the GUI
-  refetches sessions/messages instead of silently losing state.
-- **Platform differences live in `packages/host`.** Business code never branches on drive letters,
-  `wsl.exe` or shell names. `WindowsLocalHost` owns exec/spawn/PTY/watch/kill-tree/Job-Object.
-- **No orphan opencode.** In managed mode the BFF starts `opencode serve` and attaches a Windows
-  Job Object with `KILL_ON_JOB_CLOSE` via a watchdog. Force-killing the BFF kills the upstream
-  child (verified).
-- **Diffs & snapshots are pure/structural.** `packages/diff` parses unified diffs, applies and
-  reverses hunks, preserves CRLF, and rebuilds `git apply` patches. Snapshots use a bare shadow
-  repo per project under `%LOCALAPPDATA%`, so the user's repo is never polluted.
-- **Edits preserve bytes.** Files are decoded strictly as UTF-8 (GB18030 is detected and can be
-  converted in place from the editor toolbar); writes keep BOM/EOL, are hash-checked first
-  (409 on conflict) and are written atomically. Files >2 MB are read-only/truncated; replace
-  skips non-UTF-8 files.
-- **Git commit and push are separate, visible steps.** The commit box has a default-on
-  "stage all changes" option and a push button; the header shows `未推送 N` / `落后 N` from
-  `@{u}...HEAD`. Push never uses force flags, and the first push sets upstream automatically.
-- **Replace is selective.** Preview renders a checkbox per file; apply sends only the checked
-  paths. Undo restores only the files that were actually written in that transaction.
-- **Search hits jump to the exact line.** Result clicks carry path + line and the editor uses a
-  nonce so repeated clicks on the same line still scroll/focus.
+## Security and privacy
 
-## CI assertions (M6-011 / M6-016)
-
-`scripts/ci-assert.sh` is the executable skeleton for "Redis browsing must never send KEYS" and
-"credentials never leak". Exit codes are 0 pass / 1 assert fail / 2 blocked / 3 usage. See
-[`docs/ci-assertions.md`](docs/ci-assertions.md). M6 endpoints are not implemented yet, so the
-real assertions currently report **BLOCKED**; `--self-test` validates the detection logic.
+- BFF listens on `127.0.0.1` only; no login/multi-user/remote/TLS by design.
+- Database and Git secrets are stored via Windows DPAPI. API responses and logs never contain
+  plaintext secrets; `connections.json`/`git-profiles.json` hold only opaque references.
+- SQLite/MySQL read-only profiles reject writes and multi-statement SQL.
+- Redis key browsing never sends `KEYS`; the command console uses a read-only whitelist.
+- Markdown is rendered with `html: false` and sanitized by DOMPurify before insertion.
+- Config writes from the OpenCode editor are backed up next to `opencode.json` first.
 
 ## Known limitations
 
-- **BFF RSS ~79 MB**, above the 50 MB budget (Node/Fastify baseline). Recorded as a deviation in
-  `docs/acceptance.md`; the GUI bundle itself is ~1.2 MB JS (~380 KB gzip).
-- **Terminal uses the upstream ConPTY**, not a local `node-pty` instance. npm 11 blocks install
-  scripts and this machine has no VS Build Tools; `RuntimeHost.createPty` remains the extension
-  point for a local backend.
-- **Session list is filtered by workspace directory** because opencode sessions belong to a
-  location; new sessions are created with an explicit `location` for the active workspace.
-- **M4 is a scaffold.** Tray, installer, shell-owned lifecycle and WebView memory instrumentation
-  are not implemented. `apps/desktop/README.md` lists the remaining work.
-- **M6 is SQLite/MySQL/Redis.** SQLite uses Node's built-in `node:sqlite` (Node 22.5+/24); on
-  Node 20 the SQLite feature is unavailable. PostgreSQL is intentionally not enabled (no local
-  test instance) and those profiles return `driver_not_available`. MySQL results are virtualized
-  in the UI up to `rowLimit` (default 500, max 10k) and MySQL CSV/JSON export streams row by row.
-  SQLite export still buffers, and the 100k-key Redis stress test is intentionally skipped.
-- **Redis command console is read-only.** `KEYS`, `FLUSHALL`, `CONFIG`, `SHUTDOWN`, `EVAL`, etc.
-  are hard-blocked; key navigation always uses `SCAN` cursors.
-- **M7 reserved-key warnings** are not implemented yet; binding `Ctrl+W/F5` etc. may still be
-  intercepted by the browser/WebView2.
-- No login/multi-user/remote/TLS by design; the BFF binds `127.0.0.1` only.
-- Long Windows paths are not enabled on this machine (`LongPathsEnabled=0`); the host normalises
-  paths but very deep trees may still hit OS limits.
-- `ruff` is optional and not installed here; pyright diagnostics are the primary source.
+- PostgreSQL is intentionally not enabled (no local test environment); profiles return
+  `driver_not_available`.
+- SQLite export still buffers; MySQL export streams row by row.
+- Redis 100k-key stress testing is intentionally skipped.
+- Tauri packaging is a scaffold; the browser build is the supported runtime. Native notifications
+  use the Web Notification API.
+- Git line overwrite applies to the working tree only; staged/commit review remains read-only.
+- Reserved browser shortcuts (`Ctrl+W`, `F5`) cannot be fully intercepted.
 
 ## Repository layout
 
 ```
 apps/gui/         React + Vite + CodeMirror 6 + xterm.js + zustand
-apps/server/      Fastify BFF (proxy, SSE, fs/search/replace/git/snapshots/pty/lint)
-apps/desktop/     Tauri scaffold (M4, not packaged)
+apps/server/      Fastify BFF (proxy, SSE, fs/search/replace/git/snapshots/pty/lint/data)
+apps/desktop/     Tauri scaffold
 packages/host/    RuntimeHost + WindowsLocalHost
-packages/protocol/BFF/upstream types + pure event reducer
+packages/protocol/ BFF/upstream types + event reducer
 packages/diff/    Unified-diff parser, hunk apply/reverse, patch rebuild
-packages/config/  Defaults, paths, ignore lists, workspace types
-scripts/          bootstrap.ps1, dev.mjs, codegen.mjs, probe.mjs, memtest.mjs
-docs/             design SSOT, probed contract, milestone acceptance, upstream evidence
+packages/db/      SQL classification and read-only guards
+packages/redis/   Redis command whitelist
+docs/             API contract, acceptance, upstream probe, design references
 ```
+
+## Design references and attribution
+
+The visual refresh in `apps/gui/src/styles-design.css` follows ideas from
+[**Skills For Designers and Engineers**](https://github.com/emilkowalski/skills) by
+**Emil Kowalski**, licensed under the MIT License. In particular:
+
+- `skills/emil-design-eng/SKILL.md` — animation decision framework, easing, press feedback,
+  popover origin, focus and reduced-motion guidance.
+- `ui-cheatsheet.md` — tabular numbers, heading tracking, line length, `:active` feedback.
+- `performance-cheatsheet.md` — transform/opacity animation and virtualization guidance.
+
+The downloaded reference copy lives under `docs/skills-main/`; its `LICENSE` (MIT, Copyright © 2026
+Emil Kowalski) is retained there. Conser does not vendor the skills as runtime code; the stylesheet
+implements the principles independently.
+
+## License
+
+Application code in this repository is provided for the project owner. Third-party dependencies and
+the referenced design skills retain their respective licenses (see `docs/skills-main/LICENSE`).

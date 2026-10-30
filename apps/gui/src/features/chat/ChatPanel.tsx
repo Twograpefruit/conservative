@@ -285,6 +285,12 @@ function UserBlock({
 const AssistantBlockMemo = React.memo(AssistantBlock);
 const UserBlockMemo = React.memo(UserBlock);
 
+const EMOJIS = [
+  '😀', '😄', '😂', '😊', '😍', '😎', '🤔', '😅', '😢', '😭', '😡', '🥳',
+  '👍', '👎', '👌', '🙏', '👏', '💪', '👀', '❤️', '🔥', '✨', '🎉', '✅',
+  '❌', '⚠️', '💡', '🚀', '📌', '📝', '🔍', '⚙️', '💻', '🧪', '🐛', '📦',
+];
+
 function toFileUri(workspacePath: string | undefined, rel: string): string {
   if (!workspacePath) return rel;
   const abs = `${workspacePath.replace(/[\\/]+$/, '')}\\${rel.replace(/^[\\/]+/, '')}`.replace(/\\/g, '/');
@@ -322,6 +328,7 @@ function Composer({
   const [mentionFiles, setMentionFiles] = useState<FileEntry[]>([]);
   const [mentionIndex, setMentionIndex] = useState(0);
   const [selectedFiles, setSelectedFiles] = useState<FileEntry[]>([]);
+  const [emojiOpen, setEmojiOpen] = useState(false);
   const workspacePath = workspaces.find((w) => w.id === workspaceID)?.path;
   const draftKey = session ? `ocg.draft.${session.id}` : '';
   const draftLoaded = useRef(false);
@@ -426,6 +433,18 @@ function Composer({
     const at = text.lastIndexOf(token);
     if (at >= 0) setText(text.slice(0, at) + text.slice(at + token.length));
     setSelectedFiles((prev) => prev.filter((f) => f.path !== path));
+  };
+
+  const insertEmoji = (emoji: string) => {
+    const start = ta.current?.selectionStart ?? text.length;
+    const end = ta.current?.selectionEnd ?? start;
+    const next = text.slice(0, start) + emoji + text.slice(end);
+    setText(next);
+    setEmojiOpen(false);
+    requestAnimationFrame(() => {
+      ta.current?.focus();
+      ta.current?.setSelectionRange(start + emoji.length, start + emoji.length);
+    });
   };
 
   const uploadImages = async (files: File[]) => {
@@ -553,6 +572,15 @@ function Composer({
             ))}
           </div>
         ) : null}
+        {emojiOpen ? (
+          <div className="emoji-popup">
+            {EMOJIS.map((emoji) => (
+              <button key={emoji} type="button" onClick={() => insertEmoji(emoji)}>
+                {emoji}
+              </button>
+            ))}
+          </div>
+        ) : null}
         <textarea
           ref={ta}
           value={text}
@@ -632,9 +660,14 @@ function Composer({
                 </option>
               ))}
             </select>
-            <span className="composer-hint" title="输入 @ 可连续引用多个文件">
-              @ 引用文件
-            </span>
+            <button
+              className="btn btn-small"
+              type="button"
+              onClick={() => setEmojiOpen((v) => !v)}
+              title="插入 Emoji"
+            >
+              😊
+            </button>
             <input
               ref={fileInput}
               type="file"
@@ -647,13 +680,13 @@ function Composer({
               }}
             />
             <button
-              className="btn btn-small"
+              className="btn btn-small btn-icon"
               type="button"
               onClick={() => fileInput.current?.click()}
               disabled={!session || uploading}
               title="选择图片或直接粘贴剪切板图片"
             >
-              {uploading ? '上传中…' : '图片'}
+              {uploading ? '…' : '🖼'}
             </button>
           </div>
           {busy ? (

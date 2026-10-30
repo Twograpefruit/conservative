@@ -32,7 +32,10 @@ export function WorkspaceMenu() {
   }, [open]);
 
   const add = async () => {
-    if (!newPath.trim()) return;
+    if (!newPath.trim()) {
+      await browse();
+      return;
+    }
     setBusy(true);
     try {
       const ws = await api<WorkspaceInfo>('/api/workspaces', {
@@ -46,6 +49,21 @@ export function WorkspaceMenu() {
       notify(`已添加工作区 ${ws.label}`);
     } catch (err) {
       notify(err instanceof Error ? err.message : '添加工作区失败', 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const browse = async () => {
+    setBusy(true);
+    try {
+      const res = await api<{ path: string; canceled: boolean }>('/api/system/pick-folder', { method: 'POST' });
+      if (res.path) {
+        setNewPath(res.path);
+        notify('已选择文件夹，点击“添加”加入工作区');
+      }
+    } catch (err) {
+      notify(err instanceof Error ? err.message : '无法打开文件夹选择器', 'error');
     } finally {
       setBusy(false);
     }
@@ -72,6 +90,17 @@ export function WorkspaceMenu() {
           {active ? `${active.label} — ${active.path}` : '选择工作区'}
         </span>
         <span className="workspace-caret">▾</span>
+      </button>
+      <button
+        className="icon-btn workspace-add-trigger"
+        title="添加项目（打开文件夹选择器）"
+        onClick={() => {
+          setOpen(true);
+          void browse();
+        }}
+        disabled={busy}
+      >
+        ＋
       </button>
       {open ? (
         <div className="workspace-popover">
@@ -109,6 +138,9 @@ export function WorkspaceMenu() {
                 if (e.key === 'Enter') void add();
               }}
             />
+            <button className="btn btn-small" onClick={() => void browse()} disabled={busy} title="打开系统文件夹选择器">
+              📁 浏览
+            </button>
             <button className="btn btn-small btn-primary" onClick={() => void add()} disabled={busy || !newPath.trim()}>
               添加
             </button>

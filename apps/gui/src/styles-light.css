@@ -29,9 +29,34 @@ html[data-theme='light'] .redis-value-pre {
   color: #1f2937;
 }
 
-html[data-theme='light'] .markdown code,
+html[data-theme='light'] .markdown strong,
+html[data-theme='light'] .markdown h1,
+html[data-theme='light'] .markdown h2,
+html[data-theme='light'] .markdown h3,
+html[data-theme='light'] .markdown h4 {
+  color: #111827;
+}
+html[data-theme='light'] .markdown blockquote {
+  background: #f1f4f9;
+  color: #667085;
+}
+html[data-theme='light'] .markdown th {
+  background: #eef1f6;
+}
+html[data-theme='light'] .markdown pre.code-block {
+  background: #f6f8fb;
+  border-color: var(--line);
+}
+html[data-theme='light'] .markdown code {
+  background: #eef1f6;
+  color: #1f2937;
+}
 html[data-theme='light'] .markdown-preview code {
   background: #eef1f6;
+  color: #1f2937;
+}
+html[data-theme='light'] .markdown pre.code-block code {
+  background: transparent;
   color: #1f2937;
 }
 
