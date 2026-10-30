@@ -334,7 +334,7 @@
 | M7-001 | 命令注册表 | `apps/gui/src/commands/registry.ts` 统一 id/title/scope/默认键/处理函数 | 导航、会话、编辑、主题、终端、Git 命令均由注册表驱动 |
 | M7-002 | 命令面板 | Ctrl+Shift+P，模糊搜索 + 最近使用 + 键盘上下/Enter/Esc | Playwright 打开面板并搜索 git |
 | M7-003 | 用户键位覆盖 | localStorage `ocg.keybindings`；设置页逐条编辑 | 输入框保存后生效，可重置默认 |
-| M7-004 | 冲突检测 | 同键位多命令高亮告警 | `bindingConflicts()` 单测 + 设置页提示 |
+| M7-004 | 冲突检测 | 同键位多命令高亮告警 | `bindingConflicts()` 设置页提示（未单测） |
 | M7-005 | 分层优先级 | 输入框/textarea/contenteditable/xterm 聚焦时跳过全局命令（命令面板除外） | 代码逻辑；终端不吞全局快捷键 |
 | M7-006 | 保留键提示 | 未实现 | PARTIAL（README 已记录风险） |
 | M7-007 | 主题三态 | 暗色 / 亮色 / 跟随系统；localStorage + `prefers-color-scheme` 监听 | Playwright：暗色 rgb(15,17,22) → 亮色 rgb(246,247,251) |
