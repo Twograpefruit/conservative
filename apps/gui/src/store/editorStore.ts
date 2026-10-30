@@ -87,13 +87,14 @@ export const useEditor = create<EditorStore>((set, get) => ({
     set({ tabs: [...get().tabs, blank], active: path });
     try {
       const info = await api<FileContent>(`/api/fs/file${qs({ ws: ws(), path })}`);
+      const normalized = info.content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
       set({
         tabs: get().tabs.map((t) =>
           t.path === path
             ? {
                 ...t,
-                content: info.content,
-                original: info.content,
+                content: normalized,
+                original: normalized,
                 hash: info.hash,
                 mtime: info.mtime,
                 encoding: info.encoding,
@@ -193,13 +194,14 @@ export const useEditor = create<EditorStore>((set, get) => ({
     }
     try {
       const info = await api<FileContent>(`/api/fs/file${qs({ ws: ws(), path })}`);
+      const normalized = info.content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
       set({
         tabs: get().tabs.map((t) =>
           t.path === path
             ? {
                 ...t,
-                content: info.content,
-                original: info.content,
+                content: normalized,
+                original: normalized,
                 hash: info.hash,
                 mtime: info.mtime,
                 encoding: info.encoding,

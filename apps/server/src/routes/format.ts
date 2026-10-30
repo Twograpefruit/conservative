@@ -25,6 +25,7 @@ export async function registerFormatRoutes(app: FastifyInstance, ctx: AppContext
       indent?: number;
       keywordCase?: string;
       linesBetweenQueries?: number;
+      selection?: { from: number; to: number };
     };
     const ws = workspaceOf(ctx, body.ws);
     const rel = requireString(body.path, 'path');
@@ -33,6 +34,7 @@ export async function registerFormatRoutes(app: FastifyInstance, ctx: AppContext
       indent: body.indent,
       keywordCase: (body.keywordCase as FormatOptions['keywordCase']) ?? 'upper',
       linesBetweenQueries: body.linesBetweenQueries,
+      selection: body.selection,
     });
     return result;
   });

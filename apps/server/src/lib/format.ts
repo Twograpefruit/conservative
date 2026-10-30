@@ -8,7 +8,9 @@ import { createTwoFilesPatch } from 'diff';
 import { format as sqlFormat, type SqlLanguage } from 'sql-formatter';
 import { HttpError, badRequest } from './http.js';
 import {
+  applyEol,
   decodeText,
+  encodeText,
   hashBuffer,
   isProbablyBinary,
   normalizeEol,
@@ -25,6 +27,7 @@ export interface FormatOptions {
   indent?: number;
   keywordCase?: 'upper' | 'lower' | 'preserve';
   linesBetweenQueries?: number;
+  selection?: { from: number; to: number };
 }
 
 interface FormatPlan {
@@ -68,8 +71,17 @@ export function formatSql(text: string, options: FormatOptions = {}): string {
       linesBetweenQueries: Math.max(0, Math.min(5, options.linesBetweenQueries ?? 1)),
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    throw new HttpError(422, `SQL 解析/格式化失败：${message}`, 'format_failed');
+    const full = err instanceof Error ? err.message : String(err);
+    const first = full.split('\n')[0] ?? full;
+    const m = /at line (\d+) column (\d+)/i.exec(first);
+    const line = m ? Number(m[1]) : undefined;
+    const column = m ? Number(m[2]) : undefined;
+    const hint = '请检查括号/引号是否闭合，存储过程等方言扩展可尝试切换方言后重试。';
+    throw new HttpError(422, first.replace(/^Parse error /i, 'SQL 解析失败：'), 'format_failed', {
+      line,
+      column,
+      hint,
+    });
   }
 }
 
@@ -98,13 +110,27 @@ export class FormatService {
     if (info.binary) throw new HttpError(415, '不能格式化二进制文件', 'binary_file');
     if (info.encoding !== 'utf-8') throw new HttpError(415, '只能格式化 UTF-8 文件', 'non_utf8');
     if (info.truncated) throw new HttpError(413, '文件超过 2MB，拒绝格式化', 'file_too_large');
+    const beforeRaw = await fs.promises.readFile(abs);
+    const eolTarget: 'lf' | 'crlf' = info.eol === 'crlf' ? 'crlf' : 'lf';
     const before = normalizeEol(info.content);
-    const after = normalizeEol(formatSql(before, options));
-    if (after === before) {
+    let after: string;
+    let afterRaw: Buffer;
+    if (options.selection) {
+      const { from, to } = options.selection;
+      if (!Number.isInteger(from) || !Number.isInteger(to) || from < 0 || to <= from || to > info.content.length) {
+        throw new HttpError(400, '选区范围无效', 'invalid_selection');
+      }
+      const selected = info.content.slice(from, to);
+      const formatted = applyEol(normalizeEol(formatSql(normalizeEol(selected), options)), eolTarget);
+      after = normalizeEol(info.content.slice(0, from) + formatted + info.content.slice(to));
+      afterRaw = encodeText(info.content.slice(0, from) + formatted + info.content.slice(to), 'utf-8', info.bom);
+    } else {
+      after = normalizeEol(formatSql(before, options));
+      afterRaw = encodeText(applyEol(after, eolTarget), 'utf-8', info.bom);
+    }
+    if (afterRaw.equals(beforeRaw) || after === before) {
       return { id: '', changed: false, files: [], before, after };
     }
-    const beforeRaw = Buffer.from(info.content, 'utf8');
-    const afterRaw = Buffer.from(after, 'utf8');
     const id = randomUUID();
     this.plans.set(id, {
       id,

@@ -48,6 +48,7 @@ export function EditorPanel() {
   const [resolvedLanguage, setResolvedLanguage] = useState('纯文本');
   const [formatPreview, setFormatPreview] = useState<FormatPreview | null>(null);
   const [lastFormatUndo, setLastFormatUndo] = useState<{ id: string; path: string } | null>(null);
+  const [formatError, setFormatError] = useState<string | null>(null);
   const [formatBusy, setFormatBusy] = useState(false);
   const prevWorkspace = useRef<string | null>(workspaceID);
   const scrollFrame = useRef<number | null>(null);
@@ -134,6 +135,7 @@ export function EditorPanel() {
     if (!tab || !isSql || formatBusy) return;
     if (!(await ensureSaved())) return;
     setFormatBusy(true);
+    setFormatError(null);
     try {
       const res = await api<{ id: string; changed: boolean; files: FileDiff[]; before: string; after: string }>(
         '/api/format/preview',
@@ -149,27 +151,58 @@ export function EditorPanel() {
       }
       setFormatPreview({ id: res.id, path: tab.path, files: res.files, before: res.before, after: res.after });
     } catch (err) {
-      notify(err instanceof Error ? err.message : 'SQL 格式化失败', 'error');
+      reportFormatError(err);
     } finally {
       setFormatBusy(false);
     }
   };
 
+  const reportFormatError = (err: unknown) => {
+    const e = err as { message?: string; body?: { line?: number; column?: number; hint?: string } };
+    const pos = e.body?.line != null ? `（第 ${e.body.line} 行${e.body.column != null ? ` 第 ${e.body.column} 列` : ''}）` : '';
+    const hint = e.body?.hint ? ` ${e.body.hint}` : ' 可尝试切换 SQL 方言后重试。';
+    const message = `${e.message ?? 'SQL 格式化失败'}${pos}${hint}`;
+    setFormatError(message);
+    notify(message, 'error');
+  };
+
+  // CodeMirror normalizes CRLF to LF; map selection offsets back to the on-disk text.
+  const toServerOffset = (offset: number): number => {
+    if (!tab || tab.eol !== 'crlf') return offset;
+    const text = tab.content.replace(/\r\n/g, '\n');
+    let seen = 0;
+    for (let i = 0; i < text.length && i < offset; i++) if (text[i] === '\n') seen++;
+    return offset + seen;
+  };
+
   const formatSelection = async () => {
     if (!tab || !isSql || !selection || formatBusy) return;
+    if (!(await ensureSaved())) return;
     setFormatBusy(true);
+    setFormatError(null);
     try {
-      const res = await api<{ text: string }>('/api/format/text', {
-        method: 'POST',
-        body: JSON.stringify({ text: selection.text, dialect: tab.sqlDialect, indent: 2, keywordCase: 'upper' }),
-        headers: { 'content-type': 'application/json' },
-      });
-      const next = tab.content.slice(0, selection.from) + res.text + tab.content.slice(selection.to);
-      update(tab.path, next);
-      setSelection(null);
-      notify('已格式化选区；保存后写入磁盘');
+      const res = await api<{ id: string; changed: boolean; files: FileDiff[]; before: string; after: string }>(
+        '/api/format/preview',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            ws: workspaceID,
+            path: tab.path,
+            dialect: tab.sqlDialect,
+            indent: 2,
+            keywordCase: 'upper',
+            selection: { from: toServerOffset(selection.from), to: toServerOffset(selection.to) },
+          }),
+          headers: { 'content-type': 'application/json' },
+        },
+      );
+      if (!res.changed) {
+        notify('选中的 SQL 已经是格式化状态');
+        return;
+      }
+      setFormatPreview({ id: res.id, path: tab.path, files: res.files, before: res.before, after: res.after });
     } catch (err) {
-      notify(err instanceof Error ? err.message : '选区格式化失败', 'error');
+      reportFormatError(err);
     } finally {
       setFormatBusy(false);
     }
@@ -349,6 +382,14 @@ export function EditorPanel() {
                 文件已在磁盘上被修改（hash {tab.conflict.currentHash.slice(0, 8)}）。选择重新加载会丢弃本地改动；保存会被拒绝以避免覆盖。
                 <button className="btn btn-small" onClick={() => void reload(tab.path)}>
                   重新加载
+                </button>
+              </div>
+            ) : null}
+            {formatError ? (
+              <div className="banner banner-error">
+                <span>{formatError}</span>
+                <button className="btn btn-small" onClick={() => setFormatError(null)}>
+                  关闭
                 </button>
               </div>
             ) : null}

@@ -271,8 +271,8 @@
 | M5-010 | 相对图片 | 预览重写 `src` 到 `/api/fs/raw`；路径越界 403 | 1x1 PNG：200 image/png；`../package.json`：403 |
 | M5-011 | SQL 方言高亮 | `@codemirror/lang-sql`，SQLite/PostgreSQL/MySQL/MariaDB/T-SQL/PLSQL | toolbar 可切换方言 |
 | M5-012 | SQL 格式化事务 | `sql-formatter` → diff 预览 → 备份 → 应用 → 撤销 | 实测格式化 `select id,name from users where id=1;`，应用后可撤销回原文 |
-| M5-013 | 失败保护 | 解析失败返回 422，不落盘 | 代码路径已就绪；未用存储过程样例走 UI |
-| M5-014 | 选区格式化 | `/api/format/text` 格式化选区，前端 splice 回编辑器，选区外不变，保存仍走 baseHash | PARTIAL（API/逻辑就绪，未做鼠标选区自动化） |
+| M5-013 | 失败保护 | 解析失败返回 422 + 行/列 + 换方言提示，不落盘 | PASS：`select * from t where (` 返回 422，UI banner 显示“第 2 行 第 1 列 + 建议”，文件字节未变 |
+| M5-014 | 选区格式化 | `/api/format/preview` 接受 `selection{from,to}`，后端按字节保留选区外内容；CRLF 偏移由前端映射 | PASS：CRLF 文件只格式化第一行，输出 6 处 CRLF，`select 2;` 尾部字节不变 |
 
 ### 14.1 新增接口
 

@@ -953,7 +953,7 @@ main "$@"
 | M5-010 | 相对资源 | PASS（/api/fs/raw 返回 image/png；`../package.json` 返回 403） |
 | M5-011 | SQL 方言高亮 | PASS（sqlite/postgresql/mysql/mariadb/tsql/plsql 可切换） |
 | M5-012 | SQL 格式化事务 | PASS（预览 → 应用 → 撤销；实测格式化后文件正确，undo 复原） |
-| M5-013 | 格式化失败保护 | PARTIAL（后端 422 + 不落盘；未用存储过程样例走 UI） |
-| M5-014 | 选区格式化 | PARTIAL（/api/format/text + 前端 splice 已就绪；未做鼠标选区自动化） |
+| M5-013 | 格式化失败保护 | PASS（不闭合样例返回 422，UI 显示行/列与换方言提示，文件字节未变） |
+| M5-014 | 选区格式化 | PASS（CRLF 文件只格式化选中行；选区外 CRLF 与尾部语句字节级不变） |
 
 > 运行状态：`npm run typecheck`、`npm test`（19 用例）、`npm run build` 均通过；Playwright 走查 Markdown 分屏/XSS/任务回写、SQL 格式化应用与撤销、nginx 语言切换。
