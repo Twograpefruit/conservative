@@ -1,3 +1,6 @@
+import { SqlGuardError } from '@ocg/db';
+import { RedisGuardError } from '@ocg/redis';
+
 export class HttpError extends Error {
   constructor(
     public readonly status: number,
@@ -45,6 +48,15 @@ export function errorPayload(err: unknown): { status: number; body: Record<strin
       status: err.status,
       body: { error: err.code ?? 'error', message: err.message, ...(err.details ?? {}) },
     };
+  }
+  if (err instanceof SqlGuardError) {
+    return {
+      status: err.code === 'multiple_statements' ? 400 : 403,
+      body: { error: err.code, message: err.message },
+    };
+  }
+  if (err instanceof RedisGuardError) {
+    return { status: 403, body: { error: err.code, message: err.message } };
   }
   const message = err instanceof Error ? err.message : String(err);
   return { status: 500, body: { error: 'internal_error', message } };

@@ -14,6 +14,7 @@ import { registerSnapshotRoutes } from './routes/snapshots.js';
 import { registerLintRoutes } from './routes/lint.js';
 import { registerPtyRoutes } from './routes/pty.js';
 import { registerFormatRoutes } from './routes/format.js';
+import { registerDataRoutes } from './routes/data.js';
 
 export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
   const app = Fastify({
@@ -46,6 +47,7 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
   await registerLintRoutes(app, ctx);
   await registerPtyRoutes(app, ctx);
   await registerFormatRoutes(app, ctx);
+  await registerDataRoutes(app, ctx);
 
   const guiDir = process.env.OCG_GUI_DIR ?? path.resolve(process.cwd(), 'apps/gui/dist');
   if (fs.existsSync(guiDir) && fs.existsSync(path.join(guiDir, 'index.html'))) {

@@ -212,7 +212,7 @@
 | 范围 | 状态 | 说明 |
 | ---- | ---- | ---- |
 | M5 编辑器增强 | 已实现（核心） | 语言注册表 + 动态 import；Markdown 源码/分屏/预览（DOMPurify、任务回写、图片经 `/api/fs/raw`）；SQL 方言高亮 + 格式化预览/应用/撤销；选区格式化为 PARTIAL |
-| M6 数据源 | 未开始 / BLOCKED | 无 DB/Redis 端点与凭据存储；M6-011/M6-016 的 CI 断言骨架已就绪但默认退出码 2 |
+| M6 数据源 | 已实现（SQLite/Redis） | SQLite `node:sqlite` worker + Redis `ioredis`；DPAPI 凭据、只读 SQL 守卫、SCAN 键浏览、只读命令台、订阅、导出；PostgreSQL/MySQL 未启用 |
 | M7 交互系统 | 部分 | 已有基础快捷键（Alt+1..6、Ctrl+S）、Neumorphism 主题、Git 命令面板雏形；未做命令注册表/命令面板/主题三态/错误规则表 |
 | M8 通知 | 未开始 / BLOCKED | 无原生/应用内通知中心 |
 
@@ -231,7 +231,7 @@
 | ENV-015 SQL 格式化 | PASS | `sql-formatter` 15.9 已安装；`/api/format/text` 实测 SQLite/PostgreSQL 输出正确 |
 | ENV-016 凭据存储 | BLOCKED | 未实现 DPAPI/凭据管理器封装 |
 | ENV-017 原生模块编译链 | WARN | 无 `cl`；`better-sqlite3`/`node-pty` 不可编译，相关功能需显式关闭 |
-| ENV-018 本地测试实例 | PARTIAL | 本机有 `redis-cli`；未确认测试 Redis/SQLite 夹具 |
+| ENV-018 本地测试实例 | PASS | 本机 Redis 5.0.14.1（6380/6381 测试实例）+ Node 24 `node:sqlite` 测试库；M6 实测通过 |
 | ENV-019 语言包体积审计 | PASS | 语言包拆为独立 chunk（MarkdownPreview 225KB；sql/各语言各自 chunk）；主包 gzip ≈294KB，低于上一版，懒加载生效 |
 | ENV-020 通知能力 | BLOCKED | 浏览器/Tauri 通知均未实现 |
 
@@ -285,3 +285,41 @@
 
 - GUI：`@codemirror/lang-*`、`@codemirror/legacy-modes`、`@codemirror/language-data`、`markdown-it`、`markdown-it-task-lists`、`dompurify`、`highlight.js`
 - BFF：`sql-formatter`、`diff`
+
+
+---
+
+## 15. M6 数据源（SQLite / Redis）
+
+| 编号 | 能力 | 实现 | 验证 |
+| ---- | ---- | ---- | ---- |
+| M6-001 | 连接档案 CRUD | `connections.json` 只存 `authRef`；密码写入 Windows DPAPI（CurrentUser） | API/UI 新建、编辑、删除；文件 grep 无明文、无 password 字段 |
+| M6-002 | 连接测试 | SQLite select 1；Redis PING/INFO；错误映射为 502 | 两项均返回 ok；错误 host 返回明确错误 |
+| M6-003 | 元数据 | SQLite `sqlite_master` + `PRAGMA table_info/index_list/index_info` | users 表、列、idx_users_age 与 CLI 一致 |
+| M6-004 | 数据网格 | 结果表 + rowLimit + 滚动；默认 500 行 | 3 行表 + rowLimit=2 时返回 2 行并标 truncated；万行虚拟滚动为 PARTIAL |
+| M6-005 | 只读守卫 | 只读档案拒绝写；SQLite 以 readOnly 打开 | `update users set age=1` → 403，数据库未变 |
+| M6-006 | 单语句 | 引号/注释感知的 SQL 扫描；多语句拒绝 | `select 1; drop table users` → 400 |
+| M6-007 | 参数绑定 | `params` 数组传给 prepared statement | `select ... where age > ?` 正确返回 |
+| M6-008 | 超时/行数 | worker_threads 隔离 + terminate 超时；rowLimit | rowLimit 实测；超时逻辑已实现，慢查询注入为 PARTIAL |
+| M6-009 | 导出 | CSV/JSON，带 content-disposition | CSV 实测；当前先聚合并发，非严格流式（PARTIAL） |
+| M6-010 | 编辑器联动 | `.sql` 的 Ctrl+Enter / 数据面板执行按钮 → Data panel | Playwright：编辑 SQL → Ctrl+Enter → 数据面板返回 2 行 |
+| M6-011 | Redis SCAN | 键浏览只用 `SCAN cursor MATCH COUNT`；类型 pipeline | CI 断言 PASS：捕获 SCAN，无 KEYS/FLUSH/CONFIG |
+| M6-012 | 大键空间 | 游标 + 加载更多 + 100/页 | 3 键实测；10 万键压测未做（PARTIAL） |
+| M6-013 | 类型查看 | string/hash/list/set/zset/stream 分派，大值截断 | hash/string/list 实测 |
+| M6-014 | 危险命令 | 只读白名单；KEYS/FLUSHALL/CONFIG/SHUTDOWN/EVAL 等 403 | GET 成功；KEYS/FLUSHALL 均 403 |
+| M6-015 | 订阅 | BFF SSE + ioredis 订阅连接 | Playwright 订阅频道，外部 PUBLISH 后前端收到消息 |
+| M6-016 | 凭据不外泄 | DPAPI；API 不返回 secret；日志/响应扫描 | CI 断言 PASS：日志/响应/connections.json 无明文 |
+| M6-017 | PostgreSQL/MySQL | 档案可创建但驱动未启用 | BLOCKED（501 driver_not_available） |
+
+### 15.1 关键接口
+
+- `GET/POST/PUT/DELETE /api/connections`、`POST /api/connections/test`
+- `POST /api/db/query`、`GET /api/db/metadata`、`POST /api/db/export`
+- `POST /api/redis/scan`、`GET /api/redis/value`、`POST /api/redis/command`、`GET /api/redis/subscribe`
+
+### 15.2 安全边界
+
+- 密码不进入 `connections.json`、前端响应、日志；仅 `authRef` 可见。
+- 只读 SQL 守卫在 BFF；多语句/非法 PRAGMA 在 SQL 层拒绝。
+- Redis 网络层不发送 `KEYS`；命令台仅白名单。
+- SQLite 查询在 worker 中执行，可超时终止；行数上限防止一次性拉全表。

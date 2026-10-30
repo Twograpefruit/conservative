@@ -10,6 +10,10 @@ import { EventBus } from './sseBus.js';
 import { SnapshotService } from './lib/snapshots.js';
 import { ReplaceService } from './lib/replace.js';
 import { FormatService } from './lib/format.js';
+import { CredentialStore } from './lib/credentials.js';
+import { ConnectionStore } from './lib/connections.js';
+import { SqliteService } from './lib/sqlite.js';
+import { RedisService } from './lib/redis.js';
 import { PtyService } from './lib/pty.js';
 import { resolveRg, type SearchContext } from './lib/search.js';
 import { findFreePort } from './lib/net.js';
@@ -85,6 +89,10 @@ async function main(): Promise<void> {
   const search: SearchContext = { host, rgPath: await resolveRg(host) };
   const replace = new ReplaceService(host, search);
   const format = new FormatService();
+  const credentials = new CredentialStore(host);
+  const connections = new ConnectionStore(credentials);
+  const sqlite = new SqliteService();
+  const redis = new RedisService();
   const pty = new PtyService(upstream, host);
 
   const ctx: AppContext = {
@@ -99,6 +107,10 @@ async function main(): Promise<void> {
     snapshots,
     replace,
     format,
+    connections,
+    credentials,
+    sqlite,
+    redis,
     pty,
     search,
     probe: loadCachedProbe(),

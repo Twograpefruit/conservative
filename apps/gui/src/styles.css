@@ -2339,3 +2339,375 @@ select {
   flex: 1;
   overflow: auto;
 }
+
+/* --------------------------------- data --------------------------------- */
+.data-layout {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 14px;
+  padding: 14px;
+}
+.data-side {
+  width: 290px;
+  flex: 0 0 290px;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-out);
+  overflow: hidden;
+}
+.connection-list {
+  flex: 1;
+  overflow: auto;
+  padding: 4px 8px;
+}
+.connection-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  padding: 8px 9px;
+  text-align: left;
+  margin-bottom: 3px;
+}
+.connection-item:hover {
+  box-shadow: var(--shadow-out-xs);
+}
+.connection-item.active {
+  box-shadow: var(--shadow-in-sm);
+}
+.conn-kind {
+  flex: 0 0 auto;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 2px 6px;
+  border-radius: 7px;
+  background: var(--accent-soft);
+  color: #4b3fd0;
+  box-shadow: var(--shadow-in-sm);
+}
+.kind-redis {
+  background: #f3e0e2;
+  color: #a13f49;
+}
+.connection-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.connection-label {
+  font-size: 12px;
+  font-weight: 600;
+}
+.connection-detail {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--fg-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.data-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-out);
+  overflow: hidden;
+}
+.data-head {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  box-shadow: 0 3px 6px #b8bcc2, 0 -2px 4px #ffffff;
+}
+.db-layout {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+}
+.db-schema {
+  width: 230px;
+  flex: 0 0 230px;
+  overflow: auto;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-in-sm);
+  padding: 8px;
+}
+.schema-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.schema-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border-radius: 8px;
+  padding: 4px 7px;
+  text-align: left;
+  font-size: 11.5px;
+  color: var(--fg-dim);
+}
+.schema-item:hover,
+.schema-item.active {
+  background: var(--bg);
+  box-shadow: var(--shadow-out-xs);
+  color: var(--fg);
+}
+.schema-icon {
+  color: var(--accent);
+  font-size: 10px;
+}
+.schema-columns {
+  margin-top: 12px;
+  padding-top: 8px;
+  box-shadow: inset 0 3px 6px #b8bcc2, inset 0 -3px 6px #ffffff;
+}
+.schema-column {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 7px;
+  font-size: 10.5px;
+  font-family: var(--mono);
+}
+.schema-column span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.db-work {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sql-editor {
+  flex: 0 0 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-in-sm);
+}
+.sql-input {
+  flex: 1;
+  resize: none;
+  font-family: var(--mono);
+  font-size: 12px;
+  border-radius: 8px;
+}
+.sql-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sql-actions .params {
+  flex: 1;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.db-result {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-in-sm);
+  overflow: hidden;
+}
+.result-meta {
+  padding: 6px 10px;
+  color: var(--fg-dim);
+  font-size: 10.5px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.result-scroll {
+  flex: 1;
+  overflow: auto;
+}
+.result-table {
+  border-collapse: collapse;
+  font-size: 11px;
+  min-width: 100%;
+}
+.result-table th,
+.result-table td {
+  padding: 4px 9px;
+  text-align: left;
+  border-bottom: 1px solid #d5dbe4;
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+}
+.result-table th {
+  background: var(--bg-soft);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  font-family: inherit;
+}
+.result-table tbody tr:hover {
+  background: var(--bg-soft);
+}
+.row-index {
+  color: var(--fg-dim);
+  text-align: right;
+}
+.redis-layout {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+}
+.redis-keys {
+  width: 300px;
+  flex: 0 0 300px;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-in-sm);
+  overflow: hidden;
+}
+.redis-scan {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  box-shadow: inset 0 3px 6px #b8bcc2, inset 0 -3px 6px #ffffff;
+}
+.redis-scan .input {
+  flex: 1;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.redis-key-list {
+  flex: 1;
+  overflow: auto;
+  padding: 6px;
+}
+.redis-key {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  background: transparent;
+  border-radius: 8px;
+  padding: 4px 6px;
+  text-align: left;
+}
+.redis-key:hover,
+.redis-key.active {
+  box-shadow: var(--shadow-out-xs);
+}
+.redis-key-name {
+  font-family: var(--mono);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.redis-work {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.redis-value {
+  flex: 1;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-in-sm);
+  overflow: hidden;
+}
+.redis-value-pre {
+  flex: 1;
+  overflow: auto;
+  margin: 0;
+  padding: 10px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  white-space: pre-wrap;
+  background: var(--bg-soft);
+}
+.redis-value-pre.small {
+  flex: 0 0 auto;
+  max-height: 120px;
+  background: transparent;
+}
+.redis-console,
+.redis-subscribe {
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  box-shadow: var(--shadow-out-xs);
+}
+.subscribe-log {
+  max-height: 110px;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--fg-dim);
+  padding: 4px 2px;
+}
+.connection-dialog {
+  width: min(620px, 92vw);
+  max-height: 86vh;
+  background: var(--bg);
+  border-radius: var(--radius);
+  box-shadow: 12px 12px 24px #b8bcc2, -12px -12px 24px #ffffff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.connection-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 14px;
+  padding: 16px;
+  overflow: auto;
+}
+.connection-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--fg-dim);
+}
+.connection-form label.wide {
+  grid-column: 1 / -1;
+}
+.connection-form .checkbox-row {
+  flex-direction: row;
+  align-items: center;
+  gap: 7px;
+}
+.connection-form select {
+  background: var(--bg);
+  border: none;
+  border-radius: 9px;
+  padding: 7px 9px;
+  box-shadow: var(--shadow-in-sm);
+  outline: none;
+}

@@ -201,7 +201,7 @@ v2 的 API 前缀是 **`/api`**，不是 v1 文档中的 `/global/*`。
 以下用例对应架构增补设计（多语言高亮 / Markdown / SQL 格式化 / 数据库 / Redis / 快捷键 / 主题 / Git 命令提示 / 通知）。
 执行前置：先跑 §1 ENV 组 + §1.1 新增闸门（ENV-015 起）；能力探测缺失的功能按 `api-contract.md` §5 隐藏入口，对应用例记 BLOCKED 而非 FAIL。
 
-> 当前状态（2026-10-30）：M5 核心已实现（语言注册表/懒加载、Markdown 预览、SQL 格式化）；M6–M8 尚未实现，相关用例为 BLOCKED；M6-011/M6-016 的 CI 断言骨架已落地（`scripts/ci-assert.sh`），但真实用例在 M6 端点可用前同样记 BLOCKED。
+> 当前状态（2026-10-30）：M5 核心、M6 的 SQLite/Redis 数据源已实现；M6-011/M6-016 的 CI 断言已实测通过。M6 的 PostgreSQL/MySQL 与 M7/M8 仍为 BLOCKED。
 
 ---
 
@@ -957,3 +957,36 @@ main "$@"
 | M5-014 | 选区格式化 | PASS（CRLF 文件只格式化选中行；选区外 CRLF 与尾部语句字节级不变） |
 
 > 运行状态：`npm run typecheck`、`npm test`（19 用例）、`npm run build` 均通过；Playwright 走查 Markdown 分屏/XSS/任务回写、SQL 格式化应用与撤销、nginx 语言切换。
+
+
+---
+
+## 7.15 2026-10-30 M6 数据源验收（SQLite / Redis）
+
+| 编号 | 用例 | 结果 |
+| ---- | ---- | ---- |
+| M6-001 | 连接档案 CRUD | PASS（API + UI；connections.json 无明文/无 password） |
+| M6-002 | 连接测试 | PASS（SQLite 3.53.3；Redis 5.0.14.1） |
+| M6-003 | 元数据浏览 | PASS（users 列/idx_users_age 与 PRAGMA 一致） |
+| M6-004 | 数据网格 | PASS/ PARTIAL（rowLimit=2 截断；万行虚拟滚动未压测） |
+| M6-005 | 只读守卫 | PASS（UPDATE → 403，数据库不变） |
+| M6-006 | 语句白名单 | PASS（多语句 → 400） |
+| M6-007 | 参数化绑定 | PASS（age > ? 正确） |
+| M6-008 | 超时/行数 | PASS（行数上限）；PARTIAL（慢查询超时注入未做） |
+| M6-009 | 结果导出 | PASS CSV/JSON；PARTIAL（非严格流式） |
+| M6-010 | 编辑器联动 | PASS（SQL Ctrl+Enter → Data panel 返回结果） |
+| M6-011 | Redis 无 KEYS | PASS（scripts/ci-assert.sh --only=m6-011，MONITOR 捕获 SCAN，无 KEYS） |
+| M6-012 | 大键空间 | PARTIAL（游标/加载更多已实现；10 万键压测未做） |
+| M6-013 | 类型分派 | PASS（string/hash/list 实测） |
+| M6-014 | 危险命令守卫 | PASS（GET 成功；KEYS/FLUSHALL → 403） |
+| M6-015 | 订阅推送 | PASS（订阅频道 → 外部 PUBLISH → 前端收到） |
+| M6-016 | 凭据不外泄 | PASS（--only=m6-016：日志/响应/connections.json 无明文） |
+| M6-017 | PostgreSQL/MySQL | BLOCKED（501 driver_not_available） |
+
+故障注入：
+- FI-M6-A DB 断连：**PARTIAL**（错误返回与连接释放已实现，未做停库长时回归）。
+- FI-M6-B Redis 断连重连：**PARTIAL**（SSE 报错/连接关闭已处理；未做重启自动恢复压测）。
+- FI-M6-C 慢查询洪峰：**PARTIAL**（worker 超时/行数上限；并发上限未做）。
+- FI-M6-D 凭据存储不可用：**PASS**（DPAPI 失败返回明确错误，不回退明文）。
+
+> 本轮 M6 以 SQLite/Redis 首发；PostgreSQL/MySQL 驱动未启用。测试用的 6380/6381 Redis 实例与临时 SQLite 文件已清理。

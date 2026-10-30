@@ -6,6 +6,7 @@ import { EditorPanel } from './features/editor/EditorPanel.js';
 import { SearchPanel } from './features/search/SearchPanel.js';
 import { GitPanel } from './features/git/GitPanel.js';
 import { TerminalPanel } from './features/terminal/TerminalPanel.js';
+import { DataPanel } from './features/data/DataPanel.js';
 import { SettingsPanel } from './features/settings/SettingsPanel.js';
 
 const NAV: Array<{ id: View; label: string; icon: string }> = [
@@ -14,6 +15,7 @@ const NAV: Array<{ id: View; label: string; icon: string }> = [
   { id: 'search', label: '搜索', icon: '⌕' },
   { id: 'git', label: 'Git', icon: '⑂' },
   { id: 'terminal', label: '终端', icon: '▣' },
+  { id: 'data', label: '数据', icon: '⛁' },
   { id: 'settings', label: '设置', icon: '⚙' },
 ];
 
@@ -142,6 +144,7 @@ export function App() {
         {view === 'search' ? <SearchPanel /> : null}
         {view === 'git' ? <GitPanel /> : null}
         {view === 'terminal' ? <TerminalPanel /> : null}
+        {view === 'data' ? <DataPanel /> : null}
         {view === 'settings' ? <SettingsPanel /> : null}
       </main>
 

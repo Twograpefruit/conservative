@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { HealthResponse, ProbeResult, WorkspaceInfo } from '@ocg/protocol';
 import { api } from '../api/client.js';
 
-export type View = 'chat' | 'editor' | 'search' | 'git' | 'terminal' | 'settings';
+export type View = 'chat' | 'editor' | 'search' | 'git' | 'terminal' | 'data' | 'settings';
 
 interface OpenRequest {
   path: string;
@@ -17,6 +17,7 @@ interface AppState {
   health: HealthResponse | null;
   probe: ProbeResult | null;
   openRequest: OpenRequest | null;
+  pendingSql: { sql: string; nonce: number } | null;
   toast: { id: number; message: string; kind: 'info' | 'error' } | null;
   uiScale: number;
   setView: (view: View) => void;
@@ -28,6 +29,8 @@ interface AppState {
   startHealthPolling: () => () => void;
   requestOpen: (path: string, line?: number) => void;
   consumeOpen: () => void;
+  requestSql: (sql: string) => void;
+  consumeSql: () => void;
   notify: (message: string, kind?: 'info' | 'error') => void;
 }
 
@@ -43,6 +46,7 @@ export const useApp = create<AppState>((set, get) => ({
   health: null,
   probe: null,
   openRequest: null,
+  pendingSql: null,
   toast: null,
   uiScale: initialScale,
 
@@ -99,6 +103,14 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   consumeOpen: () => set({ openRequest: null }),
+
+  requestSql: (sql) => {
+    const nonce = Date.now();
+    set({ pendingSql: { sql, nonce }, view: 'data' });
+    localStorage.setItem('ocg.view', 'data');
+  },
+
+  consumeSql: () => set({ pendingSql: null }),
 
   notify: (message, kind = 'info') => {
     const id = Date.now();

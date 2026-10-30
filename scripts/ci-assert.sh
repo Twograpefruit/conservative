@@ -20,8 +20,8 @@ BFF_BASE="${BFF_BASE:-http://127.0.0.1:4310}"
 REDIS_URL="${REDIS_URL:-redis://127.0.0.1:6379}"
 REDIS_PROFILE="${REDIS_PROFILE:-redis:local}"
 DB_PROFILE="${DB_PROFILE:-sqlite:main}"
-LOG_DIR="${LOG_DIR:-$HOME/.local/share/opencode-gui/logs}"
-CONN_FILE="${CONN_FILE:-$HOME/AppData/Roaming/opencode-gui/connections.json}"
+LOG_DIR="${LOG_DIR:-${LOCALAPPDATA:-$HOME/.local/share}/opencode-gui/logs}"
+CONN_FILE="${CONN_FILE:-${APPDATA:-$HOME/AppData/Roaming}/opencode-gui/connections.json}"
 SECRETS_FILE="${SECRETS_FILE:-scripts/fixtures/secrets.local.json}"
 OUT_DIR="${OUT_DIR:-artifacts/ci-assert/$(date +%Y%m%d-%H%M%S)}"
 MONITOR_SECONDS="${MONITOR_SECONDS:-20}"
@@ -37,6 +37,22 @@ fail() { log "ASSERT FAIL: $*"; FAILED=$((FAILED + 1)); }
 pass() { log "PASS: $*"; }
 have() { command -v "$1" >/dev/null 2>&1; }
 require_cmd() { have "$1" || die_env "缺少命令：$1"; }
+
+json_values() {
+  if have jq; then
+    jq -r 'to_entries[].value' "$1" 2>/dev/null
+  else
+    node -e 'const v=Object.values(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")));for(const x of v) if(x!=null&&x!=="") console.log(String(x))' "$1"
+  fi
+}
+
+json_has_password() {
+  if have jq; then
+    jq -e '.. | objects | has("password")' "$1" >/dev/null 2>&1
+  else
+    node -e 'const fs=require("fs");const s=fs.readFileSync(process.argv[1],"utf8");process.exit(/"password"\s*:/.test(s)?0:1)' "$1"
+  fi
+}
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -75,8 +91,10 @@ post_json() { # post_json <path> <json> <outfile>  -> prints HTTP code
 
 preflight() {
   require_cmd curl
-  require_cmd jq
   require_cmd grep
+  if [ "$ONLY" = "m6-016" ] || [[ ",$ONLY," == *,m6-016,* ]]; then
+    have jq || have node || die_env "M6-016 需要 jq 或 node"
+  fi
   wait_http "$BFF_BASE/api/health" 15 || die_env "BFF 不可达：$BFF_BASE/api/health"
   if [ "$ONLY" = "m6-011" ] || [[ ",$ONLY," == *,m6-011,* ]]; then
     require_cmd redis-cli
@@ -161,7 +179,7 @@ test_m6_016() {
   [ -f "$CONN_FILE" ] && cp "$CONN_FILE" "$scan_root/connections.json" || die_env "连接档案不存在：$CONN_FILE（场景未跑到）"
 
   local pattern_file="$OUT_DIR/secret-patterns.txt"
-  jq -r 'to_entries[].value' "$SECRETS_FILE" 2>/dev/null \
+  json_values "$SECRETS_FILE" \
     | grep -vE '^(null|""?)$' \
     | sed -e 's/[][\\.^$*+?(){}|]/\\&/g' >"$pattern_file"
   [ -s "$pattern_file" ] || die_env "夹具未解析出任何密钥值"
@@ -180,7 +198,7 @@ test_m6_016() {
     pass "M6-016 日志/响应/连接档案中未出现凭据明文"
   fi
 
-  if jq -e '.. | objects | has("password")' "$scan_root/connections.json" >/dev/null 2>&1; then
+  if json_has_password "$scan_root/connections.json"; then
     fail "M6-016 connections.json 含 password 字段（应只存 authRef）"
   else
     pass "M6-016 connections.json 无明文 password 字段"

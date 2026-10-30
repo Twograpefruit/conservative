@@ -344,6 +344,80 @@ export interface PtyInfo {
   exitCode?: number;
 }
 
+/* ------------------------------- M6 data -------------------------------- */
+
+export type ConnectionKind = 'sqlite' | 'postgres' | 'mysql' | 'redis';
+
+export interface ConnectionProfile {
+  id: string;
+  label: string;
+  kind: ConnectionKind;
+  readOnly: boolean;
+  timeoutMs: number;
+  rowLimit: number;
+  file?: string;
+  host?: string;
+  port?: number;
+  database?: string;
+  user?: string;
+  hasPassword?: boolean;
+}
+
+export interface DbTableInfo {
+  name: string;
+  type: 'table' | 'view';
+}
+
+export interface DbColumnInfo {
+  name: string;
+  type: string;
+  notNull: boolean;
+  primaryKey: boolean;
+  defaultValue: unknown;
+}
+
+export interface DbIndexInfo {
+  name: string;
+  unique: boolean;
+  columns: string[];
+}
+
+export interface DbMetadata {
+  tables: DbTableInfo[];
+  columns: Record<string, DbColumnInfo[]>;
+  indexes: Record<string, DbIndexInfo[]>;
+}
+
+export interface DbQueryResult {
+  columns: string[];
+  rows: unknown[][];
+  rowCount: number;
+  truncated: boolean;
+  durationMs: number;
+  kind: 'read' | 'write';
+  changes?: number;
+}
+
+export interface RedisKeyInfo {
+  key: string;
+  type: string;
+}
+
+export interface RedisScanResult {
+  cursor: string;
+  keys: RedisKeyInfo[];
+  scanned: number;
+}
+
+export interface RedisValue {
+  key: string;
+  type: string;
+  value: unknown;
+  truncated: boolean;
+  ttl: number;
+}
+
+
 export interface ApiError {
   error: string;
   message: string;

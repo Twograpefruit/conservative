@@ -29,6 +29,7 @@ opencode serve v2 (127.0.0.1 only, password held by BFF)
 | M3.5 | One-time PTY tickets, ConPTY bridge, tabs, resize, find, scrollback | Done (upstream PTY fallback) |
 | M4 | Tauri/WebView2 packaging, tray, memory soak | Scaffold only |
 | M5 | Language registry with lazy loading, Markdown source/preview, SQL dialect highlighting + format preview/apply/undo | Done (core; selection format partial) |
+| M6 | SQLite + Redis connections, DPAPI credentials, read-only SQL guard, query/export, SCAN key browser, read-only command console, pub/sub | Done (SQLite/Redis; PostgreSQL/MySQL not enabled) |
 
 ### UI & conversation additions (2026-10-30)
 
@@ -51,6 +52,12 @@ dual light/dark shadows, 12–24px radii, inset inputs and no hard borders.
   sql/yaml/xml/html/css/md/nginx/toml/ini/shell/docker), Markdown source/split/preview with
   DOMPurify + task-list writeback, and SQL dialect highlighting plus `sql-formatter` preview →
   apply → undo (full file) and selection formatting.
+- **M6 data**: SQLite (built-in `node:sqlite`, worker-isolated with timeout/row-limit) and Redis
+  (ioredis, SCAN-only key browser, read-only command whitelist, pub/sub). Passwords go to Windows
+  DPAPI; `connections.json` contains only an `authRef`. Read-only profiles reject writes and
+  multi-statement SQL. Ctrl+Enter in a `.sql` file sends the selection/file to the Data panel.
+- **CI assertions**: `M6-011` (no `KEYS`) and `M6-016` (no credential leakage) now run against
+  the real endpoints; both pass locally.
 
 See [`docs/api-contract.md`](docs/api-contract.md) for the acceptance checklist and
 [`docs/acceptance.md`](docs/acceptance.md) for the probed opencode 2.2.1 contract.
@@ -120,6 +127,7 @@ Runtime data (never inside the repo):
 | Events | `GET /api/events?since=<seq>` (SSE, `id:` = BFF seq, 5000-event ring) |
 | Files | `GET /api/fs/tree`, `GET /api/fs/find`, `GET /api/fs/file`, `GET /api/fs/raw`, `PUT /api/fs/file`, `POST /api/fs/{rename,delete,mkdir}` |
 | Format | `POST /api/format/preview`, `POST /api/format/apply`, `POST /api/format/undo`, `POST /api/format/text` |
+| Data | `GET/POST/PUT/DELETE /api/connections`, `POST /api/connections/test`, `POST /api/db/query`, `GET /api/db/metadata`, `POST /api/db/export`, `POST /api/redis/{scan,command}`, `GET /api/redis/value`, `GET /api/redis/subscribe` |
 | Search | `POST /api/search` (NDJSON stream + cursor) |
 | Replace | `POST /api/replace/preview`, `POST /api/replace/apply`, `POST /api/replace/undo` |
 | Git | `GET /api/git/{info,status,log,diff}`, `POST /api/git/{exec,commit,push,apply-hunk}` |
@@ -166,7 +174,7 @@ real assertions currently report **BLOCKED**; `--self-test` validates the detect
 
 ## Known limitations
 
-- **BFF RSS ~~67-69 MB**, above the 50 MB budget (Node/Fastify baseline). Recorded as a deviation in
+- **BFF RSS ~67-69 MB**, above the 50 MB budget (Node/Fastify baseline). Recorded as a deviation in
   `docs/acceptance.md`; the GUI bundle itself is ~1.2 MB JS (~380 KB gzip).
 - **Terminal uses the upstream ConPTY**, not a local `node-pty` instance. npm 11 blocks install
   scripts and this machine has no VS Build Tools; `RuntimeHost.createPty` remains the extension
@@ -175,6 +183,11 @@ real assertions currently report **BLOCKED**; `--self-test` validates the detect
   location; new sessions are created with an explicit `location` for the active workspace.
 - **M4 is a scaffold.** Tray, installer, shell-owned lifecycle and WebView memory instrumentation
   are not implemented. `apps/desktop/README.md` lists the remaining work.
+- **M6 is SQLite/Redis-first.** PostgreSQL/MySQL profiles are rejected with `driver_not_available`
+  until their drivers are added. The result grid is limited by `rowLimit` (default 500) rather
+  than a full virtualized 10k-row grid; export currently buffers the result before writing.
+- **Redis command console is read-only.** `KEYS`, `FLUSHALL`, `CONFIG`, `SHUTDOWN`, `EVAL`, etc.
+  are hard-blocked; key navigation always uses `SCAN` cursors.
 - No login/multi-user/remote/TLS by design; the BFF binds `127.0.0.1` only.
 - Long Windows paths are not enabled on this machine (`LongPathsEnabled=0`); the host normalises
   paths but very deep trees may still hit OS limits.

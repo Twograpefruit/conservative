@@ -15,10 +15,12 @@
 
 ## 当前状态（2026-10-30）
 
-- 脚本骨架与断言逻辑已落地，`--self-test` 可在无 BFF/Redis 的情况下验证“密钥扫描”和“KEYS 检测”本身有效。
-- **M6-011 / M6-016 的实际用例仍为 BLOCKED**：M6 的 `/api/redis/*`、`/api/db/*`、`/api/connections` 尚未实现，默认运行会以退出码 2 明确报告。
-- 本机 2026-10-30 实测：`bash -n` 语法通过；`--self-test` 退出码 0（3 项 PASS）；默认运行因缺少 `jq` 退出码 2（BLOCKED）。
-- M6 落地后只需替换 `drive_redis_scan` / `drive_secret_scenarios` 两个函数，断言与退出码不变。
+- 脚本断言已接入真实 M6 端点，`--self-test` 可验证“密钥扫描”和“KEYS 检测”逻辑。
+- **M6-011 / M6-016 已在本地通过**：
+  - M6-011：`--only=m6-011`，MONITOR 捕获 SCAN，无 KEYS/FLUSH/CONFIG，退出码 0。
+  - M6-016：`--only=m6-016`，日志/响应/connections.json 无明文，退出码 0。
+- 本机 2026-10-30：`bash -n` 通过；`--self-test` 退出码 0；真实用例退出码 0。
+- `drive_redis_scan` / `drive_secret_scenarios` 已对应 `/api/redis/scan`、`/api/db/query`、`/api/connections`。
 
 ## 运行
 
@@ -26,9 +28,13 @@
 # 只验证脚本自身
 bash scripts/ci-assert.sh --self-test --out=artifacts/ci-assert/selftest
 
-# M6 落地后（本地 Redis + BFF）
-BFF_BASE=http://127.0.0.1:4310 \
-REDIS_URL=redis://127.0.0.1:6379 \
+# 真实 M6 断言（需要 BFF + 本地 Redis + 测试 SQLite 连接）
+BFF_BASE=http://127.0.0.1:4311 \
+REDIS_URL=redis://:testsecret@127.0.0.1:6381 \
+REDIS_PROFILE=<redis-profile-id> \
+DB_PROFILE=<sqlite-profile-id> \
+CONN_FILE=C:/Users/<user>/AppData/Roaming/opencode-gui/connections.json \
+LOG_DIR=C:/Users/<user>/AppData/Local/opencode-gui/logs \
 SECRETS_FILE=scripts/fixtures/secrets.local.json \
 bash scripts/ci-assert.sh --out=artifacts/ci-assert/run1
 ```

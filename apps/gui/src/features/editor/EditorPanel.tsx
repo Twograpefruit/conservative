@@ -27,6 +27,7 @@ export function EditorPanel() {
   const openRequest = useApp((s) => s.openRequest);
   const consumeOpen = useApp((s) => s.consumeOpen);
   const notify = useApp((s) => s.notify);
+  const requestSql = useApp((s) => s.requestSql);
   const tabs = useEditor((s) => s.tabs);
   const active = useEditor((s) => s.active);
   const diagnostics = useEditor((s) => s.diagnostics);
@@ -98,6 +99,10 @@ export function EditorPanel() {
         e.preventDefault();
         void formatFull();
       }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && tab && isSql) {
+        e.preventDefault();
+        requestSql(selection?.text?.trim() || tab.content);
+      }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
         // Let the chat search use Ctrl+F; only intercept here when the editor has a selection.
         if (tab && selection) {
@@ -109,7 +114,7 @@ export function EditorPanel() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, save, selection]);
+  }, [tab, save, selection, requestSql, isSql]);
 
   const onSourceScroll = (ratio: number) => {
     if (scrollFrame.current != null) return;
@@ -341,6 +346,13 @@ export function EditorPanel() {
                       title="只格式化选中部分"
                     >
                       格式化选区
+                    </button>
+                    <button
+                      className="btn btn-small"
+                      onClick={() => requestSql(selection?.text?.trim() || tab.content)}
+                      title="在数据面板执行选中 SQL 或整个文件（Ctrl+Enter）"
+                    >
+                      数据面板执行
                     </button>
                     {lastFormatUndo && lastFormatUndo.path === tab.path ? (
                       <button className="btn btn-small" onClick={() => void undoFormat()} disabled={formatBusy}>
