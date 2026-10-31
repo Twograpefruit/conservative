@@ -126,15 +126,6 @@ export function App() {
   }, [uiScale, textScale, fontFamily, codeFontFamily, codeFontSize, resolvedTheme]);
 
   useEffect(() => {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const handler = () => {
-      if (themeMode === 'system') setThemeMode('system');
-    };
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, [themeMode, setThemeMode]);
-
-  useEffect(() => {
     const onPalette = () => setPaletteOpen(true);
     const onChatSearch = () => {
       setView('chat');
@@ -242,11 +233,11 @@ export function App() {
           <div className="toolbar-trailing">
             <button
               className="icon-btn toolbar-symbol"
-              aria-label={`切换主题，当前${themeMode === 'system' ? '跟随系统' : themeMode === 'dark' ? '暗色' : '亮色'}`}
-              title={`主题：${themeMode === 'system' ? `跟随系统（${resolvedTheme}）` : themeMode}`}
-              onClick={() => setThemeMode(themeMode === 'dark' ? 'light' : themeMode === 'light' ? 'system' : 'dark')}
+              aria-label={`切换主题，当前${themeMode === 'dark' ? '暗色' : '亮色'}`}
+              title={`主题：${themeMode === 'dark' ? '暗色' : '亮色'}`}
+              onClick={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}
             >
-              {themeMode === 'system' ? '◐' : resolvedTheme === 'dark' ? '☾' : '☀'}
+              {resolvedTheme === 'dark' ? '☾' : '☀'}
             </button>
             {permissionCount > 0 ? <span className="badge badge-warn">{permissionCount} 待授权</span> : null}
             <NotificationCenter />

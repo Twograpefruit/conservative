@@ -10,6 +10,7 @@ import type {
 import { api, qs } from '../../api/client.js';
 import { useApp } from '../../store/appStore.js';
 import { useNotify } from '../notify/notificationStore.js';
+import { Icon } from '../../components/icon/Icon.js';
 
 interface FormState {
   id?: string;
@@ -86,6 +87,10 @@ export function DataPanel() {
   const [result, setResult] = useState<DbQueryResult | null>(null);
   const [resultScrollTop, setResultScrollTop] = useState(0);
   const [resultViewH, setResultViewH] = useState(560);
+  const [resultSearch, setResultSearch] = useState('');
+  const [searchField, setSearchField] = useState('');
+  const [resultFilter, setResultFilter] = useState('');
+  const [filterField, setFilterField] = useState('');
   const resultScroll = useRef<HTMLDivElement | null>(null);
   const ROW_H = 24;
 
@@ -371,6 +376,10 @@ export function DataPanel() {
 
   useEffect(() => {
     setResultScrollTop(0);
+    setResultSearch('');
+    setResultFilter('');
+    setSearchField('');
+    setFilterField('');
     if (resultScroll.current) resultScroll.current.scrollTop = 0;
   }, [result]);
 
@@ -396,9 +405,21 @@ export function DataPanel() {
 
   const tableColumns = table ? metadata?.columns[table] ?? [] : [];
   const allRows = result?.rows ?? [];
+  const matches = (row: unknown[], query: string, field: string): boolean => {
+    if (!query.trim()) return true;
+    const idx = field ? result?.columns.indexOf(field) ?? -1 : -1;
+    if (field && idx < 0) return false;
+    const values = idx >= 0 ? [row[idx]] : row;
+    return values.some((v) => valueText(v).toLowerCase().includes(query.trim().toLowerCase()));
+  };
+  const filteredRows = allRows.filter((row) => matches(row, resultFilter, filterField));
+  const searchHits = resultSearch.trim()
+    ? filteredRows.filter((row) => matches(row, resultSearch, searchField)).length
+    : filteredRows.length;
+  const displayRows = filteredRows;
   const viewportRows = Math.ceil(resultViewH / ROW_H);
   const startRow = Math.max(0, Math.floor(resultScrollTop / ROW_H) - 4);
-  const endRow = Math.min(allRows.length, startRow + viewportRows + 8);
+  const endRow = Math.min(displayRows.length, startRow + viewportRows + 8);
 
   return (
     <div className="data-layout">
@@ -406,8 +427,8 @@ export function DataPanel() {
         <div className="pane-head">
           <div className="pane-title">连接</div>
           <div className="pane-actions">
-            <button className="btn btn-small btn-primary" onClick={() => setForm(emptyForm())}>
-              + 新建
+            <button className="icon-btn" title="新建连接" aria-label="新建连接" onClick={() => setForm(emptyForm())}>
+              <Icon name="add" />
             </button>
           </div>
         </div>
@@ -439,10 +460,7 @@ export function DataPanel() {
         {!selected ? (
           <div className="empty-state">
             <h2>数据源</h2>
-            <p>新建 SQLite / MySQL / Redis 连接；默认为只读，写操作需要显式关闭只读。</p>
-            <button className="btn btn-primary" onClick={() => setForm(emptyForm())}>
-              新建连接
-            </button>
+            <p>点击「连接」右侧 + 新建 SQLite / MySQL / Redis 连接；默认为只读，写操作需要显式关闭只读。</p>
           </div>
         ) : (
           <>
@@ -545,8 +563,69 @@ export function DataPanel() {
                     {result ? (
                       <>
                         <div className="result-meta">
-                          {result.kind === 'read' ? `${result.rowCount} 行` : `changes ${result.changes ?? 0}`} · {result.durationMs}ms
-                          {result.truncated ? ' · 已达行数上限' : ''}
+                          <span>
+                            {result.kind === 'read' ? `${result.rowCount} 行` : `changes ${result.changes ?? 0}`} · {result.durationMs}ms
+                            {result.truncated ? ' · 已达行数上限' : ''}
+                          </span>
+                          {result.kind === 'read' ? (
+                            <div className="result-tools">
+                              <select
+                                className="input result-scope"
+                                value={searchField}
+                                onChange={(e) => setSearchField(e.target.value)}
+                                title="搜索范围"
+                              >
+                                <option value="">全部字段</option>
+                                {result.columns.map((c) => (
+                                  <option key={c} value={c}>
+                                    {c}
+                                  </option>
+                                ))}
+                              </select>
+                              <input
+                                className="input result-search"
+                                value={resultSearch}
+                                onChange={(e) => setResultSearch(e.target.value)}
+                                placeholder="搜索结果"
+                                title="在结果中搜索"
+                              />
+                              <select
+                                className="input result-scope"
+                                value={filterField}
+                                onChange={(e) => setFilterField(e.target.value)}
+                                title="过滤范围"
+                              >
+                                <option value="">全部字段</option>
+                                {result.columns.map((c) => (
+                                  <option key={c} value={c}>
+                                    {c}
+                                  </option>
+                                ))}
+                              </select>
+                              <input
+                                className="input result-search"
+                                value={resultFilter}
+                                onChange={(e) => setResultFilter(e.target.value)}
+                                placeholder="过滤结果"
+                                title="按字段或全局过滤结果"
+                              />
+                              <span className="result-hits">
+                                {displayRows.length}/{allRows.length}
+                                {resultSearch.trim() ? ` · 命中 ${searchHits}` : ''}
+                              </span>
+                              {resultSearch || resultFilter ? (
+                                <button
+                                  className="btn btn-small"
+                                  onClick={() => {
+                                    setResultSearch('');
+                                    setResultFilter('');
+                                  }}
+                                >
+                                  清除
+                                </button>
+                              ) : null}
+                            </div>
+                          ) : null}
                         </div>
                         {result.kind === 'read' ? (
                           <div
@@ -572,7 +651,7 @@ export function DataPanel() {
                                     <td colSpan={result.columns.length + 1} />
                                   </tr>
                                 ) : null}
-                                {allRows.slice(startRow, endRow).map((row, i) => (
+                                {displayRows.slice(startRow, endRow).map((row, i) => (
                                   <tr key={startRow + i}>
                                     <td className="row-index">{startRow + i + 1}</td>
                                     {row.map((v, j) => (
@@ -582,8 +661,8 @@ export function DataPanel() {
                                     ))}
                                   </tr>
                                 ))}
-                                {endRow < allRows.length ? (
-                                  <tr style={{ height: (allRows.length - endRow) * ROW_H }}>
+                                {endRow < displayRows.length ? (
+                                  <tr style={{ height: (displayRows.length - endRow) * ROW_H }}>
                                     <td colSpan={result.columns.length + 1} />
                                   </tr>
                                 ) : null}

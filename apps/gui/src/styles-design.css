@@ -983,3 +983,191 @@ input[type='checkbox'] {
   opacity: 1;
   pointer-events: auto;
 }
+
+.session-pane > .pane-head,
+.chat-main > .chat-head {
+  height: 48px;
+  flex: 0 0 48px;
+  min-height: 48px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-2);
+}
+@media (max-width: 900px) {
+  .session-pane {
+    width: 240px;
+    flex-basis: 240px;
+  }
+}
+html[data-text-scale='xl'] .session-pane > .pane-head,
+html[data-text-scale='xl'] .chat-main > .chat-head {
+  height: auto;
+  flex: 0 0 auto;
+  min-height: 48px;
+  padding-top: 7px;
+  padding-bottom: 7px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.session-pane,
+.editor-side,
+.git-side,
+.data-side,
+.settings-nav {
+  width: 270px;
+  flex: 0 0 270px;
+}
+@media (max-width: 900px) {
+  .session-pane,
+  .settings-nav {
+    width: 220px;
+    flex-basis: 220px;
+  }
+}
+
+.chat-turn-rail {
+  position: absolute;
+  right: 10px;
+  top: 48px;
+  bottom: 0;
+  width: 30px;
+  height: auto;
+  z-index: 20;
+  padding: 8px 0;
+}
+.chat-layout {
+  position: relative;
+}
+.chat-search-float.open {
+  right: 50px;
+}
+
+.chat-jump-latest {
+  display: flex;
+  justify-content: center;
+  padding: 6px 0 0;
+}
+.chat-jump-latest .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.chat-jump-latest .oc-icon {
+  width: 13px;
+  height: 13px;
+}
+
+/* ---------------------- final layout overrides -------------------------- */
+.topbar {
+  padding-left: 0;
+}
+.workspace-menu {
+  width: 270px;
+  flex: 0 0 270px;
+  padding-left: 12px;
+  box-sizing: border-box;
+}
+.session-pane,
+.editor-side,
+.git-side,
+.data-side,
+.settings-nav {
+  width: 270px;
+  flex: 0 0 270px;
+}
+.session-pane > .pane-head,
+.chat-main > .chat-head {
+  height: 48px;
+  flex: 0 0 48px;
+  min-height: 48px;
+}
+.chat-turn-rail {
+  right: 20px;
+  top: 48px;
+  bottom: 0;
+  width: 30px;
+  height: auto;
+  padding: 10px 0;
+}
+.chat-turn-rail .turn-card {
+  right: calc(100% + 10px);
+}
+.chat-turn-rail .turn-full-tip {
+  right: calc(100% + 302px);
+}
+.chat-search-float.open {
+  right: 56px;
+}
+.keybinding-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 4px 6px;
+  padding: 7px 8px;
+}
+.keybinding-row .keybinding-info {
+  grid-column: 1 / -1;
+}
+.keybinding-row .keybinding-input {
+  width: 100%;
+  min-width: 0;
+}
+.keybinding-row .keybinding-title {
+  white-space: normal;
+}
+.service-blocks {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (max-width: 900px) {
+  .session-pane,
+  .editor-side,
+  .git-side,
+  .data-side,
+  .settings-nav {
+    width: 220px;
+    flex-basis: 220px;
+  }
+  .workspace-menu {
+    width: 220px;
+    flex-basis: 220px;
+  }
+}
+
+/* Per-turn tool activity: one collapsed summary per reply instead of a wall
+   of tool cards. */
+.tool-group {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg-2);
+  margin: 4px 0;
+}
+.tool-group > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  font-size: 11px;
+  color: var(--fg-dim);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.tool-group > summary::-webkit-details-marker {
+  display: none;
+}
+.tool-group > summary::before {
+  content: '▸';
+  font-size: 9px;
+}
+.tool-group[open] > summary::before {
+  content: '▾';
+}
+.tool-group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 6px 6px;
+}

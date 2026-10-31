@@ -10,6 +10,8 @@ import {
   diff,
   execWhitelisted,
   info,
+  branches,
+  pull,
   log,
   overwriteLines,
   push,
@@ -64,6 +66,24 @@ export async function registerGitRoutes(app: FastifyInstance, ctx: AppContext): 
   app.get('/api/git/log', async (req) => {
     const query = req.query as { ws?: string; limit?: string };
     return log(ctxOf(ctx, workspaceOf(ctx, query.ws)), Number(query.limit ?? 40) || 40);
+  });
+
+  app.get('/api/git/branches', async (req) => {
+    const query = req.query as { ws?: string };
+    const ws = workspaceOf(ctx, query.ws);
+    return branches(ctxOf(ctx, ws));
+  });
+
+  app.post('/api/git/pull', async (req) => {
+    const body = req.body as { ws?: string; remote?: string; branch?: string; rebase?: boolean };
+    const ws = workspaceOf(ctx, body.ws);
+    const result = await pull(ctxOf(ctx, ws), {
+      remote: body.remote,
+      branch: body.branch,
+      rebase: body.rebase,
+    });
+    ctx.bus.local('bff.git.changed', { action: 'pull', ws: ws.id });
+    return result;
   });
 
   app.get('/api/git/diff', async (req) => {

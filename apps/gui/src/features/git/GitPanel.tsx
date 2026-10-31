@@ -37,6 +37,9 @@ export function GitPanel() {
   const [message, setMessage] = useState('');
   const [stageAll, setStageAll] = useState(true);
   const [pushBusy, setPushBusy] = useState(false);
+  const [pullBusy, setPullBusy] = useState(false);
+  const [branches, setBranches] = useState<{ current: string | null; local: string[]; remote: string[] }>({ current: null, local: [], remote: [] });
+  const [pullBranch, setPullBranch] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -70,6 +73,15 @@ export function GitPanel() {
       setStatus(st);
       setLog(lg);
       setSnapshots(sn);
+      try {
+        const b = await api<{ current: string | null; local: string[]; remote: string[] }>(
+          `/api/git/branches${qs({ ws: workspaceID })}`,
+        );
+        setBranches(b);
+        setPullBranch((value) => value || b.current || b.local[0] || '');
+      } catch {
+        /* branches are best effort */
+      }
       await loadDiff(mode, base);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -184,6 +196,28 @@ export function GitPanel() {
       notify(e.message ?? '推送失败', 'error');
     } finally {
       setPushBusy(false);
+    }
+  };
+
+  const pullNow = async () => {
+    if (!workspaceID) return;
+    if (!window.confirm(`拉取 ${pullBranch || info?.branch || '当前分支'} 并变基当前分支？`)) return;
+    setPullBusy(true);
+    setError(null);
+    try {
+      const res = await api<{ out: string; remote: string; branch: string }>('/api/git/pull', {
+        method: 'POST',
+        body: JSON.stringify({ ws: workspaceID, branch: pullBranch || undefined }),
+        headers: { 'content-type': 'application/json' },
+      });
+      notify(res.out ? `已拉取 ${res.remote}/${res.branch}：${res.out.split('\n')[0]}` : '拉取完成');
+      await reload();
+    } catch (err) {
+      const e = err as { message?: string };
+      setError(e.message ?? '拉取失败');
+      notify(e.message ?? '拉取失败', 'error');
+    } finally {
+      setPullBusy(false);
     }
   };
 
@@ -404,6 +438,27 @@ export function GitPanel() {
                 <div className="commit-actions">
                   <button className="btn btn-primary" disabled={!message.trim()} onClick={() => void commit()}>
                     提交到本地
+                  </button>
+                  <select
+                    className="input git-pull-branch"
+                    value={pullBranch}
+                    onChange={(e) => setPullBranch(e.target.value)}
+                    title="选择要拉取的分支"
+                  >
+                    {[
+                      ...new Set(
+                        [...(branches.local ?? []), ...(branches.remote ?? [])].map((b) =>
+                          b.replace(/^remotes\//, '').replace(/^origin\//, ''),
+                        ),
+                      ),
+                    ].map((b) => (
+                      <option key={b} value={b}>
+                        {b}
+                      </option>
+                    ))}
+                  </select>
+                  <button className="btn" disabled={pullBusy} onClick={() => void pullNow()} title="git pull --rebase">
+                    {pullBusy ? '拉取中…' : '拉取'}
                   </button>
                   <button
                     className="btn"

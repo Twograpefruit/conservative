@@ -6,6 +6,7 @@ import '@xterm/xterm/css/xterm.css';
 import { api } from '../../api/client.js';
 import { useApp } from '../../store/appStore.js';
 import { useNotify } from '../notify/notificationStore.js';
+import { Icon } from '../../components/icon/Icon.js';
 
 interface Tab {
   id: string;
@@ -89,8 +90,8 @@ export function TerminalPanel() {
             </button>
           </div>
         ))}
-        <button className="btn btn-small" onClick={() => void createTab()}>
-          + 终端
+        <button className="icon-btn" title="新建终端" aria-label="新建终端" onClick={() => void createTab()}>
+          <Icon name="add" />
         </button>
         <span className="spacer" />
         <button className="btn btn-small" onClick={() => setShowSearch((v) => !v)}>
@@ -122,10 +123,7 @@ export function TerminalPanel() {
         {tabs.length === 0 ? (
           <div className="empty-state">
             <h2>终端</h2>
-            <p>ConPTY + cmd.exe，自动 chcp 65001 并激活项目 venv。票据一次性、60 秒有效。</p>
-            <button className="btn btn-primary" onClick={() => void createTab()}>
-              打开终端
-            </button>
+            <p>ConPTY + cmd.exe，自动 chcp 65001 并激活项目 venv。点击左上角 + 新建终端。</p>
           </div>
         ) : null}
         {tabs.map((tab) => (

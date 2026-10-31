@@ -806,7 +806,7 @@ export function SettingsPanel() {
           <div className="appearance-row">
             <div className="appearance-label">
               <strong>{t('settings.theme')}</strong>
-              <small>暗色 / 亮色 / 跟随系统</small>
+              <small>暗色 / 亮色</small>
             </div>
             <div className="segmented">
               <button className={themeMode === 'dark' ? 'active' : ''} onClick={() => setThemeMode('dark')}>
@@ -814,9 +814,6 @@ export function SettingsPanel() {
               </button>
               <button className={themeMode === 'light' ? 'active' : ''} onClick={() => setThemeMode('light')}>
                 亮色
-              </button>
-              <button className={themeMode === 'system' ? 'active' : ''} onClick={() => setThemeMode('system')}>
-                跟随系统
               </button>
             </div>
           </div>

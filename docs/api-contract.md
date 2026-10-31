@@ -465,3 +465,30 @@
 - 代码导航在前端基于当前文档符号索引：Ctrl/Cmd+点击跳转定义、重复定义列表、返回栈、
   hover 签名与折叠注释；不依赖 LSP。
 - 代码字体与字号独立于 UI/文字缩放，变量为 `--code-font-family` / `--code-font-size`。
+
+---
+
+## 21. 2026-10-31 增量接口（OpenChamber 对齐）
+
+### 21.1 Git
+
+- `GET /api/git/branches?ws=` → `{current, local[], remote[]}`，用于提交区的分支选择。
+- `POST /api/git/pull` body `{ws, remote?, branch?, rebase?}` → `{ok, out, remote, branch}`。
+  默认执行 `git pull --rebase <remote> <branch>`；未传 remote 时取 upstream 的远端，未传 branch 时取当前分支。
+- `POST /api/git/commit`：`stageAll=false` 时改为 `git add -u`，本地删除/重命名会随提交同步，
+  不会被远端版本还原；`stageAll=true` 仍为 `git add -A`。
+
+### 21.2 会话与消息
+
+- 消息加载：`GET /api/oc/api/session/{id}/message?limit=200&order=desc` 后跟随 `cursor.next`
+  继续取更早分页，前端最多 12 页（2000 条）；历史完整显示。
+- 轮次定义：一条 user 消息与其后的 assistant/工具消息归为一轮；连续 assistant 回复合并为一个回复块。
+- 思考过程按轮合并为一个可折叠块；“工作过程”按轮折叠工具调用，默认收起，流式进行中自动展开。
+- 顶部栏：`themeMode` 仅 `light | dark`；`localStorage['ocg.theme']` 旧值 `system` 回退为 `light`。
+
+### 21.3 数据结果
+
+- MySQL 结果工具条新增搜索与过滤：
+  - 搜索：字段下拉（空为全部字段）+ 关键词，显示命中数。
+  - 过滤：字段下拉（空为全部字段）+ 关键词，表格仅渲染过滤后的行，虚拟滚动基于过滤结果。
+  - 统计显示 `过滤后行数/总行数`，可一键清除两个条件。

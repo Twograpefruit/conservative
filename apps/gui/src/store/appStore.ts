@@ -3,7 +3,7 @@ import type { HealthResponse, ProbeResult, WorkspaceInfo } from '@ocg/protocol';
 import { api } from '../api/client.js';
 
 export type View = 'chat' | 'editor' | 'search' | 'git' | 'terminal' | 'data' | 'settings';
-export type ThemeMode = 'dark' | 'light' | 'system';
+export type ThemeMode = 'dark' | 'light';
 
 interface OpenRequest {
   path: string;
@@ -84,10 +84,9 @@ const savedGroups = (() => {
     return {};
   }
 })();
-const savedTheme = (localStorage.getItem('ocg.theme') as ThemeMode) || 'light';
-const systemDark = typeof window !== 'undefined' ? window.matchMedia('(prefers-color-scheme: dark)').matches : true;
-const resolve = (mode: ThemeMode): 'dark' | 'light' =>
-  mode === 'system' ? (systemDark ? 'dark' : 'light') : mode;
+const savedThemeRaw = localStorage.getItem('ocg.theme');
+const savedTheme: ThemeMode = savedThemeRaw === 'dark' ? 'dark' : 'light';
+const resolve = (mode: ThemeMode): 'dark' | 'light' => mode;
 
 export const useApp = create<AppState>((set, get) => ({
   view: savedView,
@@ -182,14 +181,8 @@ export const useApp = create<AppState>((set, get) => ({
 
   setThemeMode: (mode) => {
     localStorage.setItem('ocg.theme', mode);
-    const resolved =
-      mode === 'system'
-        ? window.matchMedia('(prefers-color-scheme: dark)').matches
-          ? 'dark'
-          : 'light'
-        : mode;
-    document.documentElement.dataset.theme = resolved;
-    set({ themeMode: mode, resolvedTheme: resolved });
+    document.documentElement.dataset.theme = mode;
+    set({ themeMode: mode, resolvedTheme: mode });
   },
 
   loadWorkspaces: async () => {

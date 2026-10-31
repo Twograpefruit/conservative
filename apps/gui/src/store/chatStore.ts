@@ -244,10 +244,21 @@ export const useChat = create<ChatStore>((set, get) => ({
 
   loadMessages: async (id) => {
     try {
-      const res = await api<{ data: MessageInfo[] }>(
-        `/api/oc/api/session/${encodeURIComponent(id)}/message${qs({ limit: 200, order: 'desc' })}`,
-      );
-      const state = hydrateMessages(get().state, id, res.data ?? []);
+      const collected: MessageInfo[] = [];
+      let cursor: string | undefined;
+      for (let page = 0; page < 12; page++) {
+        const res = await api<{ data: MessageInfo[]; cursor?: { next?: string | null; previous?: string | null } }>(
+          `/api/oc/api/session/${encodeURIComponent(id)}/message${qs({
+            limit: 200,
+            ...(cursor ? { cursor } : { order: 'desc' }),
+          })}`,
+        );
+        collected.push(...(res.data ?? []));
+        const next = res.cursor?.next;
+        if (!next || collected.length >= 2000) break;
+        cursor = next;
+      }
+      const state = hydrateMessages(get().state, id, collected);
       set({ state });
     } catch (err) {
       set({ lastError: err instanceof Error ? err.message : String(err) });

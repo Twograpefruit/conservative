@@ -222,6 +222,36 @@ export async function execWhitelisted(ctx: GitContext, args: string[]): Promise<
 
 export type HunkAction = 'stage' | 'unstage' | 'discard';
 
+export async function branches(ctx: GitContext): Promise<{ current: string | null; local: string[]; remote: string[] }> {
+  const res = await git(ctx, ['branch', '--all', '--format=%(refname:short)']);
+  if (res.code !== 0) throw new HttpError(500, res.err.trim() || 'git branch failed', 'git_error');
+  const all = res.out.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+  const currentRes = await git(ctx, ['branch', '--show-current']);
+  return {
+    current: currentRes.out.trim() || null,
+    local: all.filter((b) => !b.startsWith('remotes/') && !b.includes('/')),
+    remote: all.filter((b) => b.startsWith('remotes/') || b.startsWith('origin/')),
+  };
+}
+
+export async function pull(
+  ctx: GitContext,
+  input: { remote?: string; branch?: string; rebase?: boolean } = {},
+): Promise<{ ok: true; out: string; remote: string; branch: string }> {
+  const repo = await info(ctx);
+  if (!repo.repo) throw new HttpError(400, 'not a git repository', 'not_repo');
+  const remote = (input.remote ?? repo.upstream?.split('/')[0] ?? 'origin').trim();
+  const branch = (input.branch ?? repo.branch ?? '').trim();
+  if (!/^[A-Za-z0-9._-]+$/.test(remote)) throw new HttpError(400, 'invalid remote name', 'invalid_remote');
+  if (!/^[A-Za-z0-9._/-]+$/.test(branch) || branch.startsWith('-') || branch.includes('..')) {
+    throw new HttpError(400, 'invalid branch name', 'invalid_branch');
+  }
+  const args = ['pull', ...(input.rebase === false ? [] : ['--rebase']), remote, branch];
+  const res = await git(ctx, args, { timeoutMs: 180_000 });
+  if (res.code !== 0) throw new HttpError(409, res.err.trim() || res.out.trim() || 'git pull failed', 'pull_failed');
+  return { ok: true, out: (res.out + res.err).trim(), remote, branch };
+}
+
 export async function compareFiles(
   ctx: GitContext,
   a: string,
@@ -327,6 +357,10 @@ export async function commit(
   if (stageAll) {
     const add = await git(ctx, ['add', '-A'], { timeoutMs: 120_000 });
     if (add.code !== 0) throw new HttpError(409, add.err.trim() || 'git add failed', 'add_failed');
+  } else {
+    // Local deletes/renames must be committed instead of being restored from the remote.
+    const tracked = await git(ctx, ['add', '-u'], { timeoutMs: 120_000 });
+    if (tracked.code !== 0) throw new HttpError(409, tracked.err.trim() || 'git add -u failed', 'add_failed');
   }
   const staged = await git(ctx, ['diff', '--cached', '--name-only']);
   if (staged.code === 0 && staged.out.trim() === '') {

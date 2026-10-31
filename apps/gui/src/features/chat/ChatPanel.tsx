@@ -77,14 +77,16 @@ function MessageMeta({
   role,
   onQuote,
   onBranch,
+  textOverride,
 }: {
   message: MessageInfo;
   role: string;
   onQuote: (quote: QuoteRef) => void;
   onBranch: (messageID: string) => void;
+  textOverride?: string;
 }) {
   const [copied, setCopied] = useState(false);
-  const text = copyText(message);
+  const text = textOverride ?? copyText(message);
   return (
     <div className="msg-actions">
       <button
@@ -328,6 +330,105 @@ function UserBlock({
 
 const AssistantBlockMemo = React.memo(AssistantBlock);
 const UserBlockMemo = React.memo(UserBlock);
+
+function AssistantTurnBlock({
+  messages,
+  stream,
+  onQuote,
+  onBranch,
+}: {
+  messages: MessageInfo[];
+  stream?: AssistantStream;
+  onQuote: (quote: QuoteRef) => void;
+  onBranch: (messageID: string) => void;
+}) {
+  const last = messages[messages.length - 1];
+  const meta = last as { agent?: string; model?: { id?: string }; time?: { created?: number }; cost?: number } | undefined;
+  const mergedText = messages
+    .map((message) => copyText(message))
+    .filter(Boolean)
+    .join('\n\n');
+  const rendered = messages.flatMap((message, index) =>
+    renderParts(message, stream && last.id === message.id ? stream : undefined).map((part) => ({
+      key: `${index}:${part.key}`,
+      part,
+    })),
+  );
+  const reasoning = rendered.filter((entry) => entry.part.kind === 'reasoning');
+  const reasoningText = reasoning
+    .map((entry) => entry.part.text ?? '')
+    .filter(Boolean)
+    .join('\n\n');
+  const reasoningDone = reasoning.every((entry) => entry.part.done);
+  const toolEntries = rendered.filter((entry) => entry.part.kind === 'tool' && entry.part.tool);
+  const textEntries = rendered.filter((entry) => entry.part.kind === 'text');
+  const toolsBusy = Boolean(stream);
+  const toolsFailed = toolEntries.filter((entry) => entry.part.tool?.status === 'error').length;
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const streamingRef = useRef(false);
+  useEffect(() => {
+    if (stream && !streamingRef.current) {
+      streamingRef.current = true;
+      setToolsOpen(true);
+    }
+  }, [stream]);
+  return (
+    <div className="msg assistant">
+      <div className="msg-head">
+        <span className="msg-role">assistant</span>
+        {meta?.agent ? <span className="msg-chip">{meta.agent}</span> : null}
+        {meta?.model?.id ? <span className="msg-chip">{meta.model.id}</span> : null}
+        {meta?.time?.created ? <span className="msg-time">{timeText(meta.time.created)}</span> : null}
+      </div>
+      <div className="msg-body">
+        {reasoningText ? (
+          <details className="reasoning">
+            <summary>
+              思考过程 · {reasoning.length} 段{reasoningDone ? '' : '（进行中）'}
+            </summary>
+            <pre>{reasoningText}</pre>
+          </details>
+        ) : null}
+        {toolEntries.length ? (
+          <details
+            className="tool-group"
+            open={toolsOpen}
+            onToggle={(event) => setToolsOpen(event.currentTarget.open)}
+          >
+            <summary>
+              工作过程 · {toolEntries.length} 步
+              {toolsFailed ? ` · ${toolsFailed} 失败` : ''}
+              {toolsBusy ? '（进行中）' : ''}
+            </summary>
+            <div className="tool-group-body">
+              {toolsOpen
+                ? toolEntries.map(({ key, part }) =>
+                    part.tool ? <ToolCard key={key} tool={part.tool} /> : null,
+                  )
+                : null}
+            </div>
+          </details>
+        ) : null}
+        {textEntries.map(({ key, part }) => {
+          if (!part.text && part.done) return null;
+          return <Markdown key={key} text={part.text ?? ''} />;
+        })}
+        {(last as { error?: { message?: string } })?.error?.message ? (
+          <div className="msg-error">{(last as { error?: { message?: string } }).error?.message}</div>
+        ) : null}
+      </div>
+      <MessageMeta
+        message={last}
+        role="assistant"
+        textOverride={mergedText}
+        onQuote={onQuote}
+        onBranch={onBranch}
+      />
+    </div>
+  );
+}
+
+const AssistantTurnBlockMemo = React.memo(AssistantTurnBlock);
 
 function toFileUri(workspacePath: string | undefined, rel: string): string {
   if (!workspacePath) return rel;
@@ -829,10 +930,15 @@ export function ChatPanel() {
   }, []);
 
   const jumpToId = (id: string) => {
-    const el = anchors.current.get(id);
+    let target = id;
+    if (!anchors.current.has(target)) {
+      const turn = turns.find((t) => t.replies.some((reply) => reply.id === id));
+      if (turn) target = turn.id;
+    }
+    const el = anchors.current.get(target);
     if (!el) return;
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    setFlashID(id);
+    setFlashID(target);
     if (flashTimer.current) clearTimeout(flashTimer.current);
     flashTimer.current = setTimeout(() => setFlashID(null), 1400);
   };
@@ -1075,18 +1181,6 @@ export function ChatPanel() {
                   {active.model ? <span>{active.model.id}</span> : null}
                 </div>
               </div>
-              <div className="chat-tools">
-                <button
-                  className="icon-btn"
-                  title="回到最新"
-                  onClick={() => {
-                    setFollowBottom(true);
-                    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-                  }}
-                >
-                  <Icon name="arrow-down" />
-                </button>
-              </div>
               {runtime?.error ? (
                 <div className="chat-error" title={JSON.stringify(runtime.error)}>
                   上游错误
@@ -1180,31 +1274,35 @@ export function ChatPanel() {
                   </div>
                 </div>
               ) : null}
-              {messages.map((m) => {
+              {turns.map((turn) => {
                 const onQuote = (q: QuoteRef) => setQuote(q);
                 const onBranch = (messageID: string) => {
                   if (!activeID) return;
                   void fork(activeID, messageID);
                 };
-                const inner =
-                  (m as { type?: string }).type === 'user' ? (
-                    <UserBlockMemo message={m} onQuote={onQuote} onBranch={onBranch} />
-                  ) : (m as { type?: string }).type === 'assistant' ? (
-                    <AssistantBlockMemo message={m} stream={state.streams[m.id]} onQuote={onQuote} onBranch={onBranch} />
-                  ) : (
-                    <div className="msg system">{String((m as { type?: string }).type ?? 'event')}</div>
-                  );
+                const lastReply = turn.replies[turn.replies.length - 1];
                 return (
-                  <div
-                    key={m.id}
-                    ref={(el) => {
-                      if (el) anchors.current.set(m.id, el);
-                      else anchors.current.delete(m.id);
-                    }}
-                    className={`msg-anchor ${flashID === m.id ? 'msg-flash' : ''}`}
-                  >
-                    {inner}
-                  </div>
+                  <React.Fragment key={turn.id}>
+                    <div
+                      ref={(el) => {
+                        if (el) anchors.current.set(turn.id, el);
+                        else anchors.current.delete(turn.id);
+                      }}
+                      className={`msg-anchor ${flashID === turn.id ? 'msg-flash' : ''}`}
+                    >
+                      <UserBlockMemo message={turn.user} onQuote={onQuote} onBranch={onBranch} />
+                    </div>
+                    {turn.replies.length ? (
+                      <div className="msg-anchor">
+                        <AssistantTurnBlockMemo
+                          messages={turn.replies}
+                          stream={lastReply ? state.streams[lastReply.id] : undefined}
+                          onQuote={onQuote}
+                          onBranch={onBranch}
+                        />
+                      </div>
+                    ) : null}
+                  </React.Fragment>
                 );
               })}
               {liveStreams.map((s) => (
@@ -1229,6 +1327,17 @@ export function ChatPanel() {
               {permissions.map((p) => (
                 <PermissionCard key={p.id} request={p} onReply={(decision) => void reply(p, decision)} />
               ))}
+            </div>
+            <div className="chat-jump-latest">
+              <button
+                className={`btn btn-small ${followBottom ? '' : 'btn-primary'}`}
+                onClick={() => {
+                  setFollowBottom(true);
+                  if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+                }}
+              >
+                <Icon name="arrow-down" /> 最新
+              </button>
             </div>
             <Composer session={active} busy={busy} quote={quote} onClearQuote={() => setQuote(null)} />
             {quote ? (
@@ -1260,14 +1369,6 @@ export function ChatPanel() {
             setHoverTurn(null);
           }}
         >
-          <button
-            className={`icon-btn rail-search ${chatSearchOpen ? 'active' : ''}`}
-            title="搜索会话内容（Ctrl+F）"
-            aria-label="搜索会话内容"
-            onClick={() => setChatSearchOpen((v) => !v)}
-          >
-            <Icon name="search" />
-          </button>
           <div className="turn-bar-list">
             {turns.map((turn, index) => (
               <button
@@ -1282,25 +1383,17 @@ export function ChatPanel() {
             <>
               <div className="turn-card">
                 <div className="turn-card-head">
-                  <button className="icon-btn" title="上一轮" disabled={jumpIndex <= 0} onClick={() => jumpBy(-1)}>
-                    ↑
-                  </button>
                   <span className="turn-counter">
                     {jumpIndex + 1}/{turns.length}
                   </span>
-                  <button
-                    className="icon-btn"
-                    title="下一轮"
-                    disabled={jumpIndex >= turns.length - 1}
-                    onClick={() => jumpBy(1)}
-                  >
-                    ↓
-                  </button>
                   <span className="spacer" />
                   <button
                     className={`icon-btn ${chatSearchOpen ? 'active' : ''}`}
                     title="搜索会话"
-                    onClick={() => setChatSearchOpen((v) => !v)}
+                    onClick={() => {
+                      setChatSearchOpen((v) => !v);
+                      setTurnCardOpen(false);
+                    }}
                   >
                     <Icon name="search" />
                   </button>

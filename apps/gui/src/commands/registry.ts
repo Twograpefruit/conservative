@@ -80,13 +80,13 @@ export const COMMANDS: CommandDef[] = [
   },
   {
     id: 'theme.cycle',
-    title: '切换主题（暗色 → 亮色 → 跟随系统）',
+    title: '切换主题（暗色 ↔ 亮色）',
     scope: 'global',
     defaultKeys: ['Ctrl+Alt+T'],
-    keywords: 'theme dark light system',
+    keywords: 'theme dark light',
     run: () => {
       const app = useApp.getState();
-      const next: ThemeMode = app.themeMode === 'dark' ? 'light' : app.themeMode === 'light' ? 'system' : 'dark';
+      const next: ThemeMode = app.themeMode === 'dark' ? 'light' : 'dark';
       app.setThemeMode(next);
     },
   },

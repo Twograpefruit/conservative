@@ -2623,3 +2623,82 @@ html[data-theme='dark'] .turn-full-tip strong {
   flex: 1;
   min-width: 0;
 }
+.git-pull-branch {
+  max-width: 150px;
+  height: 26px;
+  font-size: 10.5px;
+}
+
+.result-meta {
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 6px 8px;
+}
+.result-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+.result-tools .result-scope {
+  height: 24px;
+  font-size: 10.5px;
+  max-width: 130px;
+  padding: 0 4px;
+}
+.result-tools .result-search {
+  height: 24px;
+  font-size: 11px;
+  width: 130px;
+}
+.result-hits {
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Settings: shortcut rows and service config stack vertically. */
+.keybinding-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 4px 6px;
+  padding: 7px 8px;
+}
+.keybinding-row .keybinding-info {
+  grid-column: 1 / -1;
+}
+.keybinding-row .keybinding-input {
+  width: 100%;
+  min-width: 0;
+}
+.keybinding-row .keybinding-title {
+  white-space: normal;
+}
+.service-blocks {
+  grid-template-columns: 1fr;
+}
+
+/* Turn rail sits inside the message gutter so the message scrollbar stays to
+   the right of the rail and of the hover card. */
+.chat-turn-rail {
+  right: 20px;
+}
+.chat-turn-rail .turn-card {
+  right: calc(100% + 10px);
+}
+.chat-turn-rail .turn-full-tip {
+  right: calc(100% + 302px);
+}
+.chat-search-float.open {
+  right: 56px;
+}
+
+/* Align the workspace switcher with the submenu width below it. */
+.topbar {
+  padding-left: 0;
+}
+.workspace-menu {
+  padding-left: 12px;
+  box-sizing: border-box;
+}
