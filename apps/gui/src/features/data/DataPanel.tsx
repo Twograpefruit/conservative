@@ -4,6 +4,7 @@ import type {
   ConnectionProfile,
   DbMetadata,
   DbQueryResult,
+  DbTableInfo,
   RedisScanResult,
   RedisValue,
 } from '@ocg/protocol';
@@ -82,6 +83,8 @@ export function DataPanel() {
 
   const [metadata, setMetadata] = useState<DbMetadata | null>(null);
   const [table, setTable] = useState<string | null>(null);
+  const [schemaFilter, setSchemaFilter] = useState('');
+  const [collapsedSchemas, setCollapsedSchemas] = useState<Record<string, boolean>>({});
   const [sql, setSql] = useState('SELECT 1 AS ok');
   const [paramsText, setParamsText] = useState('[]');
   const [result, setResult] = useState<DbQueryResult | null>(null);
@@ -145,6 +148,11 @@ export function DataPanel() {
         .catch((err) => setError(err instanceof Error ? err.message : String(err)));
     }
   }, [selectedId, selected?.kind]);
+
+  useEffect(() => {
+    setSchemaFilter('');
+    setCollapsedSchemas({});
+  }, [metadata]);
 
   const saveProfile = async () => {
     if (!form) return;
@@ -269,6 +277,11 @@ export function DataPanel() {
 
   const openTable = (name: string) => {
     setTable(name);
+    const dot = name.indexOf('.');
+    if (dot > 0) {
+      const schema = name.slice(0, dot);
+      setCollapsedSchemas((prev) => ({ ...prev, [schema]: false }));
+    }
     const quoted =
       selected?.kind === 'mysql'
         ? name.split('.').map((part) => `\`${part.replace(/`/g, '``')}\``).join('.')
@@ -384,6 +397,11 @@ export function DataPanel() {
   }, [result]);
 
   useEffect(() => {
+    setResultScrollTop(0);
+    if (resultScroll.current) resultScroll.current.scrollTop = 0;
+  }, [resultSearch, searchField, resultFilter, filterField]);
+
+  useEffect(() => {
     if (!pendingSql || !loaded) return;
     if (!selected) {
       setSql(pendingSql.sql);
@@ -404,6 +422,31 @@ export function DataPanel() {
   }, [pendingSql, selectedId, loaded]);
 
   const tableColumns = table ? metadata?.columns[table] ?? [] : [];
+  const tableGroups = useMemo(() => {
+    const groups: Array<{ schema: string; tables: DbTableInfo[] }> = [];
+    const bySchema = new Map<string, number>();
+    for (const entry of metadata?.tables ?? []) {
+      const dot = entry.name.indexOf('.');
+      const schema = dot > 0 ? entry.name.slice(0, dot) : '';
+      let index = bySchema.get(schema);
+      if (index == null) {
+        index = groups.length;
+        bySchema.set(schema, index);
+        groups.push({ schema, tables: [] });
+      }
+      groups[index].tables.push(entry);
+    }
+    return groups;
+  }, [metadata]);
+  const schemaQuery = schemaFilter.trim().toLowerCase();
+  const visibleGroups = tableGroups
+    .map((group) => ({
+      ...group,
+      tables: schemaQuery
+        ? group.tables.filter((entry) => entry.name.toLowerCase().includes(schemaQuery))
+        : group.tables,
+    }))
+    .filter((group) => group.tables.length > 0);
   const allRows = result?.rows ?? [];
   const matches = (row: unknown[], query: string, field: string): boolean => {
     if (!query.trim()) return true;
@@ -418,7 +461,10 @@ export function DataPanel() {
     : filteredRows.length;
   const displayRows = filteredRows;
   const viewportRows = Math.ceil(resultViewH / ROW_H);
-  const startRow = Math.max(0, Math.floor(resultScrollTop / ROW_H) - 4);
+  const startRow = Math.min(
+    Math.max(0, displayRows.length - 1),
+    Math.max(0, Math.floor(resultScrollTop / ROW_H) - 4),
+  );
   const endRow = Math.min(displayRows.length, startRow + viewportRows + 8);
 
   return (
@@ -494,18 +540,54 @@ export function DataPanel() {
               <div className="db-layout">
                 <aside className="db-schema">
                   <div className="pane-title">表 / 视图</div>
+                  <div className="schema-search">
+                    <input
+                      className="input"
+                      value={schemaFilter}
+                      onChange={(e) => setSchemaFilter(e.target.value)}
+                      placeholder="筛选库或表…"
+                      aria-label="筛选库或表"
+                    />
+                  </div>
                   <div className="schema-list">
-                    {metadata?.tables.length ? null : <div className="empty-hint">无表</div>}
-                    {metadata?.tables.map((t) => (
-                      <button
-                        key={t.name}
-                        className={`schema-item ${table === t.name ? 'active' : ''}`}
-                        onClick={() => openTable(t.name)}
-                      >
-                        <span className="schema-icon">{t.type === 'view' ? '◫' : '▤'}</span>
-                        <span>{t.name}</span>
-                      </button>
-                    ))}
+                    {visibleGroups.length ? null : (
+                      <div className="empty-hint">{schemaQuery ? '没有匹配的表' : '无表'}</div>
+                    )}
+                    {visibleGroups.map((group) => {
+                      const open = schemaQuery ? true : !(collapsedSchemas[group.schema] ?? tableGroups.length > 1);
+                      return (
+                        <div className="schema-group" key={group.schema || '_default'}>
+                          <button
+                            className={`schema-group-head ${open ? 'open' : ''}`}
+                            onClick={() =>
+                              setCollapsedSchemas((prev) => ({ ...prev, [group.schema]: open }))
+                            }
+                            title={`${group.schema || '默认库'} · ${group.tables.length} 个对象`}
+                          >
+                            <span className="schema-caret">▸</span>
+                            <span className="schema-group-name">{group.schema || '默认库'}</span>
+                            <span className="schema-group-count">{group.tables.length}</span>
+                          </button>
+                          {open
+                            ? group.tables.map((entry) => (
+                                <button
+                                  key={entry.name}
+                                  className={`schema-item ${table === entry.name ? 'active' : ''}`}
+                                  onClick={() => openTable(entry.name)}
+                                  title={entry.name}
+                                >
+                                  <span className="schema-icon">{entry.type === 'view' ? '◫' : '▤'}</span>
+                                  <span className="schema-item-name">
+                                    {group.schema && entry.name.startsWith(`${group.schema}.`)
+                                      ? entry.name.slice(group.schema.length + 1)
+                                      : entry.name}
+                                  </span>
+                                </button>
+                              ))
+                            : null}
+                        </div>
+                      );
+                    })}
                   </div>
                   {table && tableColumns.length ? (
                     <div className="schema-columns">
@@ -646,6 +728,13 @@ export function DataPanel() {
                                 </tr>
                               </thead>
                               <tbody>
+                                {displayRows.length === 0 ? (
+                                  <tr>
+                                    <td className="result-empty" colSpan={result.columns.length + 1}>
+                                      没有匹配的行，清空搜索或过滤条件后重试
+                                    </td>
+                                  </tr>
+                                ) : null}
                                 {startRow > 0 ? (
                                   <tr style={{ height: startRow * ROW_H }}>
                                     <td colSpan={result.columns.length + 1} />

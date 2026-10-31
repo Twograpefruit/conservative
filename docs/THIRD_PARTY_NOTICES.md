@@ -36,12 +36,6 @@ SOFTWARE.
 
 ## Apple Human Interface Guidelines
 
-The design reference under `docs/apple-design-skill-main/` contains text from Apple's public
-Human Interface Guidelines. It belongs to Apple Inc.; this project is not affiliated with or
-endorsed by Apple.
-
-## Skills For Designers and Engineers
-
-The earlier design reference (`docs/skills-main/`) was provided by Emil Kowalski under the MIT
-License. The folder was superseded by the Apple design reference; the principles informed the
-current motion and focus-state tokens.
+The interface follows Apple's public Human Interface Guidelines for layout, typography, color,
+accessibility and motion. The guideline guidance belongs to Apple Inc.; this project is not
+affiliated with or endorsed by Apple. No Apple material is bundled with the application.

@@ -1092,7 +1092,7 @@ main "$@"
 | OC-002 | OpenCode v2 插件 | PASS（列出 90 个插件、检查更新、按插件更新） |
 | UI-021 | 快捷键布局 | PASS（命令/ID/scope/输入/清除的网格布局，冲突提示与重置） |
 | DESIGN-001 | 基于 skills 的视觉刷新 | PASS（新 topbar、按钮按压、focus ring、popover 动效、tabular numbers、reduced motion） |
-| DOC-001 | README / 归属 | PASS（重写 README，标注 Emil Kowalski skills MIT 与 docs/skills-main/LICENSE） |
+| DOC-001 | README / 归属 | PASS（README 与 THIRD_PARTY_NOTICES 标注 OpenChamber Remix sprite MIT；旧设计参考目录已移除） |
 
 
 ---
@@ -1165,8 +1165,8 @@ main "$@"
 | SET-001 | 设置子菜单 | PASS（通知/快捷键/外观/诊断/服务/状态，内容区不再使用卡片） |
 | SET-002 | 服务配置分块 | PASS（配置 / API / 插件三块） |
 | SET-003 | 语言切换 | PASS（中文/English/custom JSON；导航与设置标题即时切换） |
-| ICON-001 | 图标资源 | PASS（duihua/bianji/sousuo/git/shezhi 使用 docs/icon 资源，CSS mask 着色） |
-| STYLE-003 | DESIGN.md v3 | PASS（token、圆角、控件分级、glass 限制、终端高对比、双模式与响应式） |
+| ICON-001 | 图标资源 | PASS（导航/文件树/操作按钮使用 OpenChamber Remix sprite，CSS currentColor 着色） |
+| STYLE-003 | 设计系统 v3 | PASS（styles-design.css token、圆角、控件分级、双模式与响应式） |
 
 ---
 
@@ -1189,3 +1189,19 @@ main "$@"
 | UI-049 | 终端/数据新建 | PASS（仅“＋”图标；空状态不再放置新建按钮） |
 | DATA-006 | 结果搜索/过滤 | PASS（搜索与过滤各带字段选择，支持全局或单字段；显示命中数与过滤后行数） |
 | ICON-002 | 图标统一 | PASS（导航/文件树/操作按钮使用 OpenChamber Remix sprite，285 symbols） |
+
+---
+
+## 7.25 2026-10-31 顶栏 / 数据分组 / 设置细节
+
+| 编号 | 用例 | 结果 |
+| ---- | ---- | ---- |
+| UI-050 | 主题与通知靠右 | PASS（`.toolbar-trailing` 使用 `margin-left:auto`，末项右边缘与窗口右内边距对齐） |
+| UI-051 | 状态点提示 | PASS（事件流/上游两个状态点悬停显示提示气泡，保持原生 title 兜底） |
+| UI-052 | 轮次卡片悬停连续性 | PASS（卡片与横条 1px 重叠，无间距；从横条移入卡片不丢失悬停） |
+| DATA-007 | 数据库分组折叠 | PASS（按 schema 分组，组头显示对象数；多库默认收起，组内表名省略 schema 前缀） |
+| DATA-008 | 库/表筛选 | PASS（筛选框同时匹配 schema 与表名，过滤时自动展开命中分组） |
+| DATA-009 | 结果搜索/过滤 | PASS（滚动后应用搜索会重置滚动位置；无匹配时显示空提示；实测 500 行搜索命中 3 行） |
+| SET-006 | 快捷键外框 | PASS（`.keybinding-list` 无边框、无内边距、无圆角） |
+| SET-007 | 服务 JSON 高度 | PASS（配置 / API / 插件三个 textarea 实测高度 220px） |
+| DOC-002 | 文档删除同步 | PASS（docs/icon、docs/apple-design-skill-main、docs/design.md 等删除随提交进入仓库） |

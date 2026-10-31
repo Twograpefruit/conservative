@@ -1336,7 +1336,7 @@ export function ChatPanel() {
                   if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
                 }}
               >
-                <Icon name="arrow-down" /> 最新
+                <Icon name="arrow-down" /> 
               </button>
             </div>
             <Composer session={active} busy={busy} quote={quote} onClearQuote={() => setQuote(null)} />

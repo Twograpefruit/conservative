@@ -234,18 +234,12 @@ Icons come from the Remix Icon sprite distributed by **OpenChamber** (MIT). See
 [`docs/THIRD_PARTY_NOTICES.md`](docs/THIRD_PARTY_NOTICES.md) for the full notice. The OpenChamber
 reference checkout is gitignored under `docs/openchamber-main/`.
 
-- **Apple Design Skill** by [dickwu](https://github.com/dickwu/apple-design-skill), a review skill
-  built on 123 Apple HIG pages. The reference copy lives under
-  `docs/apple-design-skill-main/`. Consulted pages include `references/hig/layout.md`,
-  `sidebars.md`, `toolbars.md`, `typography.md`, `color.md`, `accessibility.md`, `motion.md`,
-  and `designing-for-macos.md`.
-  The guideline text belongs to **Apple Inc.**, is reproduced from Apple's public Human Interface
-  Guidelines, and this project is not affiliated with or endorsed by Apple.
-
-These references are kept for design guidance only; no skill code is executed at runtime.
+The interface also follows Apple's public Human Interface Guidelines for layout, sidebars,
+toolbars, typography, color, accessibility, motion, and macOS conventions. The guideline text
+belongs to **Apple Inc.**, and this project is not affiliated with or endorsed by Apple.
 
 ## License
 
 Application code in this repository is provided for the project owner. Third-party dependencies retain
-their respective licenses. The Apple HIG text under `docs/apple-design-skill-main/` belongs to
-Apple Inc. and is included for design reference only.
+their respective licenses. Apple HIG guidance is referenced for design purposes only; no Apple
+material is bundled with the application.

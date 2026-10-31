@@ -212,11 +212,18 @@ export function App() {
           ))}
         </nav>
         <div className="sidebar-foot">
-          <span className={`conn-dot ${connected ? 'ok' : 'bad'}`} role="img" aria-label={connected ? '事件流已连接' : '事件流断开'} title={connected ? '事件流已连接' : lastError ?? '事件流断开'} />
+          <span
+            className={`conn-dot ${connected ? 'ok' : 'bad'}`}
+            role="img"
+            aria-label={connected ? '事件流已连接' : '事件流断开'}
+            data-tip={connected ? '事件流已连接' : lastError ?? '事件流断开'}
+            title={connected ? '事件流已连接' : lastError ?? '事件流断开'}
+          />
           <span
             className={`conn-dot ${upstreamOk ? 'ok' : 'bad'}`}
             role="img"
             aria-label={upstreamOk ? `opencode ${health?.upstream.version ?? ''} 已连接` : '上游离线'}
+            data-tip={upstreamOk ? `opencode ${health?.upstream.version ?? ''} 已连接` : health?.upstream.error ?? '上游离线'}
             title={upstreamOk ? `opencode ${health?.upstream.version ?? ''}` : health?.upstream.error ?? '上游离线'}
           />
           <span className="sidebar-version">{health ? `v${health.bff.version}` : ''}</span>
