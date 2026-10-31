@@ -26,11 +26,12 @@ BFF (Node 20+, Fastify, single process)
   highlighted code blocks).
 - Copy, quote and branch actions on every message; branch uses opencode's native session fork
   (`POST /api/session/{id}/fork`).
-- Image attachments from the file picker or clipboard, plus an Emoji picker.
+- Image attachments from the file picker or clipboard; Emoji is entered directly with the system IME.
 - **Conversations**: streaming assistant messages with rich Markdown; the message list stays
-  pinned to the end of the newest reply unless you deliberately scroll up. A right-side turn rail
-  shows one bar per user/assistant round with a hover preview and click-to-jump; search is
-  integrated into the same rail.
+  pinned to the end of the newest reply unless you deliberately scroll up. The right-side turn rail
+  shows one bar per user/assistant round; hovering opens a centered card with the round list,
+  jump controls, count and search, and hovering a row shows the complete text.
+- Copy on an assistant message copies its real text parts, not rendered Markdown or tool JSON.
 - Per-session draft persistence (text, images, `@` file references) across session switches,
   view changes, crashes and page reloads.
 - In-conversation search with snippets, jump targets, result retention and search history.
@@ -86,14 +87,17 @@ BFF (Node 20+, Fastify, single process)
 
 ### Settings
 
+- Left submenu: Notifications / Shortcuts / Appearance / Diagnostics / Services / Status, with
+  plain sections instead of stacked cards.
 - “外观与字体”: independent UI scale (50–250%) and text scale (60–300%), direct numeric inputs,
-  local/system/custom font loading, reset, and theme (dark/light/system).
+  separate code font/size, local/system/custom font loading, language switch
+  (Chinese/English/custom JSON), reset, and theme (dark/light/system).
 - Adaptive layout above 150% text size: controls grow and wrap instead of clipping borders.
 - Workspace configuration lives in the top-bar workspace menu (switch, add via native folder
   picker, remove).
 - Capability probe with one-click install (`node-pty`, `pyright`, Git) and live progress.
-- OpenCode v2 configuration editor: reads/writes the real `opencode.json`, lists plugins, checks
-  and applies plugin updates, and exposes providers/other APIs/MCP/agents as JSON.
+- Services editor: reads/writes the real `opencode.json` in three distinct blocks — configuration,
+  API/providers, and plugins (list, update, JSON).
 - Keybinding editor with per-command clearing, conflict detection and reset.
 
 ## Quick start (Windows)

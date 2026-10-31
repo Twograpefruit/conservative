@@ -153,6 +153,18 @@ h3,
   text-align: left;
   transition: background-color 130ms ease, color 130ms ease;
 }
+.nav-png-icon {
+  flex: 0 0 17px;
+  width: 17px;
+  height: 17px;
+  background: currentColor;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+}
 .side-nav-item svg {
   flex: 0 0 17px;
   color: var(--fg-dim);
@@ -836,4 +848,115 @@ input[type='checkbox'] {
   .toolbar-title {
     display: none;
   }
+}
+
+/* align message column and composer column */
+.chat-main .messages {
+  padding-left: 18px;
+  padding-right: 18px;
+}
+.chat-main .composer {
+  padding-left: 18px;
+  padding-right: 18px;
+}
+.chat-main .msg,
+.chat-main .composer-box {
+  max-width: 920px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.msg.assistant .msg-body {
+  max-width: none;
+}
+.turn-card {
+  right: 42px;
+}
+.turn-full-tip {
+  right: 354px;
+}
+
+/* settings: left submenu, plain sections instead of cards */
+.settings-layout {
+  display: flex;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+.settings-nav {
+  width: 178px;
+  flex: 0 0 178px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 8px;
+  border-right: 1px solid var(--line);
+  background: var(--bg-2);
+  overflow-y: auto;
+}
+.settings-nav button {
+  text-align: left;
+  min-height: 30px;
+  padding: 0 9px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg);
+  font-size: 12px;
+  font-weight: 500;
+}
+.settings-nav button:hover {
+  background: var(--bg-3);
+}
+.settings-nav button.active {
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-2));
+  color: var(--accent-2);
+}
+.settings-content {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  max-width: 980px;
+  margin: 0;
+  padding: 18px;
+  overflow-y: auto;
+}
+.settings-content .settings-card {
+  display: none;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  max-width: 900px;
+}
+.settings-content.sec-notifications .notify-settings,
+.settings-content.sec-shortcuts .shortcuts-settings,
+.settings-content.sec-appearance .appearance-settings,
+.settings-content.sec-diagnostics .editor-settings,
+.settings-content.sec-services .oc-config,
+.settings-content.sec-status .logs-settings {
+  display: block;
+}
+.settings-content .settings-card h3 {
+  margin-bottom: 14px;
+  font-size: 15px;
+}
+.settings-content .settings-break {
+  display: none;
+}
+.settings-content .settings-card + .settings-card {
+  margin-top: 16px;
+}
+@media (max-width: 900px) {
+  .settings-nav {
+    width: 140px;
+    flex-basis: 140px;
+  }
+}
+
+.turn-card {
+  right: 42px;
+}
+.turn-full-tip {
+  right: 354px;
 }

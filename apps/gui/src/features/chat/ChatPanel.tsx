@@ -83,7 +83,7 @@ function MessageMeta({
   onBranch: (messageID: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
-  const text = messageText(message);
+  const text = copyText(message);
   return (
     <div className="msg-actions">
       <button
@@ -140,6 +140,20 @@ function messageText(message: MessageInfo): string {
     if (part.state?.error) chunks.push(part.state.error);
   }
   return chunks.join('\n');
+}
+
+function copyText(message: MessageInfo): string {
+  const anyMsg = message as {
+    type?: string;
+    text?: string;
+    content?: Array<{ type?: string; text?: string }>;
+  };
+  if (anyMsg.type === 'user') return anyMsg.text ?? '';
+  return (anyMsg.content ?? [])
+    .filter((part) => part.type === 'text' && typeof part.text === 'string')
+    .map((part) => part.text)
+    .join('\n\n')
+    .trim();
 }
 
 function snippet(text: string, query: string): string {
@@ -734,6 +748,8 @@ export function ChatPanel() {
     }
   });
   const [followBottom, setFollowBottom] = useState(true);
+  const [turnCardOpen, setTurnCardOpen] = useState(false);
+  const [hoverTurn, setHoverTurn] = useState<number | null>(null);
   const archiveGroups = useApp((s) => s.archiveGroups);
   const setArchiveGroup = useApp((s) => s.setArchiveGroup);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -978,11 +994,8 @@ export function ChatPanel() {
             >
               ▤
             </button>
-            <button className="icon-btn" title="刷新" onClick={() => void refresh(false)}>
-              ↻
-            </button>
-            <button className="btn btn-small btn-primary" onClick={() => void create()}>
-              + 新建
+            <button className="icon-btn" title="新建会话" aria-label="新建会话" onClick={() => void create()}>
+              ＋
             </button>
           </div>
         </div>
@@ -1062,23 +1075,6 @@ export function ChatPanel() {
                 </div>
               </div>
               <div className="chat-tools">
-                <button
-                  className="icon-btn"
-                  title="上一轮对话（Alt+↑）"
-                  disabled={turns.length === 0 || jumpIndex <= 0}
-                  onClick={() => jumpBy(-1)}
-                >
-                  ↑
-                </button>
-                <button
-                  className="icon-btn"
-                  title="下一轮对话（Alt+↓）"
-                  disabled={turns.length === 0 || jumpIndex >= turns.length - 1}
-                  onClick={() => jumpBy(1)}
-                >
-                  ↓
-                </button>
-                <span className="chat-jump-count">{turns.length ? `${jumpIndex + 1}/${turns.length}` : ''}</span>
                 <button
                   className="icon-btn"
                   title="回到最新"
@@ -1254,7 +1250,15 @@ export function ChatPanel() {
         )}
       </section>
       {active ? (
-        <aside className="chat-turn-rail" aria-label="对话轮次导航">
+        <aside
+          className="chat-turn-rail"
+          aria-label="对话轮次导航"
+          onMouseEnter={() => setTurnCardOpen(true)}
+          onMouseLeave={() => {
+            setTurnCardOpen(false);
+            setHoverTurn(null);
+          }}
+        >
           <button
             className={`icon-btn rail-search ${chatSearchOpen ? 'active' : ''}`}
             title="搜索会话内容（Ctrl+F）"
@@ -1269,17 +1273,60 @@ export function ChatPanel() {
                 key={turn.id}
                 className={`turn-bar ${activeTurn === index ? 'active' : ''}`}
                 onClick={() => jumpToTurn(index)}
-                onMouseEnter={() => setActiveTurn(index)}
                 aria-label={`第 ${index + 1} 轮对话`}
-              >
-                <span className="turn-tooltip">
-                  <strong>第 {index + 1} 轮</strong>
-                  <span>{turn.preview.slice(0, 240) || '（空消息）'}</span>
-                </span>
-              </button>
+              />
             ))}
           </div>
-          <span className="turn-counter">{turns.length ? `${activeTurn + 1}/${turns.length}` : ''}</span>
+          {turnCardOpen && turns.length ? (
+            <>
+              <div className="turn-card">
+                <div className="turn-card-head">
+                  <button className="icon-btn" title="上一轮" disabled={jumpIndex <= 0} onClick={() => jumpBy(-1)}>
+                    ↑
+                  </button>
+                  <span className="turn-counter">
+                    {jumpIndex + 1}/{turns.length}
+                  </span>
+                  <button
+                    className="icon-btn"
+                    title="下一轮"
+                    disabled={jumpIndex >= turns.length - 1}
+                    onClick={() => jumpBy(1)}
+                  >
+                    ↓
+                  </button>
+                  <span className="spacer" />
+                  <button
+                    className={`icon-btn ${chatSearchOpen ? 'active' : ''}`}
+                    title="搜索会话"
+                    onClick={() => setChatSearchOpen((v) => !v)}
+                  >
+                    ⌕
+                  </button>
+                </div>
+                <div className="turn-card-list">
+                  {turns.map((turn, index) => (
+                    <button
+                      key={turn.id}
+                      className={`turn-card-item ${activeTurn === index ? 'active' : ''}`}
+                      onClick={() => jumpToTurn(index)}
+                      onMouseEnter={() => setHoverTurn(index)}
+                      onMouseLeave={() => setHoverTurn(null)}
+                    >
+                      <span className="turn-card-text">{turn.preview.split('\n')[0] || '（空消息）'}</span>
+                      <span className="turn-card-index">{index + 1}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {hoverTurn !== null && turns[hoverTurn] ? (
+                <div className="turn-full-tip">
+                  <strong>第 {hoverTurn + 1} 轮 · 完整内容</strong>
+                  <div>{turns[hoverTurn].preview || '（空消息）'}</div>
+                </div>
+              ) : null}
+            </>
+          ) : null}
         </aside>
       ) : null}
       {archiveTarget ? (

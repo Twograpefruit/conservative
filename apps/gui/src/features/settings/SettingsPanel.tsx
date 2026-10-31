@@ -4,6 +4,7 @@ import { api } from '../../api/client.js';
 import { useApp } from '../../store/appStore.js';
 import { useNotify, type NotificationSource } from '../notify/notificationStore.js';
 import { COMMANDS, bindingConflicts, getBindings, resetBindings, setBinding } from '../../commands/registry.js';
+import { useT } from '../../lib/i18n.js';
 
 const CAP_INSTALL: Record<string, { action: string; label: string }> = {
   pty: { action: 'node-pty', label: '重建 node-pty' },
@@ -36,16 +37,21 @@ export function SettingsPanel() {
   const setCodeFontFamily = useApp((s) => s.setCodeFontFamily);
   const codeFontSize = useApp((s) => s.codeFontSize);
   const setCodeFontSize = useApp((s) => s.setCodeFontSize);
+  const locale = useApp((s) => s.locale);
+  const customLocale = useApp((s) => s.customLocale);
+  const setLocale = useApp((s) => s.setLocale);
   const resetAppearance = useApp((s) => s.resetAppearance);
   const themeMode = useApp((s) => s.themeMode);
   const setThemeMode = useApp((s) => s.setThemeMode);
   const notify = useApp((s) => s.notify);
+  const t = useT();
   const notifySettings = useNotify((s) => s.settings);
   const setNotifySettings = useNotify((s) => s.setSettings);
   const requestNative = useNotify((s) => s.requestNative);
   const [logs, setLogs] = useState<string[]>([]);
   const [lintEnabled, setLintEnabled] = useState(true);
   const [refreshBusy, setRefreshBusy] = useState(false);
+  const [section, setSection] = useState<'notifications' | 'shortcuts' | 'appearance' | 'diagnostics' | 'services' | 'status'>('notifications');
   const [bindings, setBindings] = useState<Record<string, string[]>>(() => getBindings());
   const [conflicts, setConflicts] = useState(() => bindingConflicts());
   const [fontOptions, setFontOptions] = useState<string[]>(['Cascadia Code', 'Consolas', 'Microsoft YaHei', 'Segoe UI', 'SimSun', 'KaiTi']);
@@ -58,6 +64,7 @@ export function SettingsPanel() {
   const [ocBusy, setOcBusy] = useState(false);
   const [ocPlugins, setOcPlugins] = useState<Array<{ id: string; source?: { type?: string; target?: string; path?: string }; state?: { status?: string; error?: string } }>>([]);
   const fontFile = useRef<HTMLInputElement | null>(null);
+  const localeFile = useRef<HTMLInputElement | null>(null);
 
   const loadFontFile = async (file: File) => {
     setFontBusy(true);
@@ -244,9 +251,29 @@ export function SettingsPanel() {
 
   return (
     <div className="settings-layout">
-      <div className="settings-grid">
+      <aside className="settings-nav">
+        {(
+          [
+            ['notifications', 'settings.notifications', '通知'],
+            ['shortcuts', 'settings.shortcuts', '快捷键'],
+            ['appearance', 'settings.nav.appearance', '外观'],
+            ['diagnostics', 'settings.nav.diagnostics', '诊断'],
+            ['services', 'settings.nav.services', '服务'],
+            ['status', 'settings.nav.status', '状态'],
+          ] as Array<[typeof section, string, string]>
+        ).map(([id, key, label]) => (
+          <button
+            key={id}
+            className={section === id ? 'active' : ''}
+            onClick={() => setSection(id)}
+          >
+            {t(key, label)}
+          </button>
+        ))}
+      </aside>
+      <div className={`settings-grid settings-content sec-${section}`}>
         <section className="settings-card notify-settings">
-          <h3>通知</h3>
+          <h3>{t('settings.notifications')}</h3>
           <div className="settings-group-title">通道</div>
           <div className="switch-grid">
             <label className="switch-row">
@@ -356,7 +383,7 @@ export function SettingsPanel() {
         </section>
 
         <section className="settings-card shortcuts-settings">
-          <h3>快捷键</h3>
+          <h3>{t('settings.shortcuts')}</h3>
           <div className="keybinding-list">
             {COMMANDS.map((cmd) => (
               <div className="keybinding-row" key={cmd.id}>
@@ -419,7 +446,7 @@ export function SettingsPanel() {
         <div className="settings-break break-one" />
 
         <section className="settings-card editor-settings">
-          <h3>环境诊断</h3>
+          <h3>{t('settings.diagnostics')}</h3>
           <label className="row">
             <input type="checkbox" checked={lintEnabled} onChange={(e) => void saveLint(e.target.checked)} /> 保存后运行
             pyright / ruff
@@ -433,7 +460,7 @@ export function SettingsPanel() {
             <span>符号链接/长路径</span>
             <span>由 WindowsLocalHost 统一处理</span>
           </div>
-          <div className="settings-group-title">能力与依赖</div>
+          <div className="settings-group-title">依赖</div>
           <div className="caps">
             {caps
               ? Object.entries(caps).map(([k, v]) => (
@@ -499,7 +526,7 @@ export function SettingsPanel() {
         </section>
 
         <section className="settings-card settings-wide oc-config">
-          <h3>服务配置</h3>
+          <h3>{t('settings.services')}</h3>
           <div className="oc-config-head">
             <span className="muted small">{ocConfigPath || '未找到 opencode.json 配置文档'}</span>
             <span className="spacer" />
@@ -581,10 +608,10 @@ export function SettingsPanel() {
         </section>
 
         <section className="settings-card appearance-settings">
-          <h3>外观与字体</h3>
+          <h3>{t('settings.appearance')}</h3>
           <div className="appearance-row">
             <div className="appearance-label">
-              <strong>界面大小</strong>
+              <strong>{t('settings.uiScale')}</strong>
               <small>整体布局，50–250%</small>
             </div>
             <div className="appearance-control">
@@ -622,7 +649,7 @@ export function SettingsPanel() {
 
           <div className="appearance-row">
             <div className="appearance-label">
-              <strong>文字大小</strong>
+              <strong>{t('settings.textScale')}</strong>
               <small>正文/编辑器/终端，60–300%</small>
             </div>
             <div className="appearance-control">
@@ -660,7 +687,7 @@ export function SettingsPanel() {
 
           <div className="appearance-row">
             <div className="appearance-label">
-              <strong>字体</strong>
+              <strong>{t('settings.font')}</strong>
               <small>界面与正文优先字体</small>
             </div>
             <div className="appearance-control font-control">
@@ -678,7 +705,7 @@ export function SettingsPanel() {
                 ))}
               </select>
               <button className="btn btn-small" onClick={() => void loadLocalFonts()} disabled={fontBusy}>
-                {fontBusy ? '加载中…' : '加载本机字体'}
+                {fontBusy ? '加载中…' : t('settings.loadFonts')}
               </button>
               <input
                 ref={fontFile}
@@ -692,7 +719,7 @@ export function SettingsPanel() {
                 }}
               />
               <button className="btn btn-small" onClick={() => fontFile.current?.click()} disabled={fontBusy}>
-                加载字体文件
+                {t('settings.loadFontFile')}
               </button>
               <button
                 className="btn btn-small"
@@ -701,14 +728,14 @@ export function SettingsPanel() {
                   notify('已重置界面、文字与字体为默认');
                 }}
               >
-                重置默认
+                {t('settings.reset')}
               </button>
             </div>
           </div>
 
           <div className="appearance-row">
             <div className="appearance-label">
-              <strong>代码字体</strong>
+              <strong>{t('settings.codeFont')}</strong>
               <small>只影响编辑器与代码块</small>
             </div>
             <div className="appearance-control font-control">
@@ -742,7 +769,43 @@ export function SettingsPanel() {
 
           <div className="appearance-row">
             <div className="appearance-label">
-              <strong>主题</strong>
+              <strong>{t('settings.language')}</strong>
+              <small>界面语言，可加载其他语言 JSON</small>
+            </div>
+            <div className="appearance-control">
+              <select className="input grow" value={locale} onChange={(e) => setLocale(e.target.value)}>
+                <option value="zh">中文</option>
+                <option value="en">English</option>
+                {customLocale ? <option value="custom">{customLocale.label}</option> : null}
+              </select>
+              <button className="btn btn-small" onClick={() => localeFile.current?.click()}>
+                {t('settings.loadLanguage')}
+              </button>
+              <input
+                ref={localeFile}
+                type="file"
+                accept=".json"
+                hidden
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = '';
+                  if (!file) return;
+                  try {
+                    const data = JSON.parse(await file.text()) as { label?: string; strings?: Record<string, string> };
+                    if (!data.strings || typeof data.strings !== 'object') throw new Error('缺少 strings 对象');
+                    setLocale('custom', { label: data.label || file.name.replace(/\.json$/i, ''), strings: data.strings });
+                    notify('语言文件已加载');
+                  } catch (err) {
+                    notify(err instanceof Error ? err.message : '语言文件格式错误', 'error');
+                  }
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="appearance-row">
+            <div className="appearance-label">
+              <strong>{t('settings.theme')}</strong>
               <small>暗色 / 亮色 / 跟随系统</small>
             </div>
             <div className="segmented">
@@ -763,7 +826,7 @@ export function SettingsPanel() {
         <div className="settings-break break-two" />
 
         <section className="settings-card settings-wide logs-settings">
-          <h3>运行状态与上游日志</h3>
+          <h3>{t('settings.status')}</h3>
           <div className="kv">
             <span>BFF</span>
             <span className={health?.ok ? 'text-ok' : 'text-error'}>

@@ -26,6 +26,8 @@ interface AppState {
   fontFamily: string;
   codeFontFamily: string;
   codeFontSize: number;
+  locale: string;
+  customLocale: { label: string; strings: Record<string, string> } | null;
   themeMode: ThemeMode;
   resolvedTheme: 'dark' | 'light';
   archiveGroups: Record<string, string>;
@@ -36,6 +38,7 @@ interface AppState {
   setFontFamily: (family: string) => void;
   setCodeFontFamily: (family: string) => void;
   setCodeFontSize: (size: number) => void;
+  setLocale: (locale: string, custom?: { label: string; strings: Record<string, string> } | null) => void;
   resetAppearance: () => void;
   setThemeMode: (mode: ThemeMode) => void;
   setArchiveGroup: (sessionID: string, group: string | null) => void;
@@ -62,6 +65,17 @@ const savedFont = localStorage.getItem('ocg.fontFamily') ?? '';
 const savedCodeFont = localStorage.getItem('ocg.codeFontFamily') ?? "'Cascadia Code', Consolas, monospace";
 const savedCodeSize = Number(localStorage.getItem('ocg.codeFontSize') ?? '13');
 const initialCodeSize = Number.isFinite(savedCodeSize) ? Math.min(24, Math.max(10, savedCodeSize)) : 13;
+const savedLocale = localStorage.getItem('ocg.locale') || 'zh';
+const savedCustomLocale = (() => {
+  try {
+    return JSON.parse(localStorage.getItem('ocg.customLocale') ?? 'null') as {
+      label: string;
+      strings: Record<string, string>;
+    } | null;
+  } catch {
+    return null;
+  }
+})();
 const savedGroups = (() => {
   try {
     const raw = JSON.parse(localStorage.getItem('ocg.archiveGroups') ?? '{}') as Record<string, string>;
@@ -90,6 +104,8 @@ export const useApp = create<AppState>((set, get) => ({
   fontFamily: savedFont,
   codeFontFamily: savedCodeFont,
   codeFontSize: initialCodeSize,
+  locale: savedLocale,
+  customLocale: savedCustomLocale,
   themeMode: savedTheme,
   resolvedTheme: resolve(savedTheme),
   archiveGroups: savedGroups,
@@ -130,6 +146,15 @@ export const useApp = create<AppState>((set, get) => ({
     const clamped = Math.min(24, Math.max(10, Math.round(size)));
     localStorage.setItem('ocg.codeFontSize', String(clamped));
     set({ codeFontSize: clamped });
+  },
+
+  setLocale: (locale, custom) => {
+    localStorage.setItem('ocg.locale', locale);
+    if (custom !== undefined) {
+      if (custom) localStorage.setItem('ocg.customLocale', JSON.stringify(custom));
+      else localStorage.removeItem('ocg.customLocale');
+    }
+    set({ locale, ...(custom !== undefined ? { customLocale: custom } : {}) });
   },
 
   resetAppearance: () => {

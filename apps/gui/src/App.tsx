@@ -13,7 +13,7 @@ import { COMMANDS, comboFromEvent, getBindings, runCommand } from './commands/re
 import { NotificationCenter } from './features/notify/NotificationCenter.js';
 import type { AppNotification } from './features/notify/notificationStore.js';
 import { WorkspaceMenu } from './components/WorkspaceMenu.js';
-import { AppearanceMenu } from './components/AppearanceMenu.js';
+import { useT } from './lib/i18n.js';
 
 const NAV: Array<{ id: View; label: string; icon: string }> = [
   { id: 'chat', label: '对话', icon: 'chat' },
@@ -25,7 +25,27 @@ const NAV: Array<{ id: View; label: string; icon: string }> = [
   { id: 'settings', label: '设置', icon: 'settings' },
 ];
 
+const PNG_ICONS: Record<string, string> = {
+  chat: '/icons/duihua.png',
+  editor: '/icons/bianji.png',
+  search: '/icons/sousuo.png',
+  git: '/icons/git.png',
+  settings: '/icons/shezhi.png',
+};
+
 function NavGlyph({ name }: { name: string }) {
+  const png = PNG_ICONS[name];
+  if (png) {
+    return (
+      <span
+        className="nav-png-icon"
+        style={{
+          maskImage: `url(${png})`,
+          WebkitMaskImage: `url(${png})`,
+        }}
+      />
+    );
+  }
   const common = {
     width: 18,
     height: 18,
@@ -118,6 +138,7 @@ export function App() {
   );
   const init = useChat((s) => s.init);
   const stop = useChat((s) => s.stop);
+  const t = useT();
 
   const workspace = workspaces.find((w) => w.id === workspaceID);
   const upstreamOk = health?.upstream.healthy;
@@ -261,11 +282,11 @@ export function App() {
               key={item.id}
               className={`side-nav-item nav-${item.id} ${view === item.id ? 'active' : ''}`}
               onClick={() => setView(item.id)}
-              title={`${item.label} (Alt+${i + 1})`}
-              data-label={item.label}
+              title={`${t(`nav.${item.id}`)} (Alt+${i + 1})`}
+              data-label={t(`nav.${item.id}`)}
             >
               <NavGlyph name={item.icon} />
-              <span className="side-nav-label">{item.label}</span>
+              <span className="side-nav-label">{t(`nav.${item.id}`)}</span>
             </button>
           ))}
         </nav>
@@ -286,10 +307,9 @@ export function App() {
           <div className="toolbar-leading">
             <WorkspaceMenu />
             <span className="toolbar-divider" />
-            <h1 className="toolbar-title">{NAV.find((n) => n.id === view)?.label}</h1>
+            <h1 className="toolbar-title">{t(`nav.${view}`)}</h1>
           </div>
           <div className="toolbar-trailing">
-            <AppearanceMenu />
             <button
               className="icon-btn toolbar-symbol"
               aria-label={`切换主题，当前${themeMode === 'system' ? '跟随系统' : themeMode === 'dark' ? '暗色' : '亮色'}`}

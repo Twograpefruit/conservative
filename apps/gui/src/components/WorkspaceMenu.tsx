@@ -93,17 +93,6 @@ export function WorkspaceMenu() {
         <span className="workspace-current">{active ? active.label : '选择项目'}</span>
         <span className="workspace-caret">▾</span>
       </button>
-      <button
-        className="icon-btn workspace-add-trigger"
-        title="添加项目（打开文件夹选择器）"
-        onClick={() => {
-          setOpen(true);
-          void browse();
-        }}
-        disabled={busy}
-      >
-        ＋
-      </button>
       {open ? (
         <div className="workspace-popover">
           <div className="workspace-popover-head">
