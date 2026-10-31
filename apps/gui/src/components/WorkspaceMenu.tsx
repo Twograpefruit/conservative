@@ -85,10 +85,12 @@ export function WorkspaceMenu() {
 
   return (
     <div className="workspace-menu" ref={wrap}>
-      <button className="workspace-select workspace-trigger" onClick={() => setOpen((v) => !v)} title="工作区配置">
-        <span className="workspace-current">
-          {active ? `${active.label} — ${active.path}` : '选择工作区'}
-        </span>
+      <button
+        className="workspace-select workspace-trigger"
+        onClick={() => setOpen((v) => !v)}
+        title={active ? `${active.label}\n${active.path}` : '选择工作区'}
+      >
+        <span className="workspace-current">{active ? active.label : '选择项目'}</span>
         <span className="workspace-caret">▾</span>
       </button>
       <button
@@ -145,7 +147,6 @@ export function WorkspaceMenu() {
               添加
             </button>
           </div>
-          <div className="muted small">工作区配置已合并到顶栏，设置页不再单独维护。</div>
         </div>
       ) : null}
     </div>

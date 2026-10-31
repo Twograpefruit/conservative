@@ -70,7 +70,7 @@ const savedGroups = (() => {
     return {};
   }
 })();
-const savedTheme = (localStorage.getItem('ocg.theme') as ThemeMode) || 'dark';
+const savedTheme = (localStorage.getItem('ocg.theme') as ThemeMode) || 'light';
 const systemDark = typeof window !== 'undefined' ? window.matchMedia('(prefers-color-scheme: dark)').matches : true;
 const resolve = (mode: ThemeMode): 'dark' | 'light' =>
   mode === 'system' ? (systemDark ? 'dark' : 'light') : mode;

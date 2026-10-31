@@ -52,7 +52,9 @@ export function SettingsPanel() {
   const [fontBusy, setFontBusy] = useState(false);
   const [installJob, setInstallJob] = useState<InstallJob | null>(null);
   const [ocConfigPath, setOcConfigPath] = useState('');
-  const [ocJson, setOcJson] = useState('');
+  const [coreJson, setCoreJson] = useState('');
+  const [apiJson, setApiJson] = useState('{}');
+  const [pluginJson, setPluginJson] = useState('{}');
   const [ocBusy, setOcBusy] = useState(false);
   const [ocPlugins, setOcPlugins] = useState<Array<{ id: string; source?: { type?: string; target?: string; path?: string }; state?: { status?: string; error?: string } }>>([]);
   const fontFile = useRef<HTMLInputElement | null>(null);
@@ -112,7 +114,11 @@ export function SettingsPanel() {
       const cfg = await api<{ document: { path?: string; info: Record<string, unknown> } | null }>('/api/opencode/config');
       if (cfg.document) {
         setOcConfigPath(cfg.document.path ?? '');
-        setOcJson(JSON.stringify(cfg.document.info ?? {}, null, 2));
+        const info = cfg.document.info ?? {};
+        const { providers, plugins, ...rest } = info as Record<string, unknown>;
+        setCoreJson(JSON.stringify(rest, null, 2));
+        setApiJson(JSON.stringify(providers ?? {}, null, 2));
+        setPluginJson(JSON.stringify(plugins ?? {}, null, 2));
       }
       const plugins = await api<{ data: typeof ocPlugins }>('/api/oc/api/plugin');
       setOcPlugins(plugins.data ?? []);
@@ -124,15 +130,28 @@ export function SettingsPanel() {
   const saveOpenCode = async () => {
     setOcBusy(true);
     try {
-      const info = JSON.parse(ocJson) as Record<string, unknown>;
+      const core = JSON.parse(coreJson) as Record<string, unknown>;
+      const providers = JSON.parse(apiJson) as unknown;
+      const plugins = JSON.parse(pluginJson) as unknown;
+      const info: Record<string, unknown> = { ...core };
+      if (providers && (Array.isArray(providers) ? providers.length : Object.keys(providers as object).length)) {
+        info.providers = providers;
+      } else {
+        delete info.providers;
+      }
+      if (plugins && (Array.isArray(plugins) ? plugins.length : Object.keys(plugins as object).length)) {
+        info.plugins = plugins;
+      } else {
+        delete info.plugins;
+      }
       await api('/api/opencode/config', {
         method: 'PUT',
         body: JSON.stringify({ info }),
         headers: { 'content-type': 'application/json' },
       });
-      notify('OpenCode 配置已保存；重启 opencode 后生效');
+      notify('服务配置已保存；重启 opencode 后生效');
     } catch (err) {
-      notify(err instanceof Error ? err.message : 'OpenCode 配置保存失败（JSON 格式？）', 'error');
+      notify(err instanceof Error ? err.message : '服务配置保存失败（JSON 格式？）', 'error');
     } finally {
       setOcBusy(false);
     }
@@ -397,35 +416,24 @@ export function SettingsPanel() {
           </div>
         </section>
 
-        <section className="settings-card runtime-settings">
-          <h3>运行状态</h3>
-          <div className="kv">
-            <span>BFF</span>
-            <span className={health?.ok ? 'text-ok' : 'text-error'}>
-              {health ? `v${health.bff.version} · pid ${health.bff.pid} · ${health.bff.port}` : '不可用'}
-            </span>
-            <span>运行时长</span>
-            <span>{health ? `${health.bff.uptime}s` : '-'}</span>
-            <span>内存 (RSS)</span>
-            <span>{mem.toFixed(1)} MB</span>
-            <span>上游</span>
-            <span className={health?.upstream.healthy ? 'text-ok' : 'text-error'}>
-              {health?.upstream.healthy
-                ? `${health.upstream.mode} · v${health.upstream.version ?? '?'} · ${health.upstream.url}`
-                : health?.upstream.error ?? '离线'}
-            </span>
-            <span>事件流</span>
-            <span>
-              {health?.eventBus.connected ? '已连接' : '断开'} · 缓冲 {health?.eventBus.buffered ?? 0} · seq {health?.eventBus.lastSeq ?? 0} · 客户端{' '}
-              {health?.eventBus.clients ?? 0}
-            </span>
-          </div>
-        </section>
-
         <div className="settings-break break-one" />
 
-        <section className="settings-card capabilities-settings">
-          <h3>能力探测（M0/T0.6）</h3>
+        <section className="settings-card editor-settings">
+          <h3>环境诊断</h3>
+          <label className="row">
+            <input type="checkbox" checked={lintEnabled} onChange={(e) => void saveLint(e.target.checked)} /> 保存后运行
+            pyright / ruff
+          </label>
+          <div className="muted small">
+            诊断来自本机 pyright CLI；opencode 侧 LSP 诊断不经过本 GUI。GB18030 文件可在编辑器工具栏转换为 UTF-8，替换时跳过非 UTF-8 文件。
+          </div>
+          <div className="kv">
+            <span>上游模式</span>
+            <span>{health?.upstream.mode ?? '-'}</span>
+            <span>符号链接/长路径</span>
+            <span>由 WindowsLocalHost 统一处理</span>
+          </div>
+          <div className="settings-group-title">能力与依赖</div>
           <div className="caps">
             {caps
               ? Object.entries(caps).map(([k, v]) => (
@@ -491,7 +499,7 @@ export function SettingsPanel() {
         </section>
 
         <section className="settings-card settings-wide oc-config">
-          <h3>OpenCode v2 配置 / 其他 API / 插件</h3>
+          <h3>服务配置</h3>
           <div className="oc-config-head">
             <span className="muted small">{ocConfigPath || '未找到 opencode.json 配置文档'}</span>
             <span className="spacer" />
@@ -502,38 +510,72 @@ export function SettingsPanel() {
               检查插件更新
             </button>
             <button className="btn btn-small btn-primary" onClick={() => void saveOpenCode()} disabled={ocBusy || !ocConfigPath}>
-              保存到 opencode.json
+              保存全部
             </button>
           </div>
-          <div className="oc-plugins">
-            {ocPlugins.length === 0 ? <span className="muted small">没有已加载插件</span> : null}
-            {ocPlugins.map((plugin) => {
-              const outdated = (plugin.source as { outdated?: boolean })?.outdated;
-              return (
-                <div className="oc-plugin" key={plugin.id}>
-                  <span className="chip">{plugin.source?.type ?? 'plugin'}</span>
-                  <span className="oc-plugin-name">{plugin.id}</span>
-                  <span className={plugin.state?.status === 'active' ? 'text-ok' : 'text-error'}>
-                    {plugin.state?.status ?? 'unknown'}
-                  </span>
-                  {outdated ? (
-                    <button className="btn btn-tiny btn-primary" onClick={() => void pluginAction('update', plugin.id)} disabled={ocBusy}>
-                      更新
-                    </button>
-                  ) : null}
-                </div>
-              );
-            })}
+          <div className="service-blocks">
+            <section className="service-block">
+              <div className="service-block-head">
+                <h4>配置</h4>
+                <span className="muted small">shell、模型、MCP、agents、权限</span>
+              </div>
+              <textarea
+                className="input oc-json"
+                spellCheck={false}
+                value={coreJson}
+                onChange={(e) => setCoreJson(e.target.value)}
+                placeholder='{ "shell": "...", "mcp": {...} }'
+              />
+            </section>
+            <section className="service-block">
+              <div className="service-block-head">
+                <h4>API</h4>
+                <span className="muted small">providers 与自定义 API 地址 / 凭据引用</span>
+              </div>
+              <textarea
+                className="input oc-json"
+                spellCheck={false}
+                value={apiJson}
+                onChange={(e) => setApiJson(e.target.value)}
+                placeholder='{ "providers": { "name": { "settings": { "baseURL": "..." } } } }'
+              />
+            </section>
+            <section className="service-block">
+              <div className="service-block-head">
+                <h4>插件</h4>
+                <span className="muted small">已加载 {ocPlugins.length} 个 · 可直接编辑 plugins 配置</span>
+              </div>
+              <div className="oc-plugins">
+                {ocPlugins.length === 0 ? <span className="muted small">没有已加载插件</span> : null}
+                {ocPlugins.map((plugin) => {
+                  const outdated = (plugin.source as { outdated?: boolean })?.outdated;
+                  return (
+                    <div className="oc-plugin" key={plugin.id}>
+                      <span className="chip">{plugin.source?.type ?? 'plugin'}</span>
+                      <span className="oc-plugin-name">{plugin.id}</span>
+                      <span className={plugin.state?.status === 'active' ? 'text-ok' : 'text-error'}>
+                        {plugin.state?.status ?? 'unknown'}
+                      </span>
+                      {outdated ? (
+                        <button className="btn btn-tiny btn-primary" onClick={() => void pluginAction('update', plugin.id)} disabled={ocBusy}>
+                          更新
+                        </button>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+              <textarea
+                className="input oc-json"
+                spellCheck={false}
+                value={pluginJson}
+                onChange={(e) => setPluginJson(e.target.value)}
+                placeholder='{ "plugins": [...], "plugin": [...] }'
+              />
+            </section>
           </div>
-          <textarea
-            className="input oc-json"
-            spellCheck={false}
-            value={ocJson}
-            onChange={(e) => setOcJson(e.target.value)}
-            placeholder='{ "providers": [...], "plugins": [...] }'
-          />
           <div className="muted small">
-            这里直接读写 opencode v2 的配置文件（含 providers、其他 API、MCP、插件、agents 等）。保存前自动备份为
+            三个区块分别写入同一份 opencode.json；保存前自动备份为
             <code> .ocg-backup-时间戳</code>，重启 opencode 后生效。
           </div>
         </section>
@@ -718,29 +760,32 @@ export function SettingsPanel() {
           <div className="muted small">界面大小实时跟随窗口可视区域缩放；文字放大时控件会自动换行和增高，不再挤压边框。</div>
         </section>
 
-        <section className="settings-card editor-settings">
-          <h3>编辑与诊断</h3>
-          <label className="row">
-            <input type="checkbox" checked={lintEnabled} onChange={(e) => void saveLint(e.target.checked)} /> 保存后运行
-            pyright / ruff
-          </label>
-          <div className="muted small">
-            诊断来自本机 pyright CLI；opencode 侧 LSP 诊断不经过本 GUI。GB18030 文件可在编辑器工具栏转换为 UTF-8，替换时跳过非 UTF-8 文件。
-          </div>
-          <div className="kv">
-            <span>上游模式</span>
-            <span>{health?.upstream.mode ?? '-'}</span>
-            <span>能力（终端）</span>
-            <span>{caps?.pty ? '上游 PTY 可用' : '不可用'}</span>
-            <span>符号链接/长路径</span>
-            <span>由 WindowsLocalHost 统一处理</span>
-          </div>
-        </section>
-
         <div className="settings-break break-two" />
 
         <section className="settings-card settings-wide logs-settings">
-          <h3>上游日志（末尾）</h3>
+          <h3>运行状态与上游日志</h3>
+          <div className="kv">
+            <span>BFF</span>
+            <span className={health?.ok ? 'text-ok' : 'text-error'}>
+              {health ? `v${health.bff.version} · pid ${health.bff.pid} · ${health.bff.port}` : '不可用'}
+            </span>
+            <span>运行时长</span>
+            <span>{health ? `${health.bff.uptime}s` : '-'}</span>
+            <span>内存 (RSS)</span>
+            <span>{mem.toFixed(1)} MB</span>
+            <span>上游</span>
+            <span className={health?.upstream.healthy ? 'text-ok' : 'text-error'}>
+              {health?.upstream.healthy
+                ? `${health.upstream.mode} · v${health.upstream.version ?? '?'} · ${health.upstream.url}`
+                : health?.upstream.error ?? '离线'}
+            </span>
+            <span>事件流</span>
+            <span>
+              {health?.eventBus.connected ? '已连接' : '断开'} · 缓冲 {health?.eventBus.buffered ?? 0} · seq {health?.eventBus.lastSeq ?? 0} · 客户端{' '}
+              {health?.eventBus.clients ?? 0}
+            </span>
+          </div>
+          <div className="settings-group-title">日志</div>
           <pre className="log-tail">{logs.join('\n') || '暂无日志'}</pre>
         </section>
       </div>

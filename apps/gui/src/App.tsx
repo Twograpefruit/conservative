@@ -241,17 +241,19 @@ export function App() {
   return (
     <div className="app">
       <aside className={`app-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
-        <div className="sidebar-brand" title={sidebarCollapsed ? 'Conser' : undefined}>
-          <span className="sidebar-brand-mark">C</span>
-          <span className="sidebar-brand-name">Conser</span>
+        <div className="sidebar-brand" title={sidebarCollapsed ? '展开导航' : '收起导航'}>
           <button
-            className="icon-btn sidebar-collapse"
+            className="sidebar-logo"
             onClick={() => setSidebarCollapsed((v) => !v)}
             title={sidebarCollapsed ? '展开导航' : '收起导航'}
             aria-label={sidebarCollapsed ? '展开导航' : '收起导航'}
           >
-            {sidebarCollapsed ? '›' : '‹'}
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M16.8 7.7a6.2 6.2 0 1 0 0 8.6" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" />
+              <circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" strokeWidth="1.2" opacity="0.35" />
+            </svg>
           </button>
+          <span className="sidebar-brand-name">Conser</span>
         </div>
         <nav className="side-nav">
           {NAV.map((item, i) => (

@@ -28,7 +28,9 @@ BFF (Node 20+, Fastify, single process)
   (`POST /api/session/{id}/fork`).
 - Image attachments from the file picker or clipboard, plus an Emoji picker.
 - **Conversations**: streaming assistant messages with rich Markdown; the message list stays
-  pinned to the newest reply unless you deliberately scroll up.
+  pinned to the end of the newest reply unless you deliberately scroll up. A right-side turn rail
+  shows one bar per user/assistant round with a hover preview and click-to-jump; search is
+  integrated into the same rail.
 - Per-session draft persistence (text, images, `@` file references) across session switches,
   view changes, crashes and page reloads.
 - In-conversation search with snippets, jump targets, result retention and search history.
@@ -42,12 +44,13 @@ BFF (Node 20+, Fastify, single process)
   open a clickable list; a floating “← 返回” button and `Mod+Alt+←` jump back. Hovering an
   identifier shows its signature and a collapsed doc-comment panel.
 - **Dedicated code typography**: code font family and size (10–24 px) are configured separately
-  from the UI/text scale and apply to the editor and rendered code blocks.
+  from the UI/text scale and apply to the editor and rendered code blocks; the same code-size
+  control is available from the toolbar Aa popover.
 - File tree with large folder icons and context menus (open, rename, delete, refresh).
 - Right-click a folder to search inside it, right-click a file to search only that file, or select
   two files (A/B) to open a side-by-side comparison.
-- **Collapsible navigation**: the app sidebar collapses to a logo rail; icon tooltips show the
-  destination name on hover. The collapsed state is persisted.
+- **Collapsible navigation**: clicking the Conser logo collapses the sidebar to a logo rail;
+  icon tooltips show the destination name on hover. The collapsed state is persisted.
 - UTF-8 ↔ GB18030 encoding conversion directly from the editor toolbar.
 - Markdown source/split/preview and SQL dialect highlighting + `sql-formatter`.
 

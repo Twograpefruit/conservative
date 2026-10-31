@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="dark" />
     <script>
       try {
-        var m = localStorage.getItem('ocg.theme') || 'dark';
+        var m = localStorage.getItem('ocg.theme') || 'light';
         var d = m === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : m;
         document.documentElement.dataset.theme = d;
       } catch (e) {}

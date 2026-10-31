@@ -1641,6 +1641,8 @@
   display: flex;
   align-items: center;
   gap: 3px;
+  width: 270px;
+  flex: 0 0 270px;
 }
 .workspace-add-trigger {
   font-size: 15px;
@@ -1648,8 +1650,10 @@
 .workspace-trigger {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 6px;
-  max-width: 380px;
+  width: 100%;
+  max-width: none;
   min-width: 0;
   color: var(--fg);
   font: inherit;
@@ -2028,16 +2032,13 @@
   order: 6;
 }
 .break-two {
-  order: 7;
-}
-.capabilities-settings {
   order: 8;
 }
 .oc-config {
-  order: 9;
+  order: 7;
 }
 .logs-settings {
-  order: 10;
+  order: 9;
 }
 .settings-card {
   overflow-wrap: anywhere;
@@ -2292,4 +2293,168 @@ html[data-text-scale='xxl'] .segmented button {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* chat turn rail and search overlay */
+.chat-layout {
+  position: relative;
+}
+.chat-turn-rail {
+  width: 46px;
+  flex: 0 0 46px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 4px;
+  border-left: 1px solid var(--line);
+  background: var(--bg-2);
+  min-height: 0;
+}
+.rail-search {
+  flex: 0 0 auto;
+}
+.turn-bar-list {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 0;
+}
+.turn-bar {
+  position: relative;
+  width: 18px;
+  height: 3px;
+  padding: 0;
+  border: none;
+  border-radius: 2px;
+  background: #d1d5db;
+  transition: height 120ms ease, background-color 120ms ease, box-shadow 120ms ease;
+}
+.turn-bar:hover {
+  background: #9ca3af;
+}
+.turn-bar.active {
+  height: 5px;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.turn-tooltip {
+  display: none;
+  position: absolute;
+  right: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 230px;
+  max-height: 150px;
+  overflow: hidden;
+  padding: 7px 9px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(16, 24, 40, 0.12);
+  color: var(--fg);
+  text-align: left;
+  z-index: 40;
+  pointer-events: none;
+}
+.turn-tooltip strong {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+.turn-tooltip span {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--fg-dim);
+  white-space: pre-wrap;
+}
+.turn-bar:hover .turn-tooltip,
+.turn-bar:focus-visible .turn-tooltip {
+  display: block;
+}
+.turn-counter {
+  font-size: 9px;
+  color: var(--fg-dim);
+  font-variant-numeric: tabular-nums;
+}
+.chat-search-float {
+  display: none;
+}
+.chat-search-float.open {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  top: 58px;
+  right: 54px;
+  width: 380px;
+  max-width: calc(100% - 70px);
+  z-index: 30;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(16, 24, 40, 0.12);
+  overflow: hidden;
+}
+.chat-search-float .chat-searchbar,
+.chat-search-float .chat-search-history {
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-2);
+}
+.chat-search-float .chat-searchbar {
+  position: static;
+  padding: 8px 10px;
+}
+.chat-search-float .chat-search-history {
+  position: static;
+  padding: 6px 10px;
+}
+.chat-search-float .chat-search-results {
+  position: static;
+  max-height: 300px;
+  overflow: auto;
+  background: var(--bg-2);
+  border: none;
+  padding: 4px;
+}
+
+/* service configuration blocks */
+.service-blocks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.service-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-3);
+}
+.service-block-head {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.service-block-head h4 {
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--fg);
+}
+.oc-json {
+  min-height: 170px;
 }

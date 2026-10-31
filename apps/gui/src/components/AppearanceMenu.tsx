@@ -6,6 +6,8 @@ export function AppearanceMenu() {
   const setUiScale = useApp((s) => s.setUiScale);
   const textScale = useApp((s) => s.textScale);
   const setTextScale = useApp((s) => s.setTextScale);
+  const codeFontSize = useApp((s) => s.codeFontSize);
+  const setCodeFontSize = useApp((s) => s.setCodeFontSize);
   const resetAppearance = useApp((s) => s.resetAppearance);
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLDivElement | null>(null);
@@ -72,6 +74,27 @@ export function AppearanceMenu() {
               onChange={(e) => Number.isFinite(Number(e.target.value)) && setTextScale(Number(e.target.value) / 100)}
             />
             <span className="unit">%</span>
+          </label>
+          <label className="appearance-field">
+            <span>代码大小</span>
+            <input
+              type="range"
+              min={10}
+              max={24}
+              step={1}
+              value={codeFontSize}
+              onChange={(e) => setCodeFontSize(Number(e.target.value))}
+            />
+            <input
+              className="input scale-number"
+              type="number"
+              min={10}
+              max={24}
+              step={1}
+              value={codeFontSize}
+              onChange={(e) => Number.isFinite(Number(e.target.value)) && setCodeFontSize(Number(e.target.value))}
+            />
+            <span className="unit">px</span>
           </label>
           <div className="muted small">更完整的字体与主题设置在“设置 → 外观与字体”。</div>
         </div>

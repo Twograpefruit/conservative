@@ -154,6 +154,29 @@ export function TerminalPanel() {
   );
 }
 
+const TERMINAL_THEME = {
+  background: '#0f1115',
+  foreground: '#e5e7eb',
+  cursor: '#9bb7e0',
+  selectionBackground: '#334155',
+  black: '#1f2430',
+  red: '#e09a9a',
+  green: '#9ac7aa',
+  yellow: '#dfc08a',
+  blue: '#9bb7e0',
+  magenta: '#c3aed6',
+  cyan: '#9ccfcf',
+  white: '#f3f4f6',
+  brightBlack: '#6b7280',
+  brightRed: '#efb0b0',
+  brightGreen: '#b4dcc2',
+  brightYellow: '#ecd2a5',
+  brightBlue: '#b8cdea',
+  brightMagenta: '#d8c6e8',
+  brightCyan: '#b5e0e0',
+  brightWhite: '#ffffff',
+};
+
 function TerminalTab({
   tab,
   visible,
@@ -179,9 +202,7 @@ function TerminalTab({
       scrollback: 5000,
       fontSize: Math.max(9, Math.round(12 * textScale)),
       fontFamily: "'Cascadia Code', Consolas, monospace",
-      theme: theme === 'light'
-        ? { background: '#f6f7fb', foreground: '#1f2937', cursor: '#2563eb', selectionBackground: '#bfdbfe' }
-        : { background: '#111318', foreground: '#d7dae0', cursor: '#7aa2f7' },
+      theme: TERMINAL_THEME,
       convertEol: false,
       allowProposedApi: true,
     });
@@ -258,10 +279,7 @@ function TerminalTab({
 
   useEffect(() => {
     if (!termRef.current) return;
-    termRef.current.options.theme =
-      theme === 'light'
-        ? { background: '#f6f7fb', foreground: '#1f2937', cursor: '#2563eb', selectionBackground: '#bfdbfe' }
-        : { background: '#111318', foreground: '#d7dae0', cursor: '#7aa2f7' };
+    termRef.current.options.theme = TERMINAL_THEME;
     termRef.current.options.fontSize = Math.max(9, Math.round(12 * textScale));
   }, [theme, textScale]);
 

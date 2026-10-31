@@ -149,6 +149,35 @@ function snippet(text: string, query: string): string {
   return `${start > 0 ? '…' : ''}${text.slice(start, idx + query.length + 60).replace(/\s+/g, ' ')}${idx + query.length + 60 < text.length ? '…' : ''}`;
 }
 
+interface Turn {
+  id: string;
+  user: MessageInfo;
+  replies: MessageInfo[];
+  preview: string;
+}
+
+function buildTurns(messages: MessageInfo[]): Turn[] {
+  const turns: Turn[] = [];
+  let current: Turn | null = null;
+  for (const message of messages) {
+    const type = (message as { type?: string }).type;
+    if (type === 'user') {
+      current = {
+        id: message.id,
+        user: message,
+        replies: [],
+        preview: ((message as { text?: string }).text ?? '').replace(/\s+/g, ' ').trim(),
+      };
+      turns.push(current);
+    } else if (type === 'assistant' && current) {
+      current.replies.push(message);
+      const text = messageText(message).replace(/\s+/g, ' ').trim();
+      if (text) current.preview = `${current.preview}\n${text}`;
+    }
+  }
+  return turns;
+}
+
 function SessionItem({
   session,
   active,
@@ -285,12 +314,6 @@ function UserBlock({
 const AssistantBlockMemo = React.memo(AssistantBlock);
 const UserBlockMemo = React.memo(UserBlock);
 
-const EMOJIS = [
-  '😀', '😄', '😂', '😊', '😍', '😎', '🤔', '😅', '😢', '😭', '😡', '🥳',
-  '👍', '👎', '👌', '🙏', '👏', '💪', '👀', '❤️', '🔥', '✨', '🎉', '✅',
-  '❌', '⚠️', '💡', '🚀', '📌', '📝', '🔍', '⚙️', '💻', '🧪', '🐛', '📦',
-];
-
 function toFileUri(workspacePath: string | undefined, rel: string): string {
   if (!workspacePath) return rel;
   const abs = `${workspacePath.replace(/[\\/]+$/, '')}\\${rel.replace(/^[\\/]+/, '')}`.replace(/\\/g, '/');
@@ -328,7 +351,6 @@ function Composer({
   const [mentionFiles, setMentionFiles] = useState<FileEntry[]>([]);
   const [mentionIndex, setMentionIndex] = useState(0);
   const [selectedFiles, setSelectedFiles] = useState<FileEntry[]>([]);
-  const [emojiOpen, setEmojiOpen] = useState(false);
   const workspacePath = workspaces.find((w) => w.id === workspaceID)?.path;
   const draftKey = session ? `ocg.draft.${session.id}` : '';
   const draftLoaded = useRef(false);
@@ -433,18 +455,6 @@ function Composer({
     const at = text.lastIndexOf(token);
     if (at >= 0) setText(text.slice(0, at) + text.slice(at + token.length));
     setSelectedFiles((prev) => prev.filter((f) => f.path !== path));
-  };
-
-  const insertEmoji = (emoji: string) => {
-    const start = ta.current?.selectionStart ?? text.length;
-    const end = ta.current?.selectionEnd ?? start;
-    const next = text.slice(0, start) + emoji + text.slice(end);
-    setText(next);
-    setEmojiOpen(false);
-    requestAnimationFrame(() => {
-      ta.current?.focus();
-      ta.current?.setSelectionRange(start + emoji.length, start + emoji.length);
-    });
   };
 
   const uploadImages = async (files: File[]) => {
@@ -572,15 +582,6 @@ function Composer({
             ))}
           </div>
         ) : null}
-        {emojiOpen ? (
-          <div className="emoji-popup">
-            {EMOJIS.map((emoji) => (
-              <button key={emoji} type="button" onClick={() => insertEmoji(emoji)}>
-                {emoji}
-              </button>
-            ))}
-          </div>
-        ) : null}
         <textarea
           ref={ta}
           value={text}
@@ -660,14 +661,6 @@ function Composer({
                 </option>
               ))}
             </select>
-            <button
-              className="btn btn-small"
-              type="button"
-              onClick={() => setEmojiOpen((v) => !v)}
-              title="插入 Emoji"
-            >
-              😊
-            </button>
             <input
               ref={fileInput}
               type="file"
@@ -758,6 +751,8 @@ export function ChatPanel() {
   );
   const active = activeID ? state.sessions[activeID] ?? archivedSessions.find((s) => s.id === activeID) ?? null : null;
   const messages = useMemo(() => selectVisibleMessages(state, activeID), [state, activeID]);
+  const turns = useMemo(() => buildTurns(messages), [messages]);
+  const [activeTurn, setActiveTurn] = useState(0);
   const streams = useMemo(
     () => Object.values(state.streams).filter((s) => s.sessionID === activeID),
     [state.streams, activeID],
@@ -798,7 +793,16 @@ export function ChatPanel() {
   useEffect(() => {
     if (!followBottom) return;
     const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (!el) return;
+    const started = performance.now();
+    let raf = 0;
+    const toEnd = () => {
+      el.scrollTop = el.scrollHeight;
+      bottomRef.current?.scrollIntoView({ block: 'end' });
+      if (performance.now() - started < 500) raf = requestAnimationFrame(toEnd);
+    };
+    toEnd();
+    return () => cancelAnimationFrame(raf);
   }, [activeID, followBottom, messages.length, liveStreams.length, state.streams]);
 
   useEffect(() => {
@@ -814,8 +818,6 @@ export function ChatPanel() {
     setFlashID(id);
     if (flashTimer.current) clearTimeout(flashTimer.current);
     flashTimer.current = setTimeout(() => setFlashID(null), 1400);
-    const idx = messages.findIndex((m) => m.id === id);
-    if (idx >= 0) setJumpIndex(idx);
   };
 
   const rememberChatSearch = (value: string) => {
@@ -826,20 +828,29 @@ export function ChatPanel() {
     localStorage.setItem('ocg.chatSearchHistory', JSON.stringify(next));
   };
 
+  const jumpToTurn = (index: number) => {
+    const turn = turns[index];
+    if (!turn) return;
+    setJumpIndex(index);
+    setActiveTurn(index);
+    jumpToId(turn.id);
+  };
+
   const jumpBy = (delta: number) => {
-    if (messages.length === 0) return;
-    const next = Math.min(messages.length - 1, Math.max(0, jumpIndex + delta));
-    setJumpIndex(next);
-    jumpToId(messages[next].id);
+    if (turns.length === 0) return;
+    const next = Math.min(turns.length - 1, Math.max(0, jumpIndex + delta));
+    jumpToTurn(next);
   };
 
   useEffect(() => {
-    if (messages.length === 0) {
+    if (turns.length === 0) {
       setJumpIndex(0);
+      setActiveTurn(0);
       return;
     }
-    setJumpIndex((i) => Math.min(i, messages.length - 1));
-  }, [messages.length]);
+    setJumpIndex((i) => Math.min(i, turns.length - 1));
+    setActiveTurn((i) => Math.min(i, turns.length - 1));
+  }, [turns.length]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -874,6 +885,16 @@ export function ChatPanel() {
     const el = e.currentTarget;
     const near = el.scrollHeight - el.scrollTop - el.clientHeight < 72;
     if (near !== followBottom) setFollowBottom(near);
+    const top = el.getBoundingClientRect().top + 90;
+    let next = 0;
+    turns.forEach((turn, index) => {
+      const anchor = anchors.current.get(turn.id);
+      if (anchor && anchor.getBoundingClientRect().top <= top) next = index;
+    });
+    if (next !== activeTurn) {
+      setActiveTurn(next);
+      setJumpIndex(next);
+    }
   };
 
   const statusText =
@@ -1043,28 +1064,21 @@ export function ChatPanel() {
               <div className="chat-tools">
                 <button
                   className="icon-btn"
-                  title="上一条消息（Alt+↑）"
-                  disabled={messages.length === 0 || jumpIndex <= 0}
+                  title="上一轮对话（Alt+↑）"
+                  disabled={turns.length === 0 || jumpIndex <= 0}
                   onClick={() => jumpBy(-1)}
                 >
                   ↑
                 </button>
                 <button
                   className="icon-btn"
-                  title="下一条消息（Alt+↓）"
-                  disabled={messages.length === 0 || jumpIndex >= messages.length - 1}
+                  title="下一轮对话（Alt+↓）"
+                  disabled={turns.length === 0 || jumpIndex >= turns.length - 1}
                   onClick={() => jumpBy(1)}
                 >
                   ↓
                 </button>
-                <span className="chat-jump-count">{messages.length ? `${jumpIndex + 1}/${messages.length}` : ''}</span>
-                <button
-                  className={`icon-btn ${chatSearchOpen ? 'active' : ''}`}
-                  title="搜索会话内容（Ctrl+F）"
-                  onClick={() => setChatSearchOpen((v) => !v)}
-                >
-                  ⌕
-                </button>
+                <span className="chat-jump-count">{turns.length ? `${jumpIndex + 1}/${turns.length}` : ''}</span>
                 <button
                   className="icon-btn"
                   title="回到最新"
@@ -1083,6 +1097,7 @@ export function ChatPanel() {
               ) : null}
             </div>
 
+            <div className={`chat-search-float ${chatSearchOpen ? 'open' : ''}`}>
             {chatSearchOpen ? (
               <div className="chat-searchbar">
                 <input
@@ -1154,6 +1169,7 @@ export function ChatPanel() {
                 )}
               </div>
             ) : null}
+            </div>
 
             <div className="messages" ref={scrollRef} onScroll={onMessagesScroll}>
               {messages.length === 0 && liveStreams.length === 0 ? (
@@ -1237,6 +1253,35 @@ export function ChatPanel() {
           </div>
         )}
       </section>
+      {active ? (
+        <aside className="chat-turn-rail" aria-label="对话轮次导航">
+          <button
+            className={`icon-btn rail-search ${chatSearchOpen ? 'active' : ''}`}
+            title="搜索会话内容（Ctrl+F）"
+            aria-label="搜索会话内容"
+            onClick={() => setChatSearchOpen((v) => !v)}
+          >
+            ⌕
+          </button>
+          <div className="turn-bar-list">
+            {turns.map((turn, index) => (
+              <button
+                key={turn.id}
+                className={`turn-bar ${activeTurn === index ? 'active' : ''}`}
+                onClick={() => jumpToTurn(index)}
+                onMouseEnter={() => setActiveTurn(index)}
+                aria-label={`第 ${index + 1} 轮对话`}
+              >
+                <span className="turn-tooltip">
+                  <strong>第 {index + 1} 轮</strong>
+                  <span>{turn.preview.slice(0, 240) || '（空消息）'}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+          <span className="turn-counter">{turns.length ? `${activeTurn + 1}/${turns.length}` : ''}</span>
+        </aside>
+      ) : null}
       {archiveTarget ? (
         <div className="format-overlay" onMouseDown={() => setArchiveTarget(null)}>
           <div className="archive-dialog" onMouseDown={(e) => e.stopPropagation()}>
