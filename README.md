@@ -230,6 +230,10 @@ The shell follows Apple's Human Interface Guidelines for a macOS-inspired deskto
 navigation sidebar, a compact toolbar for the current view, generous hit targets, light/dark
 appearance, clear focus states, and restrained motion.
 
+Icons come from the Remix Icon sprite distributed by **OpenChamber** (MIT). See
+[`docs/THIRD_PARTY_NOTICES.md`](docs/THIRD_PARTY_NOTICES.md) for the full notice. The OpenChamber
+reference checkout is gitignored under `docs/openchamber-main/`.
+
 - **Apple Design Skill** by [dickwu](https://github.com/dickwu/apple-design-skill), a review skill
   built on 123 Apple HIG pages. The reference copy lives under
   `docs/apple-design-skill-main/`. Consulted pages include `references/hig/layout.md`,

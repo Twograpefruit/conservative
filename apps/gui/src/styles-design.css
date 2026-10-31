@@ -1,54 +1,53 @@
-/* Conser — Apple-inspired developer UI.
- * References: Apple Human Interface Guidelines (layout, sidebars, toolbars,
- * typography, color, accessibility, motion) via docs/apple-design-skill-main.
- * Goals: restrained light surfaces, readable code/logs, consistent controls,
- * responsive grids, no decorative gradients or glass.
+/* Conser developer UI.
+ * Warm sand / amber palette, control density, icon sprite and interaction
+ * patterns follow OpenChamber (MIT, docs/THIRD_PARTY_NOTICES.md).
+ * Apple HIG guidance informs layout, typography and accessibility.
  */
 
 /* ------------------------------ tokens ---------------------------------- */
 html[data-theme='light'] {
-  --bg: #f3f4f6;
-  --bg-2: #ffffff;
-  --bg-3: #f8f9fb;
-  --bg-4: #eef1f5;
-  --line: #e5e7eb;
-  --line-2: #d5dae1;
-  --fg: #4b5563;
-  --fg-dim: #6b7280;
-  --fg-muted: #9ca3af;
-  --accent: #5b7aa8;
-  --accent-2: #4d6b97;
-  --green: #5f9b7a;
-  --red: #c0696e;
-  --yellow: #bd9457;
-  --purple: #7c80a8;
+  --bg: #f6f2ea;
+  --bg-2: #fdfbf6;
+  --bg-3: #f1ece2;
+  --bg-4: #e9e2d6;
+  --line: #e2d8c8;
+  --line-2: #d5c7b2;
+  --fg: #3b352e;
+  --fg-dim: #6f665b;
+  --fg-muted: #9a8f80;
+  --accent: #d9772e;
+  --accent-2: #c46620;
+  --green: #6f9c76;
+  --red: #c56b62;
+  --yellow: #c38a4a;
+  --purple: #8b7ea8;
   --mono: 'Cascadia Code', Consolas, 'Courier New', monospace;
-  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04);
-  --shadow-pop: 0 10px 28px rgba(16, 24, 40, 0.12);
+  --shadow-card: 0 1px 2px rgba(59, 53, 46, 0.05);
+  --shadow-pop: 0 10px 28px rgba(59, 53, 46, 0.14);
   --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
-  --ring: 0 0 0 2px rgba(91, 122, 168, 0.18);
+  --ring: 0 0 0 2px rgba(217, 119, 46, 0.2);
   color-scheme: light;
 }
 
 html[data-theme='dark'] {
-  --bg: #17181c;
-  --bg-2: #1e2026;
-  --bg-3: #23262d;
-  --bg-4: #2a2e36;
-  --line: #2d3139;
-  --line-2: #3a3f49;
-  --fg: #d2d6dd;
-  --fg-dim: #9299a5;
-  --fg-muted: #6f7682;
-  --accent: #7f9cc7;
-  --accent-2: #6f8dbb;
-  --green: #7fb495;
-  --red: #d68388;
-  --yellow: #d3ae76;
-  --purple: #9a9dc4;
+  --bg: #151313;
+  --bg-2: #1c1b1a;
+  --bg-3: #242220;
+  --bg-4: #2b2926;
+  --line: #393836;
+  --line-2: #4a4743;
+  --fg: #d8d4ca;
+  --fg-dim: #a49c90;
+  --fg-muted: #7a7268;
+  --accent: #edb449;
+  --accent-2: #f0c15e;
+  --green: #8fbf95;
+  --red: #d98678;
+  --yellow: #edb449;
+  --purple: #a99ac6;
   --shadow-card: none;
   --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.45);
-  --ring: 0 0 0 2px rgba(127, 156, 199, 0.24);
+  --ring: 0 0 0 2px rgba(237, 180, 73, 0.24);
   color-scheme: dark;
 }
 
@@ -466,8 +465,8 @@ input[type='checkbox'] {
   scroll-behavior: auto;
 }
 .msg.user .bubble {
-  background: color-mix(in srgb, var(--accent) 8%, var(--bg-2));
-  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--line));
+  background: var(--bg-3);
+  border: 1px solid var(--line);
   border-radius: 10px;
   box-shadow: none;
 }
@@ -959,4 +958,28 @@ input[type='checkbox'] {
 }
 .turn-full-tip {
   right: 354px;
+}
+
+.oc-icon {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 17px;
+  fill: currentColor;
+}
+.side-nav-item .oc-icon {
+  color: var(--fg-dim);
+}
+.side-nav-item.active .oc-icon {
+  color: var(--accent);
+}
+
+.chat-turn-rail .rail-search {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+.chat-turn-rail:hover .rail-search,
+.chat-turn-rail:focus-within .rail-search {
+  opacity: 1;
+  pointer-events: auto;
 }

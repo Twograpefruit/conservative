@@ -5,6 +5,8 @@ import { api, qs } from '../api/client.js';
 import { useApp } from '../store/appStore.js';
 import { useEditor } from '../store/editorStore.js';
 import { ContextMenu, type MenuPosition } from './ContextMenu.js';
+import { Icon } from './icon/Icon.js';
+import type { IconName } from './icon/icons.js';
 import { DiffView } from '../features/diff/DiffView.js';
 
 export function FileTree({ workspaceID, onOpen }: { workspaceID: string | null; onOpen: (path: string) => void }) {
@@ -188,7 +190,7 @@ export function FileTree({ workspaceID, onOpen }: { workspaceID: string | null; 
           <span className="tree-caret">
             {entry.type === 'dir' ? (expanded.has(entry.path) ? '▾' : '▸') : ''}
           </span>
-          <span className="tree-icon">{entry.type === 'dir' ? '📁' : fileIcon(entry.name)}</span>
+          <span className="tree-icon">{entry.type === 'dir' ? <Icon name="folder-6" /> : <Icon name={fileIcon(entry.name)} />}</span>
           <span className="tree-name">{entry.name}</span>
           {loading.has(entry.path) ? <span className="tree-loading">…</span> : null}
         </div>
@@ -260,12 +262,13 @@ export function FileTree({ workspaceID, onOpen }: { workspaceID: string | null; 
   );
 }
 
-function fileIcon(name: string): string {
+function fileIcon(name: string): IconName {
   const ext = name.split('.').pop()?.toLowerCase();
-  if (ext === 'py') return '🐍';
-  if (ext === 'ts' || ext === 'tsx' || ext === 'js' || ext === 'jsx') return '◆';
-  if (ext === 'json') return '{}';
-  if (ext === 'md') return 'M';
-  if (ext === 'css') return '#';
-  return '·';
+  if (['py', 'ts', 'tsx', 'js', 'jsx', 'go', 'rs', 'java', 'c', 'cpp', 'php', 'css', 'html', 'sh', 'ps1'].includes(ext ?? '')) {
+    return 'file-code';
+  }
+  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico'].includes(ext ?? '')) return 'file-image';
+  if (ext === 'json') return 'braces';
+  if (['md', 'txt', 'log', 'yaml', 'yml', 'toml', 'ini', 'sql'].includes(ext ?? '')) return 'file-text';
+  return 'file';
 }

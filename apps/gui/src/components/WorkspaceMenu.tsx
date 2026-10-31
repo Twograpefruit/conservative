@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { WorkspaceInfo } from '@ocg/protocol';
 import { api } from '../api/client.js';
 import { useApp } from '../store/appStore.js';
+import { Icon } from './icon/Icon.js';
 
 export function WorkspaceMenu() {
   const workspaces = useApp((s) => s.workspaces);
@@ -91,7 +92,7 @@ export function WorkspaceMenu() {
         title={active ? `${active.label}\n${active.path}` : '选择工作区'}
       >
         <span className="workspace-current">{active ? active.label : '选择项目'}</span>
-        <span className="workspace-caret">▾</span>
+        <span className="workspace-caret"><Icon name="arrow-down-s" /></span>
       </button>
       {open ? (
         <div className="workspace-popover">
@@ -114,7 +115,7 @@ export function WorkspaceMenu() {
                   <span className="workspace-path">{w.path}</span>
                 </button>
                 <button className="icon-btn" title="移除工作区" onClick={() => void remove(w)} disabled={busy}>
-                  ×
+                  <Icon name="close" />
                 </button>
               </div>
             ))}

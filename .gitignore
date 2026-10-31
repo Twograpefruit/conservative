@@ -14,3 +14,4 @@ config/local.json
 apps/desktop/src-tauri/target/
 artifacts/
 scripts/fixtures/secrets.local.json
+docs/openchamber-main/

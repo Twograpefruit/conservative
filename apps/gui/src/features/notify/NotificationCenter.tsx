@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNotify, type AppNotification } from './notificationStore.js';
+import { Icon } from '../../components/icon/Icon.js';
 
 function timeText(at: number): string {
   const d = new Date(at);
@@ -43,7 +44,7 @@ export function NotificationCenter() {
         title={unread ? `${unread} 条未读通知` : '通知中心'}
         onClick={() => setVisible((v) => !v)}
       >
-        🔔
+        <Icon name="notification-3" />
         {unread ? <span className="notify-badge">{unread > 99 ? '99+' : unread}</span> : null}
       </button>
       {visible ? (

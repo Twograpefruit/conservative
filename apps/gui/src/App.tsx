@@ -14,6 +14,8 @@ import { NotificationCenter } from './features/notify/NotificationCenter.js';
 import type { AppNotification } from './features/notify/notificationStore.js';
 import { WorkspaceMenu } from './components/WorkspaceMenu.js';
 import { useT } from './lib/i18n.js';
+import { Icon } from './components/icon/Icon.js';
+import type { IconName } from './components/icon/icons.js';
 
 const NAV: Array<{ id: View; label: string; icon: string }> = [
   { id: 'chat', label: '对话', icon: 'chat' },
@@ -25,90 +27,18 @@ const NAV: Array<{ id: View; label: string; icon: string }> = [
   { id: 'settings', label: '设置', icon: 'settings' },
 ];
 
-const PNG_ICONS: Record<string, string> = {
-  chat: '/icons/duihua.png',
-  editor: '/icons/bianji.png',
-  search: '/icons/sousuo.png',
-  git: '/icons/git.png',
-  settings: '/icons/shezhi.png',
+const NAV_ICONS: Record<string, IconName> = {
+  chat: 'chat-3',
+  editor: 'code-sslash',
+  search: 'search',
+  git: 'git-branch',
+  terminal: 'terminal-box',
+  data: 'database-2',
+  settings: 'settings-3',
 };
 
 function NavGlyph({ name }: { name: string }) {
-  const png = PNG_ICONS[name];
-  if (png) {
-    return (
-      <span
-        className="nav-png-icon"
-        style={{
-          maskImage: `url(${png})`,
-          WebkitMaskImage: `url(${png})`,
-        }}
-      />
-    );
-  }
-  const common = {
-    width: 18,
-    height: 18,
-    viewBox: '0 0 24 24',
-    fill: 'none',
-    stroke: 'currentColor',
-    strokeWidth: 1.7,
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const,
-    'aria-hidden': true,
-  };
-  switch (name) {
-    case 'chat':
-      return (
-        <svg {...common}>
-          <path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 3.5v-3.5A1.5 1.5 0 0 1 4 14.5Z" />
-        </svg>
-      );
-    case 'editor':
-      return (
-        <svg {...common}>
-          <path d="m9 8-4 4 4 4M15 8l4 4-4 4M13 5l-2 14" />
-        </svg>
-      );
-    case 'search':
-      return (
-        <svg {...common}>
-          <circle cx="10.5" cy="10.5" r="5.5" />
-          <path d="m15 15 4.5 4.5" />
-        </svg>
-      );
-    case 'git':
-      return (
-        <svg {...common}>
-          <circle cx="6" cy="6" r="2" />
-          <circle cx="6" cy="18" r="2" />
-          <circle cx="18" cy="8" r="2" />
-          <path d="M6 8v8M8 6h4a4 4 0 0 1 4 4v0" />
-        </svg>
-      );
-    case 'terminal':
-      return (
-        <svg {...common}>
-          <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
-          <path d="m7 9 3 3-3 3M12.5 15H17" />
-        </svg>
-      );
-    case 'data':
-      return (
-        <svg {...common}>
-          <ellipse cx="12" cy="6" rx="7" ry="2.6" />
-          <path d="M5 6v6c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6V6M5 12v6c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6v-6" />
-        </svg>
-      );
-    default:
-      return (
-        <svg {...common}>
-          <path d="M4 7h10M18 7h2M4 17h2M10 17h10" />
-          <circle cx="16" cy="7" r="2" />
-          <circle cx="8" cy="17" r="2" />
-        </svg>
-      );
-  }
+  return <Icon name={NAV_ICONS[name] ?? 'apps'} />;
 }
 
 export function App() {

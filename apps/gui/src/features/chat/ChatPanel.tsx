@@ -7,6 +7,7 @@ import { Markdown } from '../../components/Markdown.js';
 import { ToolCard } from '../../components/ToolCard.js';
 import { PermissionCard } from '../../components/PermissionCard.js';
 import { ContextMenu, type MenuPosition } from '../../components/ContextMenu.js';
+import { Icon } from '../../components/icon/Icon.js';
 import { useNotify } from '../notify/notificationStore.js';
 import { renderParts } from '../../lib/parts.js';
 
@@ -693,7 +694,7 @@ function Composer({
               disabled={!session || uploading}
               title="选择图片或直接粘贴剪切板图片"
             >
-              {uploading ? '…' : '🖼'}
+              {uploading ? '…' : <Icon name="image" />}
             </button>
           </div>
           {busy ? (
@@ -992,10 +993,10 @@ export function ChatPanel() {
               title={showArchived ? '隐藏归档会话' : '显示归档会话'}
               onClick={() => void setShowArchived(!showArchived)}
             >
-              ▤
+              <Icon name="archive" />
             </button>
             <button className="icon-btn" title="新建会话" aria-label="新建会话" onClick={() => void create()}>
-              ＋
+              <Icon name="add" />
             </button>
           </div>
         </div>
@@ -1083,7 +1084,7 @@ export function ChatPanel() {
                     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
                   }}
                 >
-                  ⇣
+                  <Icon name="arrow-down" />
                 </button>
               </div>
               {runtime?.error ? (
@@ -1265,7 +1266,7 @@ export function ChatPanel() {
             aria-label="搜索会话内容"
             onClick={() => setChatSearchOpen((v) => !v)}
           >
-            ⌕
+            <Icon name="search" />
           </button>
           <div className="turn-bar-list">
             {turns.map((turn, index) => (
@@ -1301,7 +1302,7 @@ export function ChatPanel() {
                     title="搜索会话"
                     onClick={() => setChatSearchOpen((v) => !v)}
                   >
-                    ⌕
+                    <Icon name="search" />
                   </button>
                 </div>
                 <div className="turn-card-list">
