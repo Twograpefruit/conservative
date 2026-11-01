@@ -1205,3 +1205,17 @@ main "$@"
 | SET-006 | 快捷键外框 | PASS（`.keybinding-list` 无边框、无内边距、无圆角） |
 | SET-007 | 服务 JSON 高度 | PASS（配置 / API / 插件三个 textarea 实测高度 220px） |
 | DOC-002 | 文档删除同步 | PASS（docs/icon、docs/apple-design-skill-main、docs/design.md 等删除随提交进入仓库） |
+
+---
+
+## 7.26 2026-11-01 工作区下拉 / 最新按钮 / 表结构 / WSL 上游
+
+| 编号 | 用例 | 结果 |
+| ---- | ---- | ---- |
+| UI-053 | 工作区下拉宽度 | PASS（弹层与触发器同宽 258px，左边缘对齐） |
+| UI-054 | 文件夹选择器 | PASS（`POST /api/system/pick-folder` 带 JSON 空 body，修复 415 Unsupported Media Type） |
+| UI-055 | 最新按钮显隐 | PASS（切换会话后显示；向上滚动保持；滚到最底部隐藏；点击后隐藏） |
+| DATA-010 | 查看表结构 | PASS（选中表后切换“表结构”，显示字段名/类型/可空/主键/默认值与索引） |
+| DATA-011 | 表数据快捷搜索 | PASS（点击表自动载入 500 行；搜索框输入 “Abu” 即时显示 3/500 行，无需再点执行） |
+| SET-008 | 快捷键外层 div | PASS（DOM 中已无 `.keybinding-list`，14 组快捷键直接排列在 section 内） |
+| SET-009 | WSL 上游配置 | PASS（状态页可切换本地托管 / WSL·远程，填写地址与密码后应用并重连） |

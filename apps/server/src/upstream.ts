@@ -95,7 +95,11 @@ export class UpstreamManager {
   private async resolveAttach(): Promise<AttachConfig | null> {
     const url = process.env.OCG_OC_URL ?? this.settings.upstream.url;
     if (!url) return null;
-    const password = process.env.OCG_OC_PASSWORD ?? readServicePassword() ?? '';
+    const password =
+      process.env.OCG_OC_PASSWORD ??
+      this.settings.upstream.password ??
+      readServicePassword() ??
+      '';
     return { url, password };
   }
 
@@ -272,6 +276,28 @@ export class UpstreamManager {
       error: this.error,
       reconnects: this.reconnects,
     };
+  }
+
+  async configure(next: {
+    mode: 'managed' | 'attach';
+    url?: string | null;
+    password?: string | null;
+  }): Promise<void> {
+    await this.stop();
+    this.stopping = false;
+    this.restartAttempts = 0;
+    this.healthy = false;
+    this.error = undefined;
+    this.version = undefined;
+    this.pid = undefined;
+    this.mode = next.mode;
+    const url = (next.url ?? '').trim().replace(/\/$/, '');
+    this.url = next.mode === 'attach' && url ? url : null;
+    if (next.password !== undefined) this.password = next.password ?? '';
+    this.settings.upstream.mode = next.mode;
+    this.settings.upstream.url = this.url;
+    if (next.password !== undefined) this.settings.upstream.password = next.password || null;
+    await this.start();
   }
 
   async stop(): Promise<void> {

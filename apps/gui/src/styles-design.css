@@ -1287,3 +1287,113 @@ textarea.oc-json {
   color: var(--fg-muted);
   text-align: center;
 }
+
+/* Workspace popover matches the trigger width. */
+.workspace-popover {
+  left: 12px;
+  width: calc(100% - 12px);
+}
+
+/* Data: table structure view + prominent result search row. */
+.db-view-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0 6px;
+}
+.db-view-tab {
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--bg-2);
+  color: var(--fg-dim);
+  font-size: 11px;
+  cursor: pointer;
+}
+.db-view-tab.active {
+  background: var(--bg-4);
+  border-color: var(--line-2);
+  color: var(--fg);
+  font-weight: 600;
+}
+.db-view-table {
+  margin-left: auto;
+  font-family: var(--mono);
+}
+.result-tools {
+  margin-left: 0;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+}
+.result-tool-label {
+  color: var(--fg-muted);
+  font-size: 10.5px;
+}
+.result-tool-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--line);
+  margin: 0 2px;
+}
+.table-structure {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px;
+}
+.structure-title {
+  margin: 8px 0 6px;
+  color: var(--fg-dim);
+  font-size: 11px;
+  font-weight: 600;
+}
+.structure-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.structure-table th,
+.structure-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+.structure-table th {
+  position: sticky;
+  top: 0;
+  background: var(--bg-3);
+  color: var(--fg-dim);
+  font-weight: 600;
+}
+.structure-name {
+  font-family: var(--mono);
+  color: var(--accent);
+}
+
+/* Settings status: upstream (local / WSL / remote) configuration. */
+.upstream-config {
+  margin: 8px 0 12px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-2);
+}
+.upstream-mode {
+  margin-bottom: 8px;
+}
+.upstream-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.upstream-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--fg-dim);
+  font-size: 11px;
+}
+.upstream-actions {
+  margin-top: 8px;
+  align-items: center;
+}

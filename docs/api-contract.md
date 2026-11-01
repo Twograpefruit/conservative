@@ -492,3 +492,25 @@
   - 搜索：字段下拉（空为全部字段）+ 关键词，显示命中数。
   - 过滤：字段下拉（空为全部字段）+ 关键词，表格仅渲染过滤后的行，虚拟滚动基于过滤结果。
   - 统计显示 `过滤后行数/总行数`，可一键清除两个条件。
+
+---
+
+## 22. 2026-11-01 增量接口（WSL 上游 / 数据表结构）
+
+### 22.1 上游连接
+
+- `GET /api/system/upstream` → `{mode, url, host, port, passwordSet, status}`。
+- `POST /api/system/upstream` body `{mode:'managed'|'attach', url?, password?}`：
+  - `managed`：停止当前上游并在本机重新启动 opencode。
+  - `attach`：连接到 WSL / 远程 opencode，`url` 必须为 http/https 地址。
+  - 配置写入设置文件；密码留空时保留已保存密码。
+  - 接口会等待健康检查并刷新探测结果，随后返回 `{ok, mode, url, passwordSet, status, probe}`。
+- 设置页“状态 → 上游连接”提供模式切换、地址、密码和“应用并重连”。
+
+### 22.2 工作区与数据
+
+- `POST /api/system/pick-folder`：前端改用 `{}` JSON body，避免 Fastify 415；仍返回 `{path,canceled,code}`。
+- 数据表结果：
+  - 点击表自动执行 `SELECT * ... LIMIT rowLimit`（默认 500），快捷搜索覆盖已载入行。
+  - 结果搜索与过滤共同作用于 `displayRows`，输入即过滤并重置滚动位置。
+  - 新增“表结构”视图，展示字段、类型、可空、主键、默认值和索引。

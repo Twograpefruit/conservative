@@ -79,6 +79,70 @@ export async function registerSystemRoutes(app: FastifyInstance, ctx: AppContext
 
   app.get('/api/settings', async () => ctx.settings.settings);
 
+  app.get('/api/system/upstream', async () => {
+    const settings = ctx.settings.settings.upstream;
+    return {
+      mode: settings.mode,
+      url: settings.url,
+      host: settings.host,
+      port: settings.port,
+      passwordSet: Boolean(settings.password),
+      status: ctx.upstream.status(),
+    };
+  });
+
+  app.post('/api/system/upstream', async (req) => {
+    const body = req.body as { mode?: string; url?: string; password?: string };
+    const mode = body.mode === 'attach' ? 'attach' : 'managed';
+    const rawUrl = typeof body.url === 'string' ? body.url.trim() : '';
+    let url: string | null = null;
+    if (mode === 'attach') {
+      if (!rawUrl) throw new HttpError(400, 'WSL / 远程模式需要填写上游地址', 'upstream_url_required');
+      let parsed: URL;
+      try {
+        parsed = new URL(rawUrl);
+      } catch {
+        throw new HttpError(400, '上游地址格式无效，例如 http://172.20.10.2:4096', 'upstream_url_invalid');
+      }
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        throw new HttpError(400, '上游地址只支持 http/https', 'upstream_url_invalid');
+      }
+      url = parsed.toString().replace(/\/$/, '');
+    }
+    const password =
+      typeof body.password === 'string' && body.password.trim().length > 0
+        ? body.password.trim()
+        : undefined;
+    ctx.settings.update({
+      upstream: {
+        mode,
+        url,
+        ...(password !== undefined ? { password } : {}),
+      },
+    });
+    await ctx.upstream.configure({ mode, url, password });
+    ctx.bus.reconnect();
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    let healthy = await ctx.upstream.checkHealth(3000);
+    for (let attempt = 0; attempt < 8 && !healthy; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      healthy = await ctx.upstream.checkHealth(2500);
+    }
+    const result = healthy ? await runProbe(ctx.upstream).catch(() => null) : null;
+    if (result) {
+      persistProbe(result);
+      ctx.probe = result;
+    }
+    return {
+      ok: healthy,
+      mode,
+      url,
+      passwordSet: Boolean(ctx.settings.settings.upstream.password),
+      status: ctx.upstream.status(),
+      probe: result,
+    };
+  });
+
   app.put('/api/settings', async (req) => {
     const body = req.body as Record<string, unknown>;
     const updated = ctx.settings.update(body);

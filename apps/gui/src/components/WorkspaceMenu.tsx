@@ -58,7 +58,10 @@ export function WorkspaceMenu() {
   const browse = async () => {
     setBusy(true);
     try {
-      const res = await api<{ path: string; canceled: boolean }>('/api/system/pick-folder', { method: 'POST' });
+      const res = await api<{ path: string; canceled: boolean }>('/api/system/pick-folder', {
+        method: 'POST',
+        body: '{}',
+      });
       if (res.path) {
         setNewPath(res.path);
         notify('已选择文件夹，点击“添加”加入工作区');
@@ -131,7 +134,7 @@ export function WorkspaceMenu() {
               }}
             />
             <button className="btn btn-small" onClick={() => void browse()} disabled={busy} title="打开系统文件夹选择器">
-              📁 浏览
+              <Icon name="folder-open" /> 浏览
             </button>
             <button className="btn btn-small btn-primary" onClick={() => void add()} disabled={busy || !newPath.trim()}>
               添加

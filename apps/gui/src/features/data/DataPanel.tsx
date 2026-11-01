@@ -94,6 +94,7 @@ export function DataPanel() {
   const [searchField, setSearchField] = useState('');
   const [resultFilter, setResultFilter] = useState('');
   const [filterField, setFilterField] = useState('');
+  const [resultTab, setResultTab] = useState<'data' | 'structure'>('data');
   const resultScroll = useRef<HTMLDivElement | null>(null);
   const ROW_H = 24;
 
@@ -277,6 +278,7 @@ export function DataPanel() {
 
   const openTable = (name: string) => {
     setTable(name);
+    setResultTab('data');
     const dot = name.indexOf('.');
     if (dot > 0) {
       const schema = name.slice(0, dot);
@@ -286,7 +288,8 @@ export function DataPanel() {
       selected?.kind === 'mysql'
         ? name.split('.').map((part) => `\`${part.replace(/`/g, '``')}\``).join('.')
         : `"${name.replace(/"/g, '""')}"`;
-    const q = `SELECT * FROM ${quoted} LIMIT 100`;
+    const limit = Math.min(Math.max(selected?.rowLimit ?? 500, 100), 10000);
+    const q = `SELECT * FROM ${quoted} LIMIT ${limit}`;
     setSql(q);
     void runQuery(q);
   };
@@ -456,10 +459,8 @@ export function DataPanel() {
     return values.some((v) => valueText(v).toLowerCase().includes(query.trim().toLowerCase()));
   };
   const filteredRows = allRows.filter((row) => matches(row, resultFilter, filterField));
-  const searchHits = resultSearch.trim()
-    ? filteredRows.filter((row) => matches(row, resultSearch, searchField)).length
-    : filteredRows.length;
-  const displayRows = filteredRows;
+  const displayRows = filteredRows.filter((row) => matches(row, resultSearch, searchField));
+  const searchHits = displayRows.length;
   const viewportRows = Math.ceil(resultViewH / ROW_H);
   const startRow = Math.min(
     Math.max(0, displayRows.length - 1),
@@ -545,7 +546,7 @@ export function DataPanel() {
                       className="input"
                       value={schemaFilter}
                       onChange={(e) => setSchemaFilter(e.target.value)}
-                      placeholder="筛选库或表…"
+                      placeholder="筛选库 / 表名…"
                       aria-label="筛选库或表"
                     />
                   </div>
@@ -641,74 +642,159 @@ export function DataPanel() {
                       </button>
                     </div>
                   </div>
+                  {table ? (
+                    <div className="db-view-tabs">
+                      <button
+                        className={`db-view-tab ${resultTab === 'data' ? 'active' : ''}`}
+                        onClick={() => setResultTab('data')}
+                      >
+                        数据
+                      </button>
+                      <button
+                        className={`db-view-tab ${resultTab === 'structure' ? 'active' : ''}`}
+                        onClick={() => setResultTab('structure')}
+                      >
+                        表结构
+                      </button>
+                      <span className="muted small db-view-table">{table}</span>
+                    </div>
+                  ) : null}
                   <div className="db-result">
-                    {result ? (
+                    {resultTab === 'structure' && table ? (
+                      <div className="table-structure">
+                        <div className="structure-title">
+                          字段 · {tableColumns.length} 个
+                        </div>
+                        <table className="structure-table">
+                          <thead>
+                            <tr>
+                              <th>字段名</th>
+                              <th>类型</th>
+                              <th>可空</th>
+                              <th>主键</th>
+                              <th>默认值</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {tableColumns.length === 0 ? (
+                              <tr>
+                                <td colSpan={5} className="result-empty">
+                                  暂无字段信息，重新打开该表后再试
+                                </td>
+                              </tr>
+                            ) : null}
+                            {tableColumns.map((c) => (
+                              <tr key={c.name}>
+                                <td className="structure-name">{c.name}</td>
+                                <td>{c.type}</td>
+                                <td>{c.notNull ? '否' : '是'}</td>
+                                <td>{c.primaryKey ? '是' : ''}</td>
+                                <td className="muted">{c.defaultValue == null ? '' : String(c.defaultValue)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        <div className="structure-title">
+                          索引 · {(metadata?.indexes[table] ?? []).length} 个
+                        </div>
+                        <table className="structure-table">
+                          <thead>
+                            <tr>
+                              <th>索引名</th>
+                              <th>字段</th>
+                              <th>唯一</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(metadata?.indexes[table] ?? []).length === 0 ? (
+                              <tr>
+                                <td colSpan={3} className="result-empty">
+                                  暂无索引
+                                </td>
+                              </tr>
+                            ) : null}
+                            {(metadata?.indexes[table] ?? []).map((index) => (
+                              <tr key={index.name}>
+                                <td className="structure-name">{index.name}</td>
+                                <td>{index.columns.join(', ')}</td>
+                                <td>{index.unique ? '是' : ''}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : result ? (
                       <>
                         <div className="result-meta">
                           <span>
                             {result.kind === 'read' ? `${result.rowCount} 行` : `changes ${result.changes ?? 0}`} · {result.durationMs}ms
                             {result.truncated ? ' · 已达行数上限' : ''}
                           </span>
-                          {result.kind === 'read' ? (
-                            <div className="result-tools">
-                              <select
-                                className="input result-scope"
-                                value={searchField}
-                                onChange={(e) => setSearchField(e.target.value)}
-                                title="搜索范围"
-                              >
-                                <option value="">全部字段</option>
-                                {result.columns.map((c) => (
-                                  <option key={c} value={c}>
-                                    {c}
-                                  </option>
-                                ))}
-                              </select>
-                              <input
-                                className="input result-search"
-                                value={resultSearch}
-                                onChange={(e) => setResultSearch(e.target.value)}
-                                placeholder="搜索结果"
-                                title="在结果中搜索"
-                              />
-                              <select
-                                className="input result-scope"
-                                value={filterField}
-                                onChange={(e) => setFilterField(e.target.value)}
-                                title="过滤范围"
-                              >
-                                <option value="">全部字段</option>
-                                {result.columns.map((c) => (
-                                  <option key={c} value={c}>
-                                    {c}
-                                  </option>
-                                ))}
-                              </select>
-                              <input
-                                className="input result-search"
-                                value={resultFilter}
-                                onChange={(e) => setResultFilter(e.target.value)}
-                                placeholder="过滤结果"
-                                title="按字段或全局过滤结果"
-                              />
-                              <span className="result-hits">
-                                {displayRows.length}/{allRows.length}
-                                {resultSearch.trim() ? ` · 命中 ${searchHits}` : ''}
-                              </span>
-                              {resultSearch || resultFilter ? (
-                                <button
-                                  className="btn btn-small"
-                                  onClick={() => {
-                                    setResultSearch('');
-                                    setResultFilter('');
-                                  }}
-                                >
-                                  清除
-                                </button>
-                              ) : null}
-                            </div>
-                          ) : null}
+                          <span className="spacer" />
+                          {table ? <span className="muted small">共 {allRows.length} 行已载入</span> : null}
                         </div>
+                        {result.kind === 'read' ? (
+                          <div className="result-tools">
+                            <span className="result-tool-label">搜索</span>
+                            <select
+                              className="input result-scope"
+                              value={searchField}
+                              onChange={(e) => setSearchField(e.target.value)}
+                              title="搜索范围"
+                            >
+                              <option value="">全部字段</option>
+                              {result.columns.map((c) => (
+                                <option key={c} value={c}>
+                                  {c}
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              className="input result-search"
+                              value={resultSearch}
+                              onChange={(e) => setResultSearch(e.target.value)}
+                              placeholder="输入值即时筛选"
+                              title="输入后立即筛选当前结果"
+                            />
+                            <span className="result-tool-sep" />
+                            <span className="result-tool-label">过滤</span>
+                            <select
+                              className="input result-scope"
+                              value={filterField}
+                              onChange={(e) => setFilterField(e.target.value)}
+                              title="过滤范围"
+                            >
+                              <option value="">全部字段</option>
+                              {result.columns.map((c) => (
+                                <option key={c} value={c}>
+                                  {c}
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              className="input result-search"
+                              value={resultFilter}
+                              onChange={(e) => setResultFilter(e.target.value)}
+                              placeholder="按字段或全局过滤"
+                              title="按字段或全局过滤结果"
+                            />
+                            <span className="result-hits">
+                              {displayRows.length}/{allRows.length}
+                              {resultSearch.trim() ? ` · 命中 ${searchHits}` : ''}
+                            </span>
+                            {resultSearch || resultFilter ? (
+                              <button
+                                className="btn btn-small"
+                                onClick={() => {
+                                  setResultSearch('');
+                                  setResultFilter('');
+                                }}
+                              >
+                                清除
+                              </button>
+                            ) : null}
+                          </div>
+                        ) : null}
                         {result.kind === 'read' ? (
                           <div
                             className="result-scroll"

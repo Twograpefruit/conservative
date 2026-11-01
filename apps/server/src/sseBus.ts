@@ -52,6 +52,11 @@ export class EventBus {
     this.pingTimer.unref?.();
   }
 
+  /** Drop the current upstream stream so the loop reconnects to the new URL. */
+  reconnect(): void {
+    this.abort?.abort();
+  }
+
   async stop(): Promise<void> {
     this.stopped = true;
     this.abort?.abort();

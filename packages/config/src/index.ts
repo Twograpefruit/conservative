@@ -24,6 +24,7 @@ export interface Settings {
     host: string;
     port: number;
     url: string | null;
+    password: string | null;
   };
   activeWorkspaceId: string | null;
   editor: {
@@ -57,6 +58,7 @@ export const DEFAULT_SETTINGS: Settings = {
     host: '127.0.0.1',
     port: 4311,
     url: null,
+    password: null,
   },
   activeWorkspaceId: null,
   editor: {

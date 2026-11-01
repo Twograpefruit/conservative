@@ -123,6 +123,20 @@ npm run gui
 The BFF chooses the configured port or the next free one, then writes it to
 `%LOCALAPPDATA%\opencode-gui\runtime.json`. `npm run gui` reads that file.
 
+### Connect to opencode running in WSL
+
+By default the BFF starts a managed local opencode. To use an opencode server inside WSL:
+
+```bash
+# inside WSL
+opencode serve --hostname 0.0.0.0 --port 4096
+hostname -I   # note the first IP address
+```
+
+Open **Settings → Status → 上游连接**, choose **WSL / 远程**, enter
+`http://<wsl-ip>:4096` and the password from WSL's `OPENCODE_SERVER_PASSWORD`, then
+click **应用并重连**. The choice is saved to `settings.json` and survives restarts.
+
 ## Configuration
 
 - Settings: `%APPDATA%\opencode-gui\settings.json`
@@ -172,7 +186,7 @@ node scripts/probe.mjs   # refresh docs/upstream/probe.json
 
 | Area | Endpoints |
 | --- | --- |
-| System | `GET /api/health`, `GET /api/probe`, `GET/PUT /api/settings` |
+| System | `GET /api/health`, `GET /api/probe`, `GET/PUT /api/settings`, `GET/POST /api/system/upstream` |
 | Workspaces | `GET/POST /api/workspaces`, `PATCH/DELETE /api/workspaces/:id` |
 | Files | `GET /api/fs/tree|find|file|raw`, `PUT /api/fs/file`, rename/delete/mkdir |
 | Chat attachments | `POST/GET /api/chat/attachment` |

@@ -850,6 +850,7 @@ export function ChatPanel() {
     }
   });
   const [followBottom, setFollowBottom] = useState(true);
+  const [showJump, setShowJump] = useState(false);
   const [turnCardOpen, setTurnCardOpen] = useState(false);
   const [hoverTurn, setHoverTurn] = useState<number | null>(null);
   const archiveGroups = useApp((s) => s.archiveGroups);
@@ -858,6 +859,7 @@ export function ChatPanel() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const anchors = useRef(new Map<string, HTMLDivElement>());
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const userScrollRef = useRef(false);
 
   const sessions = useMemo(
     () =>
@@ -904,6 +906,8 @@ export function ChatPanel() {
 
   useEffect(() => {
     setFollowBottom(true);
+    setShowJump(true);
+    userScrollRef.current = false;
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [activeID]);
@@ -1008,6 +1012,7 @@ export function ChatPanel() {
     const el = e.currentTarget;
     const near = el.scrollHeight - el.scrollTop - el.clientHeight < 72;
     if (near !== followBottom) setFollowBottom(near);
+    if (userScrollRef.current) setShowJump(!near);
     const top = el.getBoundingClientRect().top + 90;
     let next = 0;
     turns.forEach((turn, index) => {
@@ -1262,7 +1267,20 @@ export function ChatPanel() {
             ) : null}
             </div>
 
-            <div className="messages" ref={scrollRef} onScroll={onMessagesScroll}>
+            <div
+              className="messages"
+              ref={scrollRef}
+              onScroll={onMessagesScroll}
+              onWheel={() => {
+                userScrollRef.current = true;
+              }}
+              onTouchMove={() => {
+                userScrollRef.current = true;
+              }}
+              onPointerDown={() => {
+                userScrollRef.current = true;
+              }}
+            >
               {messages.length === 0 && liveStreams.length === 0 ? (
                 <div className="welcome">
                   <h2>连接 opencode v2</h2>
@@ -1328,17 +1346,22 @@ export function ChatPanel() {
                 <PermissionCard key={p.id} request={p} onReply={(decision) => void reply(p, decision)} />
               ))}
             </div>
-            <div className="chat-jump-latest">
-              <button
-                className={`btn btn-small ${followBottom ? '' : 'btn-primary'}`}
-                onClick={() => {
-                  setFollowBottom(true);
-                  if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-                }}
-              >
-                <Icon name="arrow-down" /> 
-              </button>
-            </div>
+            {showJump ? (
+              <div className="chat-jump-latest">
+                <button
+                  className={`btn btn-small ${followBottom ? '' : 'btn-primary'}`}
+                  title="回到最新"
+                  onClick={() => {
+                    setFollowBottom(true);
+                    setShowJump(false);
+                    userScrollRef.current = false;
+                    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+                  }}
+                >
+                  <Icon name="arrow-down" /> 最新
+                </button>
+              </div>
+            ) : null}
             <Composer session={active} busy={busy} quote={quote} onClearQuote={() => setQuote(null)} />
             {quote ? (
               <div className="composer-quote-hint">

@@ -63,8 +63,67 @@ export function SettingsPanel() {
   const [pluginJson, setPluginJson] = useState('{}');
   const [ocBusy, setOcBusy] = useState(false);
   const [ocPlugins, setOcPlugins] = useState<Array<{ id: string; source?: { type?: string; target?: string; path?: string }; state?: { status?: string; error?: string } }>>([]);
+  const [upstreamMode, setUpstreamMode] = useState<'managed' | 'attach'>('managed');
+  const [upstreamUrl, setUpstreamUrl] = useState('');
+  const [upstreamPassword, setUpstreamPassword] = useState('');
+  const [upstreamPasswordSet, setUpstreamPasswordSet] = useState(false);
+  const [upstreamBusy, setUpstreamBusy] = useState(false);
   const fontFile = useRef<HTMLInputElement | null>(null);
   const localeFile = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (section !== 'status') return;
+    let alive = true;
+    api<{
+      mode: 'managed' | 'attach';
+      url: string | null;
+      passwordSet: boolean;
+    }>('/api/system/upstream')
+      .then((res) => {
+        if (!alive) return;
+        setUpstreamMode(res.mode);
+        setUpstreamUrl(res.url ?? '');
+        setUpstreamPasswordSet(res.passwordSet);
+        setUpstreamPassword('');
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [section]);
+
+  const applyUpstream = async () => {
+    setUpstreamBusy(true);
+    try {
+      const body: Record<string, string> = { mode: upstreamMode };
+      if (upstreamMode === 'attach') body.url = upstreamUrl.trim();
+      if (upstreamPassword.trim()) body.password = upstreamPassword.trim();
+      const res = await api<{
+        ok: boolean;
+        mode: 'managed' | 'attach';
+        url: string | null;
+        passwordSet: boolean;
+        status: { error?: string };
+      }>('/api/system/upstream', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+      setUpstreamPasswordSet(res.passwordSet);
+      setUpstreamPassword('');
+      notify(
+        res.ok
+          ? `上游已切换为 ${res.mode}${res.url ? ` · ${res.url}` : ''}`
+          : `上游已保存，但连接失败：${res.status.error ?? '未知错误'}`,
+        res.ok ? undefined : 'error',
+      );
+      await loadHealth();
+      await loadProbe(true);
+    } catch (err) {
+      notify(err instanceof Error ? err.message : '切换上游失败', 'error');
+    } finally {
+      setUpstreamBusy(false);
+    }
+  };
 
   const loadFontFile = async (file: File) => {
     setFontBusy(true);
@@ -384,8 +443,7 @@ export function SettingsPanel() {
 
         <section className="settings-card shortcuts-settings">
           <h3>{t('settings.shortcuts')}</h3>
-          <div className="keybinding-list">
-            {COMMANDS.map((cmd) => (
+          {COMMANDS.map((cmd) => (
               <div className="keybinding-row" key={cmd.id}>
                 <div className="keybinding-info">
                   <span className="keybinding-title">{cmd.title}</span>
@@ -419,7 +477,6 @@ export function SettingsPanel() {
                 </button>
               </div>
             ))}
-          </div>
           {conflicts.length ? (
             <div className="banner banner-warn">
               键位冲突：
@@ -824,6 +881,67 @@ export function SettingsPanel() {
 
         <section className="settings-card settings-wide logs-settings">
           <h3>{t('settings.status')}</h3>
+          <div className="upstream-config">
+            <div className="settings-group-title">上游连接</div>
+            <div className="segmented upstream-mode">
+              <button
+                className={upstreamMode === 'managed' ? 'active' : ''}
+                onClick={() => setUpstreamMode('managed')}
+              >
+                本地托管
+              </button>
+              <button
+                className={upstreamMode === 'attach' ? 'active' : ''}
+                onClick={() => setUpstreamMode('attach')}
+              >
+                WSL / 远程
+              </button>
+            </div>
+            {upstreamMode === 'attach' ? (
+              <div className="upstream-fields">
+                <label>
+                  上游地址
+                  <input
+                    className="input"
+                    value={upstreamUrl}
+                    onChange={(e) => setUpstreamUrl(e.target.value)}
+                    placeholder="http://172.20.10.2:4096"
+                    spellCheck={false}
+                  />
+                </label>
+                <label>
+                  密码（可选）
+                  <input
+                    className="input"
+                    type="password"
+                    value={upstreamPassword}
+                    onChange={(e) => setUpstreamPassword(e.target.value)}
+                    placeholder={upstreamPasswordSet ? '已保存，留空保持不变' : '与 OPENCODE_SERVER_PASSWORD 一致'}
+                    autoComplete="off"
+                  />
+                </label>
+                <div className="muted small">
+                  WSL 中运行：`opencode serve --hostname 0.0.0.0 --port 4096`。地址填
+                  `wsl hostname -I` 返回的 IP；密码需与 WSL 内 opencode 的服务密码一致。
+                </div>
+              </div>
+            ) : null}
+            <div className="row upstream-actions">
+              <span className={`muted small ${health?.upstream.healthy ? 'text-ok' : 'text-error'}`}>
+                {health?.upstream.healthy
+                  ? `当前 ${health.upstream.mode} · v${health.upstream.version ?? '?'} · ${health.upstream.url}`
+                  : health?.upstream.error ?? '当前上游离线'}
+              </span>
+              <span className="spacer" />
+              <button
+                className="btn btn-small btn-primary"
+                disabled={upstreamBusy || (upstreamMode === 'attach' && !upstreamUrl.trim())}
+                onClick={() => void applyUpstream()}
+              >
+                {upstreamBusy ? '重连中…' : '应用并重连'}
+              </button>
+            </div>
+          </div>
           <div className="kv">
             <span>BFF</span>
             <span className={health?.ok ? 'text-ok' : 'text-error'}>
