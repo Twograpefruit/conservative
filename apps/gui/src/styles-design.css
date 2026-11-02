@@ -1397,3 +1397,9 @@ textarea.oc-json {
   margin-top: 8px;
   align-items: center;
 }
+
+/* Settings content fills the pane so the vertical scrollbar sits on the far
+   right edge of the window instead of stopping at the 980px content cap. */
+.settings-content {
+  max-width: none;
+}
