@@ -152,27 +152,50 @@ export function TerminalPanel() {
   );
 }
 
-const TERMINAL_THEME = {
-  background: '#0f1115',
-  foreground: '#e5e7eb',
-  cursor: '#9bb7e0',
-  selectionBackground: '#334155',
-  black: '#1f2430',
-  red: '#e09a9a',
-  green: '#9ac7aa',
-  yellow: '#dfc08a',
-  blue: '#9bb7e0',
-  magenta: '#c3aed6',
-  cyan: '#9ccfcf',
-  white: '#f3f4f6',
-  brightBlack: '#6b7280',
-  brightRed: '#efb0b0',
-  brightGreen: '#b4dcc2',
-  brightYellow: '#ecd2a5',
-  brightBlue: '#b8cdea',
-  brightMagenta: '#d8c6e8',
-  brightCyan: '#b5e0e0',
-  brightWhite: '#ffffff',
+const TERMINAL_DARK = {
+  background: '#0d1117',
+  foreground: '#e6edf3',
+  cursor: '#58a6ff',
+  selectionBackground: '#264f78',
+  black: '#484f58',
+  red: '#ff7b72',
+  green: '#3fb950',
+  yellow: '#d29922',
+  blue: '#58a6ff',
+  magenta: '#bc8cff',
+  cyan: '#39c5cf',
+  white: '#b1bac4',
+  brightBlack: '#6e7681',
+  brightRed: '#ffa198',
+  brightGreen: '#56d364',
+  brightYellow: '#e3b341',
+  brightBlue: '#79c0ff',
+  brightMagenta: '#d2a8ff',
+  brightCyan: '#56d4dd',
+  brightWhite: '#f0f6fc',
+};
+
+const TERMINAL_LIGHT = {
+  background: '#ffffff',
+  foreground: '#1f2328',
+  cursor: '#0969da',
+  selectionBackground: '#b6d7ff',
+  black: '#24292f',
+  red: '#cf222e',
+  green: '#116329',
+  yellow: '#9a6700',
+  blue: '#0969da',
+  magenta: '#8250df',
+  cyan: '#1b7c83',
+  white: '#6e7781',
+  brightBlack: '#57606a',
+  brightRed: '#a40e26',
+  brightGreen: '#1a7f37',
+  brightYellow: '#7d4e00',
+  brightBlue: '#0550ae',
+  brightMagenta: '#6639ba',
+  brightCyan: '#1b7c83',
+  brightWhite: '#1f2328',
 };
 
 function TerminalTab({
@@ -200,7 +223,7 @@ function TerminalTab({
       scrollback: 5000,
       fontSize: Math.max(9, Math.round(12 * textScale)),
       fontFamily: "'Cascadia Code', Consolas, monospace",
-      theme: TERMINAL_THEME,
+      theme: theme === 'dark' ? TERMINAL_DARK : TERMINAL_LIGHT,
       convertEol: false,
       allowProposedApi: true,
     });
@@ -277,7 +300,7 @@ function TerminalTab({
 
   useEffect(() => {
     if (!termRef.current) return;
-    termRef.current.options.theme = TERMINAL_THEME;
+    termRef.current.options.theme = theme === 'dark' ? TERMINAL_DARK : TERMINAL_LIGHT;
     termRef.current.options.fontSize = Math.max(9, Math.round(12 * textScale));
   }, [theme, textScale]);
 

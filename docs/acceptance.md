@@ -1219,3 +1219,16 @@ main "$@"
 | DATA-011 | 表数据快捷搜索 | PASS（点击表自动载入 500 行；搜索框输入 “Abu” 即时显示 3/500 行，无需再点执行） |
 | SET-008 | 快捷键外层 div | PASS（DOM 中已无 `.keybinding-list`，14 组快捷键直接排列在 section 内） |
 | SET-009 | WSL 上游配置 | PASS（状态页可切换本地托管 / WSL·远程，填写地址与密码后应用并重连） |
+
+---
+
+## 7.27 2026-11-02 GitHub Primer 配色
+
+| 编号 | 用例 | 结果 |
+| ---- | ---- | ---- |
+| STYLE-004 | GitHub 亮色 | PASS（canvas #ffffff / subtle #f6f8fa / border #d0d7de / fg #1f2328 / accent #0969da） |
+| STYLE-005 | GitHub 暗色 | PASS（canvas #0d1117 / subtle #161b22 / border #30363d / fg #e6edf3 / accent #2f81f7） |
+| STYLE-006 | 代码配色 | PASS（Markdown/hljs 使用 GitHub 语法色；浅色关键字 #cf222e、字符串 #0a3069；暗色关键字 #ff7b72、字符串 #a5d6ff） |
+| STYLE-007 | 编辑器 | PASS（CodeMirror 改为 GitHub 亮/暗主题，替换原 One Dark） |
+| STYLE-008 | 终端 | PASS（亮色白底深字 / 暗色 #0d1117 深底浅字，ANSI 使用 GitHub 调色板） |
+| STYLE-009 | 状态色 | PASS（success #1a7f37 / #3fb950，danger #cf222e / #f85149，attention #9a6700 / #d29922） |

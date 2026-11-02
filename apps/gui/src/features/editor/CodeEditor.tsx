@@ -3,11 +3,11 @@ import { basicSetup } from 'codemirror';
 import { EditorState, Compartment } from '@codemirror/state';
 import { EditorView, keymap, hoverTooltip, type Tooltip } from '@codemirror/view';
 import { defaultKeymap, historyKeymap } from '@codemirror/commands';
-import { oneDark } from '@codemirror/theme-one-dark';
 import { lintGutter, setDiagnostics, type Diagnostic } from '@codemirror/lint';
 import type { LintDiagnostic } from '@ocg/protocol';
 import type { EditorTab } from '../../store/editorStore.js';
 import { loadLanguage, type SqlDialect } from './languages.js';
+import { githubDark, githubLight } from './githubTheme.js';
 
 interface SymbolDef {
   name: string;
@@ -184,7 +184,7 @@ export function CodeEditor({
       doc: tab.content,
       extensions: [
         basicSetup,
-        themeCompartment.current.of(theme === 'dark' ? oneDark : []),
+        themeCompartment.current.of(theme === 'dark' ? githubDark : githubLight),
         lintGutter(),
         EditorState.readOnly.of(tab.readonly),
         languageCompartment.current.of([]),
@@ -307,7 +307,7 @@ export function CodeEditor({
   useEffect(() => {
     if (!view.current) return;
     view.current.dispatch({
-      effects: themeCompartment.current.reconfigure(theme === 'dark' ? oneDark : []),
+      effects: themeCompartment.current.reconfigure(theme === 'dark' ? githubDark : githubLight),
     });
   }, [theme]);
 

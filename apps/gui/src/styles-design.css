@@ -1,53 +1,123 @@
 /* Conser developer UI.
- * Warm sand / amber palette, control density, icon sprite and interaction
- * patterns follow OpenChamber (MIT, docs/THIRD_PARTY_NOTICES.md).
- * Apple HIG guidance informs layout, typography and accessibility.
+ * Layout and interaction patterns follow OpenChamber (MIT,
+ * docs/THIRD_PARTY_NOTICES.md); Apple HIG informs accessibility.
+ * Surfaces, text, status and syntax colors follow GitHub Primer light/dark.
  */
 
 /* ------------------------------ tokens ---------------------------------- */
 html[data-theme='light'] {
-  --bg: #f6f2ea;
-  --bg-2: #fdfbf6;
-  --bg-3: #f1ece2;
-  --bg-4: #e9e2d6;
-  --line: #e2d8c8;
-  --line-2: #d5c7b2;
-  --fg: #3b352e;
-  --fg-dim: #6f665b;
-  --fg-muted: #9a8f80;
-  --accent: #d9772e;
-  --accent-2: #c46620;
-  --green: #6f9c76;
-  --red: #c56b62;
-  --yellow: #c38a4a;
-  --purple: #8b7ea8;
+  --bg: #ffffff;
+  --bg-2: #f6f8fa;
+  --bg-3: #f6f8fa;
+  --bg-4: #eaeef2;
+  --line: #d0d7de;
+  --line-2: #afb8c1;
+  --fg: #1f2328;
+  --fg-dim: #656d76;
+  --fg-muted: #6e7781;
+  --accent: #0969da;
+  --accent-2: #0550ae;
+  --green: #1a7f37;
+  --red: #cf222e;
+  --yellow: #9a6700;
+  --purple: #8250df;
   --mono: 'Cascadia Code', Consolas, 'Courier New', monospace;
-  --shadow-card: 0 1px 2px rgba(59, 53, 46, 0.05);
-  --shadow-pop: 0 10px 28px rgba(59, 53, 46, 0.14);
+  --shadow-card: 0 1px 0 rgba(31, 35, 40, 0.04);
+  --shadow-pop: 0 8px 24px rgba(140, 149, 159, 0.2);
   --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
-  --ring: 0 0 0 2px rgba(217, 119, 46, 0.2);
+  --ring: 0 0 0 2px rgba(9, 105, 218, 0.3);
+  --code-bg: #f6f8fa;
+  --code-inline-bg: #eff2f5;
+  --code-border: #d0d7de;
+  --selection-bg: #b6d7ff;
+  --scrollbar: #d0d7de;
+  --scrollbar-hover: #afb8c1;
+  --danger-bg: #ffebe9;
+  --danger-border: #ffcecb;
+  --danger-fg: #cf222e;
+  --danger-strong: #cf222e;
+  --warn-bg: #fff8c5;
+  --warn-border: #d4a72c;
+  --warn-fg: #7d4e00;
+  --ok-bg: #dafbe1;
+  --ok-border: #aceebb;
+  --ok-fg: #1a7f37;
+  --info-bg: #ddf4ff;
+  --info-border: #b6e3ff;
+  --info-fg: #0969da;
+  --diff-add-bg: #e6ffec;
+  --diff-del-bg: #ffebe9;
+  --diff-add-fg: #116329;
+  --diff-del-fg: #cf222e;
+  --overlay: rgba(31, 35, 40, 0.35);
+  --syn-comment: #6e7781;
+  --syn-keyword: #cf222e;
+  --syn-string: #0a3069;
+  --syn-number: #0550ae;
+  --syn-function: #8250df;
+  --syn-variable: #953800;
+  --syn-type: #8250df;
+  --syn-tag: #116329;
+  --syn-attr: #0550ae;
+  --syn-meta: #6e7781;
+  --syn-invalid: #cf222e;
   color-scheme: light;
 }
 
 html[data-theme='dark'] {
-  --bg: #151313;
-  --bg-2: #1c1b1a;
-  --bg-3: #242220;
-  --bg-4: #2b2926;
-  --line: #393836;
-  --line-2: #4a4743;
-  --fg: #d8d4ca;
-  --fg-dim: #a49c90;
-  --fg-muted: #7a7268;
-  --accent: #edb449;
-  --accent-2: #f0c15e;
-  --green: #8fbf95;
-  --red: #d98678;
-  --yellow: #edb449;
-  --purple: #a99ac6;
+  --bg: #0d1117;
+  --bg-2: #161b22;
+  --bg-3: #161b22;
+  --bg-4: #21262d;
+  --line: #30363d;
+  --line-2: #484f58;
+  --fg: #e6edf3;
+  --fg-dim: #8b949e;
+  --fg-muted: #6e7681;
+  --accent: #2f81f7;
+  --accent-2: #58a6ff;
+  --green: #3fb950;
+  --red: #f85149;
+  --yellow: #d29922;
+  --purple: #bc8cff;
   --shadow-card: none;
-  --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.45);
-  --ring: 0 0 0 2px rgba(237, 180, 73, 0.24);
+  --shadow-pop: 0 12px 32px rgba(1, 4, 9, 0.6);
+  --ring: 0 0 0 2px rgba(47, 129, 247, 0.4);
+  --code-bg: #161b22;
+  --code-inline-bg: #262c34;
+  --code-border: #30363d;
+  --selection-bg: #264f78;
+  --scrollbar: #30363d;
+  --scrollbar-hover: #484f58;
+  --danger-bg: #3d1418;
+  --danger-border: #6b2b31;
+  --danger-fg: #ff7b72;
+  --danger-strong: #da3633;
+  --warn-bg: #341a00;
+  --warn-border: #9e6a03;
+  --warn-fg: #d29922;
+  --ok-bg: #12261e;
+  --ok-border: #238636;
+  --ok-fg: #3fb950;
+  --info-bg: #0c2d6b;
+  --info-border: #1f6feb;
+  --info-fg: #58a6ff;
+  --diff-add-bg: #12261e;
+  --diff-del-bg: #3d1418;
+  --diff-add-fg: #7ee787;
+  --diff-del-fg: #ff7b72;
+  --overlay: rgba(1, 4, 9, 0.8);
+  --syn-comment: #8b949e;
+  --syn-keyword: #ff7b72;
+  --syn-string: #a5d6ff;
+  --syn-number: #79c0ff;
+  --syn-function: #d2a8ff;
+  --syn-variable: #ffa657;
+  --syn-type: #ffa657;
+  --syn-tag: #7ee787;
+  --syn-attr: #79c0ff;
+  --syn-meta: #8b949e;
+  --syn-invalid: #ffa198;
   color-scheme: dark;
 }
 
@@ -1402,4 +1472,366 @@ textarea.oc-json {
    right edge of the window instead of stopping at the 980px content cap. */
 .settings-content {
   max-width: none;
+}
+
+/* ------------------- GitHub Primer color mapping ------------------------ */
+/* Applies to both themes; values come from the light/dark token blocks. */
+html[data-theme] body {
+  background: var(--bg);
+  color: var(--fg);
+}
+html[data-theme] .markdown strong,
+html[data-theme] .markdown h1,
+html[data-theme] .markdown h2,
+html[data-theme] .markdown h3,
+html[data-theme] .markdown h4,
+html[data-theme] .markdown-preview h1,
+html[data-theme] .markdown-preview h2,
+html[data-theme] .markdown-preview h3,
+html[data-theme] .markdown-preview h4 {
+  color: var(--fg);
+}
+html[data-theme] .markdown blockquote,
+html[data-theme] .markdown-preview blockquote {
+  background: var(--bg-3);
+  color: var(--fg-dim);
+  border-color: var(--line);
+}
+html[data-theme] .markdown th,
+html[data-theme] .markdown-preview th {
+  background: var(--bg-3);
+  color: var(--fg);
+}
+html[data-theme] .markdown-preview {
+  background: var(--bg-2);
+  color: var(--fg);
+}
+html[data-theme] .msg.user .bubble {
+  background: var(--info-bg);
+  border-color: var(--info-border);
+  color: var(--fg);
+}
+html[data-theme] .mention-chip {
+  background: var(--info-bg);
+  border-color: var(--info-border);
+  color: var(--info-fg);
+}
+html[data-theme] .mention-chip button {
+  color: var(--info-fg);
+}
+html[data-theme] .conn-kind {
+  background: var(--info-bg);
+  color: var(--info-fg);
+}
+html[data-theme] .kind-redis,
+html[data-theme] .provider-gitee,
+html[data-theme] .notify-icon.level-error {
+  background: var(--danger-bg);
+  color: var(--danger-fg);
+}
+html[data-theme] .notify-icon.level-warn {
+  background: var(--warn-bg);
+  color: var(--warn-fg);
+}
+html[data-theme] .notify-item.unread {
+  background: var(--info-bg);
+}
+html[data-theme] .btn-danger {
+  background: var(--danger-strong);
+  border-color: var(--danger-strong);
+  color: #ffffff;
+}
+html[data-theme] .btn-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger-strong) 84%, #000);
+  border-color: color-mix(in srgb, var(--danger-strong) 84%, #000);
+}
+html[data-theme] .badge-warn,
+html[data-theme] .permission-badge,
+html[data-theme] .permission-card,
+html[data-theme] .git-hints,
+html[data-theme] .banner-warn,
+html[data-theme] .status-warn,
+html[data-theme] .safety-warn {
+  background: var(--warn-bg);
+  border-color: var(--warn-border);
+  color: var(--warn-fg);
+}
+html[data-theme] .banner-error,
+html[data-theme] .toast-error,
+html[data-theme] .chat-error,
+html[data-theme] .msg-error,
+html[data-theme] .cap-no,
+html[data-theme] .cap-item.cap-no,
+html[data-theme] .status-error,
+html[data-theme] .safety-danger {
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: var(--danger-fg);
+}
+html[data-theme] .banner-info,
+html[data-theme] .quote-chip {
+  background: var(--info-bg);
+  border-color: var(--info-border);
+  color: var(--info-fg);
+}
+html[data-theme] .cap-ok,
+html[data-theme] .cap-item.cap-ok {
+  background: var(--ok-bg);
+  border-color: var(--ok-border);
+  color: var(--ok-fg);
+}
+html[data-theme] .diff-line.diff-add,
+html[data-theme] .diff-half.diff-add {
+  background: var(--diff-add-bg);
+}
+html[data-theme] .diff-line.diff-add .sign,
+html[data-theme] .diff-line.diff-add .code {
+  color: var(--diff-add-fg);
+}
+html[data-theme] .diff-line.diff-del,
+html[data-theme] .diff-half.diff-del {
+  background: var(--diff-del-bg);
+}
+html[data-theme] .diff-line.diff-del .sign,
+html[data-theme] .diff-line.diff-del .code {
+  color: var(--diff-del-fg);
+}
+html[data-theme] .diff-half.diff-empty {
+  background: var(--bg-3);
+}
+html[data-theme] .hunk-head {
+  background: var(--bg-3);
+  color: var(--fg-dim);
+}
+html[data-theme] .diff-line .ln {
+  background: var(--bg-3);
+  color: var(--fg-muted);
+}
+html[data-theme] .search-hit mark {
+  background: var(--warn-bg);
+  color: var(--warn-fg);
+}
+html[data-theme] .toast {
+  background: var(--bg-2);
+  border-color: var(--line-2);
+  box-shadow: var(--shadow-pop);
+}
+html[data-theme] .format-overlay,
+html[data-theme] .palette-overlay {
+  background: var(--overlay);
+}
+html[data-theme] .format-dialog,
+html[data-theme] .connection-dialog,
+html[data-theme] .context-menu,
+html[data-theme] .notify-panel,
+html[data-theme] .palette,
+html[data-theme] .workspace-popover,
+html[data-theme] .mention-popup {
+  background: var(--bg-2);
+  border-color: var(--line-2);
+  box-shadow: var(--shadow-pop);
+}
+html[data-theme] .switch-row,
+html[data-theme] .mute-chip,
+html[data-theme] .history-chip {
+  background: var(--bg-3);
+  border-color: var(--line);
+}
+html[data-theme] .progress-track {
+  background: var(--bg-4);
+}
+html[data-theme] .probe-meta,
+html[data-theme] .settings-card .muted {
+  color: var(--fg-dim);
+}
+html[data-theme] ::selection {
+  background: var(--selection-bg);
+}
+html[data-theme] ::-webkit-scrollbar-thumb {
+  background: var(--scrollbar);
+}
+html[data-theme] ::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-hover);
+}
+html[data-theme] .code-block,
+html[data-theme] .markdown pre.code-block,
+html[data-theme] .markdown-preview pre.hljs,
+html[data-theme] .tool-pre,
+html[data-theme] .redis-value-pre,
+html[data-theme] .git-output,
+html[data-theme] .git-argv,
+html[data-theme] .git-argv code,
+html[data-theme] .log-tail,
+html[data-theme] .install-log,
+html[data-theme] .terminal-body {
+  background: var(--code-bg);
+  border-color: var(--code-border);
+  color: var(--fg);
+}
+html[data-theme] .markdown code:not(pre code),
+html[data-theme] .markdown-preview code:not(pre code) {
+  background: var(--code-inline-bg);
+  border: 1px solid var(--code-border);
+  color: var(--fg);
+}
+html[data-theme] .markdown pre.code-block code,
+html[data-theme] .markdown-preview pre.hljs code {
+  background: transparent;
+  color: var(--fg);
+}
+
+/* GitHub syntax colors (highlight.js). */
+html[data-theme] .markdown .hljs-comment,
+html[data-theme] .markdown-preview .hljs-comment,
+html[data-theme] .markdown .hljs-quote,
+html[data-theme] .markdown-preview .hljs-quote {
+  color: var(--syn-comment);
+  font-style: italic;
+}
+html[data-theme] .markdown .hljs-keyword,
+html[data-theme] .markdown-preview .hljs-keyword,
+html[data-theme] .markdown .hljs-selector-tag,
+html[data-theme] .markdown-preview .hljs-selector-tag,
+html[data-theme] .markdown .hljs-subst,
+html[data-theme] .markdown-preview .hljs-subst {
+  color: var(--syn-keyword);
+}
+html[data-theme] .markdown .hljs-string,
+html[data-theme] .markdown-preview .hljs-string,
+html[data-theme] .markdown .hljs-regexp,
+html[data-theme] .markdown-preview .hljs-regexp,
+html[data-theme] .markdown .hljs-symbol,
+html[data-theme] .markdown-preview .hljs-symbol {
+  color: var(--syn-string);
+}
+html[data-theme] .markdown .hljs-number,
+html[data-theme] .markdown-preview .hljs-number,
+html[data-theme] .markdown .hljs-literal,
+html[data-theme] .markdown-preview .hljs-literal,
+html[data-theme] .markdown .hljs-atom,
+html[data-theme] .markdown-preview .hljs-atom {
+  color: var(--syn-number);
+}
+html[data-theme] .markdown .hljs-title,
+html[data-theme] .markdown-preview .hljs-title,
+html[data-theme] .markdown .hljs-section,
+html[data-theme] .markdown-preview .hljs-section,
+html[data-theme] .markdown .hljs-function,
+html[data-theme] .markdown-preview .hljs-function {
+  color: var(--syn-function);
+}
+html[data-theme] .markdown .hljs-variable,
+html[data-theme] .markdown-preview .hljs-variable,
+html[data-theme] .markdown .hljs-template-variable,
+html[data-theme] .markdown-preview .hljs-template-variable,
+html[data-theme] .markdown .hljs-params,
+html[data-theme] .markdown-preview .hljs-params,
+html[data-theme] .markdown .hljs-built_in,
+html[data-theme] .markdown-preview .hljs-built_in {
+  color: var(--syn-variable);
+}
+html[data-theme] .markdown .hljs-type,
+html[data-theme] .markdown-preview .hljs-type,
+html[data-theme] .markdown .hljs-class,
+html[data-theme] .markdown-preview .hljs-class {
+  color: var(--syn-type);
+}
+html[data-theme] .markdown .hljs-tag,
+html[data-theme] .markdown-preview .hljs-tag,
+html[data-theme] .markdown .hljs-name,
+html[data-theme] .markdown-preview .hljs-name,
+html[data-theme] .markdown .hljs-selector-class,
+html[data-theme] .markdown-preview .hljs-selector-class {
+  color: var(--syn-tag);
+}
+html[data-theme] .markdown .hljs-attr,
+html[data-theme] .markdown-preview .hljs-attr,
+html[data-theme] .markdown .hljs-attribute,
+html[data-theme] .markdown-preview .hljs-attribute,
+html[data-theme] .markdown .hljs-property,
+html[data-theme] .markdown-preview .hljs-property {
+  color: var(--syn-attr);
+}
+html[data-theme] .markdown .hljs-meta,
+html[data-theme] .markdown-preview .hljs-meta,
+html[data-theme] .markdown .hljs-doctag,
+html[data-theme] .markdown-preview .hljs-doctag {
+  color: var(--syn-meta);
+}
+html[data-theme] .markdown .hljs-addition,
+html[data-theme] .markdown-preview .hljs-addition {
+  background: var(--diff-add-bg);
+  color: var(--diff-add-fg);
+}
+html[data-theme] .markdown .hljs-deletion,
+html[data-theme] .markdown-preview .hljs-deletion {
+  background: var(--diff-del-bg);
+  color: var(--diff-del-fg);
+}
+html[data-theme] .markdown .hljs-emphasis,
+html[data-theme] .markdown-preview .hljs-emphasis {
+  font-style: italic;
+}
+html[data-theme] .markdown .hljs-strong,
+html[data-theme] .markdown-preview .hljs-strong {
+  font-weight: 600;
+}
+
+/* Turn rail and inverted full-text tooltip in Primer colors. */
+html[data-theme] .chat-turn-rail .turn-bar {
+  background: var(--line-2);
+}
+html[data-theme] .chat-turn-rail .turn-bar:hover {
+  background: var(--fg-muted);
+}
+html[data-theme] .chat-turn-rail .turn-bar.active {
+  background: var(--fg);
+  box-shadow: 0 1px 3px rgba(1, 4, 9, 0.28);
+}
+html[data-theme] .turn-full-tip {
+  background: var(--fg);
+  color: var(--bg);
+}
+html[data-theme] .turn-full-tip strong {
+  color: color-mix(in srgb, var(--bg) 62%, var(--fg));
+}
+
+/* Remaining status/diff/git accents mapped to Primer tokens. */
+html[data-theme] .status-busy,
+html[data-theme] .status-retry {
+  background: var(--warn-bg);
+  border-color: var(--warn-border);
+  color: var(--warn-fg);
+}
+html[data-theme] .tool-error {
+  border-color: var(--danger-border);
+}
+html[data-theme] .permission-resources code {
+  background: var(--code-inline-bg);
+  border-color: var(--code-border);
+  color: var(--fg);
+}
+html[data-theme] .preview-before {
+  color: var(--diff-del-fg);
+}
+html[data-theme] .preview-after {
+  color: var(--diff-add-fg);
+}
+html[data-theme] .git-added,
+html[data-theme] .git-untracked {
+  background: var(--ok-bg);
+  color: var(--ok-fg);
+}
+html[data-theme] .git-modified {
+  background: var(--warn-bg);
+  color: var(--warn-fg);
+}
+html[data-theme] .git-deleted,
+html[data-theme] .git-conflict {
+  background: var(--danger-bg);
+  color: var(--danger-fg);
+}
+html[data-theme] .workspace-row.active {
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-2));
+  border-color: var(--accent);
 }

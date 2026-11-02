@@ -1,19 +1,19 @@
 /* Flat light theme (not Neumorphism). Toggled via html[data-theme="light"]. */
 html[data-theme='light'] {
-  --bg: #f6f7fb;
-  --bg-2: #ffffff;
-  --bg-3: #eef1f6;
-  --bg-4: #e3e8f1;
-  --line: #d9dfe9;
-  --line-2: #c3cbd9;
-  --fg: #1f2937;
-  --fg-dim: #667085;
-  --accent: #2563eb;
-  --accent-2: #1d4ed8;
-  --green: #15803d;
-  --red: #dc2626;
-  --yellow: #b45309;
-  --purple: #7c3aed;
+  --bg: #ffffff;
+  --bg-2: #f6f8fa;
+  --bg-3: #f6f8fa;
+  --bg-4: #eaeef2;
+  --line: #d0d7de;
+  --line-2: #afb8c1;
+  --fg: #1f2328;
+  --fg-dim: #656d76;
+  --accent: #0969da;
+  --accent-2: #0550ae;
+  --green: #1a7f37;
+  --red: #cf222e;
+  --yellow: #9a6700;
+  --purple: #8250df;
   color-scheme: light;
 }
 

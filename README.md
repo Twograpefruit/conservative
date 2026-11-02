@@ -248,6 +248,9 @@ Icons come from the Remix Icon sprite distributed by **OpenChamber** (MIT). See
 [`docs/THIRD_PARTY_NOTICES.md`](docs/THIRD_PARTY_NOTICES.md) for the full notice. The OpenChamber
 reference checkout is gitignored under `docs/openchamber-main/`.
 
+Surfaces, text, status colors and code syntax follow **GitHub Primer** light/dark, including the
+editor (CodeMirror) and terminal palettes. Layout and interaction design are unchanged.
+
 The interface also follows Apple's public Human Interface Guidelines for layout, sidebars,
 toolbars, typography, color, accessibility, motion, and macOS conventions. The guideline text
 belongs to **Apple Inc.**, and this project is not affiliated with or endorsed by Apple.

@@ -1,18 +1,18 @@
 :root {
-  --bg: #0f1116;
-  --bg-2: #151821;
-  --bg-3: #1b1f2a;
-  --bg-4: #222736;
-  --line: #2a3040;
-  --line-2: #353c4f;
-  --fg: #d9dce3;
-  --fg-dim: #8b93a7;
-  --accent: #5b9dff;
-  --accent-2: #3d7be0;
-  --green: #56c08d;
-  --red: #ef6b73;
-  --yellow: #e5b567;
-  --purple: #b48ead;
+  --bg: #0d1117;
+  --bg-2: #161b22;
+  --bg-3: #161b22;
+  --bg-4: #21262d;
+  --line: #30363d;
+  --line-2: #484f58;
+  --fg: #e6edf3;
+  --fg-dim: #8b949e;
+  --accent: #2f81f7;
+  --accent-2: #58a6ff;
+  --green: #3fb950;
+  --red: #f85149;
+  --yellow: #d29922;
+  --purple: #bc8cff;
   --mono: 'Cascadia Code', 'JetBrains Mono', Consolas, 'Courier New', monospace;
   color-scheme: dark;
 }
