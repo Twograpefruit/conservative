@@ -20,6 +20,9 @@
     "test:watch": "vitest",
     "probe": "node scripts/probe.mjs",
     "codegen": "node scripts/codegen.mjs",
+    "desktop:prepare": "node scripts/package-desktop.mjs prepare",
+    "desktop:build": "node scripts/package-desktop.mjs build",
+    "desktop:dev": "node scripts/package-desktop.mjs dev",
     "bootstrap": "powershell -ExecutionPolicy Bypass -File scripts/bootstrap.ps1"
   },
   "devDependencies": {
